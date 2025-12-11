@@ -27,6 +27,9 @@ class ApiConfig {
   static const String me = '$auth/me';
   static const String logout = '$auth/logout';
 
+  // Trip endpoints
+  static const String defaultTrips = '$trips/default-trips';
+
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
@@ -39,4 +42,5 @@ class ApiConfig {
   // Storage keys
   static const String accessTokenKey = 'access_token';
   static const String userIdKey = 'user_id';
+  static const String onboardingCompletedKey = 'onboarding_completed';
 }

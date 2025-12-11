@@ -74,6 +74,15 @@ class TripRepository {
     }
   }
 
+  /// Create default trips for new user (called during onboarding)
+  Future<void> createDefaultTrips() async {
+    try {
+      await _dioClient.post(ApiConfig.defaultTrips);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Handle Dio errors
   String _handleError(DioException error) {
     if (error.response?.data != null && error.response!.data is Map) {

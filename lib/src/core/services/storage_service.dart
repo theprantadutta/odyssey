@@ -42,6 +42,19 @@ class StorageService {
     await _storage.delete(key: ApiConfig.userIdKey);
   }
 
+  // Onboarding
+  Future<void> setOnboardingCompleted(bool completed) async {
+    await _storage.write(
+      key: ApiConfig.onboardingCompletedKey,
+      value: completed.toString(),
+    );
+  }
+
+  Future<bool> isOnboardingCompleted() async {
+    final value = await _storage.read(key: ApiConfig.onboardingCompletedKey);
+    return value == 'true';
+  }
+
   // Clear all data (logout)
   Future<void> clearAll() async {
     await _storage.deleteAll();
