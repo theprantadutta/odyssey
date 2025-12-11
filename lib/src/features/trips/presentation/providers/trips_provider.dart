@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/repositories/trip_repository.dart';
 
@@ -50,20 +51,23 @@ TripRepository tripRepository(Ref ref) {
 /// Trips list provider
 @riverpod
 class Trips extends _$Trips {
-  late final TripRepository _tripRepository;
+  TripRepository get _tripRepository => ref.read(tripRepositoryProvider);
 
   @override
   TripsState build() {
-    _tripRepository = ref.read(tripRepositoryProvider);
-    _loadTrips();
+    // Defer the initial load to run after build() completes
+    // This prevents "uninitialized provider" error in Riverpod 3
+    Future.microtask(() => _loadTrips());
     return const TripsState();
   }
 
   /// Load trips (first page)
   Future<void> _loadTrips() async {
+    AppLogger.state('Trips', 'Loading trips (page 1)');
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _tripRepository.getTrips(page: 1);
+      AppLogger.state('Trips', 'Loaded ${response.trips.length} trips (total: ${response.total})');
       state = state.copyWith(
         trips: response.trips,
         total: response.total,
@@ -72,6 +76,7 @@ class Trips extends _$Trips {
         isLoading: false,
       );
     } catch (e) {
+      AppLogger.error('Failed to load trips: $e');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -88,12 +93,14 @@ class Trips extends _$Trips {
   Future<void> loadMore() async {
     if (!state.hasMore || state.isLoading) return;
 
+    final nextPage = state.currentPage + 1;
+    AppLogger.state('Trips', 'Loading more trips (page $nextPage)');
     state = state.copyWith(isLoading: true);
     try {
-      final nextPage = state.currentPage + 1;
       final response = await _tripRepository.getTrips(page: nextPage);
 
       final allTrips = [...state.trips, ...response.trips];
+      AppLogger.state('Trips', 'Loaded ${response.trips.length} more trips (total loaded: ${allTrips.length})');
       state = state.copyWith(
         trips: allTrips,
         total: response.total,
@@ -102,6 +109,7 @@ class Trips extends _$Trips {
         isLoading: false,
       );
     } catch (e) {
+      AppLogger.error('Failed to load more trips: $e');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -111,42 +119,49 @@ class Trips extends _$Trips {
 
   /// Create trip
   Future<void> createTrip(TripRequest request) async {
+    AppLogger.action('Creating trip: ${request.title}');
     try {
       final newTrip = await _tripRepository.createTrip(request);
+      AppLogger.info('Trip created successfully: ${newTrip.title}');
       state = state.copyWith(
         trips: [newTrip, ...state.trips],
         total: state.total + 1,
       );
     } catch (e) {
+      AppLogger.error('Failed to create trip: $e');
       rethrow;
     }
   }
 
   /// Update trip
   Future<void> updateTrip(String id, Map<String, dynamic> updates) async {
+    AppLogger.action('Updating trip: $id');
     try {
       final updatedTrip = await _tripRepository.updateTrip(id, updates);
       final updatedTrips = state.trips.map((trip) {
         return trip.id == id ? updatedTrip : trip;
       }).toList();
-
+      AppLogger.info('Trip updated successfully: ${updatedTrip.title}');
       state = state.copyWith(trips: updatedTrips);
     } catch (e) {
+      AppLogger.error('Failed to update trip: $e');
       rethrow;
     }
   }
 
   /// Delete trip
   Future<void> deleteTrip(String id) async {
+    AppLogger.action('Deleting trip: $id');
     try {
       await _tripRepository.deleteTrip(id);
       final updatedTrips = state.trips.where((trip) => trip.id != id).toList();
-
+      AppLogger.info('Trip deleted successfully');
       state = state.copyWith(
         trips: updatedTrips,
         total: state.total - 1,
       );
     } catch (e) {
+      AppLogger.error('Failed to delete trip: $e');
       rethrow;
     }
   }
@@ -160,11 +175,10 @@ class Trips extends _$Trips {
 /// Single trip provider (for detail view)
 @riverpod
 class Trip extends _$Trip {
-  late final TripRepository _tripRepository;
+  TripRepository get _tripRepository => ref.read(tripRepositoryProvider);
 
   @override
   Future<TripModel?> build(String tripId) async {
-    _tripRepository = ref.read(tripRepositoryProvider);
     return await _loadTrip(tripId);
   }
 

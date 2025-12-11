@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'dart:developer' as developer;
+import '../services/logger_service.dart';
 import '../services/storage_service.dart';
 
 /// Interceptor to add JWT token to all requests
@@ -17,6 +17,7 @@ class AuthInterceptor extends Interceptor {
     // Add Authorization header if token exists
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
+      AppLogger.auth('Token attached to request');
     }
 
     return handler.next(options);
@@ -26,9 +27,9 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // Handle 401 Unauthorized - token expired or invalid
     if (err.response?.statusCode == 401) {
+      AppLogger.auth('Token expired or invalid - clearing credentials', isError: true);
       // Clear stored credentials
       await _storageService.clearAll();
-      // Could trigger navigation to login screen here via navigation service
     }
 
     return handler.next(err);
@@ -37,55 +38,50 @@ class AuthInterceptor extends Interceptor {
 
 /// Interceptor for logging API requests and responses
 class LoggingInterceptor extends Interceptor {
+  final Map<String, DateTime> _requestTimestamps = {};
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    developer.log(
-      'REQUEST[${options.method}] => PATH: ${options.uri}',
-      name: 'DioRequest',
+    // Store timestamp for duration calculation
+    _requestTimestamps[options.uri.toString()] = DateTime.now();
+
+    AppLogger.request(
+      method: options.method,
+      url: options.uri.toString(),
+      headers: options.headers.map((k, v) => MapEntry(k, v.toString())),
+      body: options.data,
     );
-    developer.log(
-      'Headers: ${options.headers}',
-      name: 'DioRequest',
-    );
-    if (options.data != null) {
-      developer.log(
-        'Data: ${options.data}',
-        name: 'DioRequest',
-      );
-    }
     return super.onRequest(options, handler);
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    developer.log(
-      'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.uri}',
-      name: 'DioResponse',
-    );
-    developer.log(
-      'Data: ${response.data}',
-      name: 'DioResponse',
+    final url = response.requestOptions.uri.toString();
+    final startTime = _requestTimestamps.remove(url);
+    final durationMs = startTime != null
+        ? DateTime.now().difference(startTime).inMilliseconds
+        : null;
+
+    AppLogger.response(
+      statusCode: response.statusCode ?? 0,
+      url: url,
+      body: response.data,
+      durationMs: durationMs,
     );
     return super.onResponse(response, handler);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    developer.log(
-      'ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.uri}',
-      name: 'DioError',
-      error: err,
+    final url = err.requestOptions.uri.toString();
+    _requestTimestamps.remove(url);
+
+    AppLogger.networkError(
+      url: url,
+      message: err.message ?? 'Unknown error',
+      statusCode: err.response?.statusCode,
+      error: err.response?.data,
     );
-    developer.log(
-      'Message: ${err.message}',
-      name: 'DioError',
-    );
-    if (err.response?.data != null) {
-      developer.log(
-        'Error Data: ${err.response?.data}',
-        name: 'DioError',
-      );
-    }
     return super.onError(err, handler);
   }
 }

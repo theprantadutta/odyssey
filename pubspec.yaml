@@ -66,6 +66,9 @@ dependencies:
   uuid: ^4.5.1
   equatable: ^2.0.7
 
+  # Logging
+  logger: ^2.5.0
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
