@@ -32,8 +32,8 @@ dependencies:
     sdk: flutter
 
   # State Management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  flutter_riverpod: ^3.0.3
+  riverpod_annotation: ^3.0.3
 
   # HTTP & API
   dio: ^5.7.0
@@ -41,15 +41,15 @@ dependencies:
   json_annotation: ^4.9.0
 
   # Secure Storage (JWT tokens)
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^10.0.0
 
   # Navigation
-  go_router: ^14.6.2
+  go_router: ^17.0.1
 
   # Maps
-  flutter_map: ^7.0.2
+  flutter_map: ^8.2.2
   latlong2: ^0.9.1
-  flutter_map_marker_cluster: ^1.3.6
+  flutter_map_marker_cluster: ^8.2.2
 
   # Animations
   flutter_animate: ^4.5.0
@@ -75,9 +75,9 @@ dev_dependencies:
 
   # Code Generation
   build_runner: ^2.4.14
-  riverpod_generator: ^2.6.2
-  go_router_builder: ^2.7.1
-  retrofit_generator: ^9.1.5
+  riverpod_generator: ^3.0.3
+  go_router_builder: ^4.1.3
+  retrofit_generator: ^10.2.0
   json_serializable: ^6.8.0
 
   # Testing

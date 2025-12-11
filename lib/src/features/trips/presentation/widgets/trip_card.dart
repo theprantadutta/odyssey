@@ -52,8 +52,8 @@ class TripCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    AppColors.midnightBlue.withOpacity(0.3),
-                    AppColors.midnightBlue.withOpacity(0.9),
+                    AppColors.midnightBlue.withValues(alpha: 0.3),
+                    AppColors.midnightBlue.withValues(alpha: 0.9),
                   ],
                   stops: const [0.0, 0.5, 1.0],
                 ),
@@ -80,7 +80,7 @@ class TripCard extends StatelessWidget {
                       color: AppColors.textOnDark,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           offset: const Offset(0, 2),
                           blurRadius: 4,
                         ),
@@ -123,11 +123,11 @@ class TripCard extends StatelessWidget {
                               vertical: AppSizes.space4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.sunsetGold.withOpacity(0.2),
+                              color: AppColors.sunsetGold.withValues(alpha: 0.2),
                               borderRadius:
                                   BorderRadius.circular(AppSizes.radiusFull),
                               border: Border.all(
-                                color: AppColors.sunsetGold.withOpacity(0.5),
+                                color: AppColors.sunsetGold.withValues(alpha: 0.5),
                                 width: 1,
                               ),
                             ),
@@ -209,7 +209,7 @@ class TripCard extends StatelessWidget {
           child: Icon(
             Icons.travel_explore,
             size: 64,
-            color: AppColors.sunsetGold.withOpacity(0.3),
+            color: AppColors.sunsetGold.withValues(alpha: 0.3),
           ),
         ),
       );
@@ -224,7 +224,7 @@ class TripCard extends StatelessWidget {
         child: Icon(
           Icons.travel_explore,
           size: 64,
-          color: AppColors.sunsetGold.withOpacity(0.3),
+          color: AppColors.sunsetGold.withValues(alpha: 0.3),
         ),
       ),
     );

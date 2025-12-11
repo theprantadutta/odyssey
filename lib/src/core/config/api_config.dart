@@ -3,7 +3,7 @@ class ApiConfig {
   ApiConfig._(); // Private constructor
 
   // Base URL - Update this for production
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'http://localhost:8546';
 
   // API Version
   static const String apiVersion = 'v1';

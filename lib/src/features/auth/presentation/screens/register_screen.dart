@@ -121,17 +121,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           color: AppColors.softGold,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
+                        fillColor: Colors.white.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -183,17 +183,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
+                        fillColor: Colors.white.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -245,17 +245,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           },
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
+                        fillColor: Colors.white.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           borderSide: BorderSide(
-                            color: AppColors.softGold.withOpacity(0.3),
+                            color: AppColors.softGold.withValues(alpha: 0.3),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(

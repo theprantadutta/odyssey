@@ -35,7 +35,7 @@ class AuthState {
 
 /// Auth repository provider
 @riverpod
-AuthRepository authRepository(AuthRepositoryRef ref) {
+AuthRepository authRepository(Ref ref) {
   return AuthRepository();
 }
 
@@ -47,8 +47,12 @@ class Auth extends _$Auth {
   @override
   AuthState build() {
     _authRepository = ref.read(authRepositoryProvider);
-    _checkAuthStatus();
-    return const AuthState();
+    
+    // Delay auth check until after provider is fully initialized
+    // This avoids the "uninitialized provider" error in Riverpod 3
+    Future.microtask(() => _checkAuthStatus());
+    
+    return const AuthState(isLoading: true);
   }
 
   /// Check if user is already authenticated on app start

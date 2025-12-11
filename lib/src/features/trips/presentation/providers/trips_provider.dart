@@ -43,7 +43,7 @@ class TripsState {
 
 /// Trip repository provider
 @riverpod
-TripRepository tripRepository(TripRepositoryRef ref) {
+TripRepository tripRepository(Ref ref) {
   return TripRepository();
 }
 

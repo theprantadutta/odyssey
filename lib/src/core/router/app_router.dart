@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -17,82 +18,80 @@ class AppRoutes {
   static const String editTrip = '/edit-trip';
 }
 
+/// A simple listenable for router refresh
+class RouterRefreshNotifier extends ChangeNotifier {
+  void refresh() => notifyListeners();
+}
+
+/// Global refresh notifier
+final _routerRefreshNotifier = RouterRefreshNotifier();
+
 /// GoRouter provider
 final routerProvider = Provider<GoRouter>((ref) {
+  // Watch auth state - triggers rebuild when auth changes
   final authState = ref.watch(authProvider);
+
+  // Schedule router refresh after this build
+  Future.microtask(() => _routerRefreshNotifier.refresh());
 
   return GoRouter(
     debugLogDiagnostics: true,
     initialLocation: AppRoutes.splash,
+    refreshListenable: _routerRefreshNotifier,
     redirect: (context, state) {
       final isAuthenticated = authState.isAuthenticated;
       final isLoading = authState.isLoading;
-      final isOnSplash = state.matchedLocation == AppRoutes.splash;
-      final isOnLogin = state.matchedLocation == AppRoutes.login;
-      final isOnRegister = state.matchedLocation == AppRoutes.register;
+      final currentLocation = state.matchedLocation;
+      final isOnSplash = currentLocation == AppRoutes.splash;
+      final isOnLogin = currentLocation == AppRoutes.login;
+      final isOnRegister = currentLocation == AppRoutes.register;
+      final isOnAuthScreen = isOnLogin || isOnRegister;
 
-      // Show splash while checking auth
-      if (isLoading && !isOnSplash) {
+      // Show splash while checking auth (but NOT if already on auth screens)
+      if (isLoading && !isOnSplash && !isOnAuthScreen) {
         return AppRoutes.splash;
       }
 
-      // Redirect to home if authenticated and on auth screens
+      // Redirect to home if authenticated
       if (isAuthenticated && (isOnLogin || isOnRegister || isOnSplash)) {
         return AppRoutes.home;
       }
 
-      // Redirect to login if not authenticated and not on auth screens
+      // Redirect to login if not authenticated
       if (!isAuthenticated && !isOnLogin && !isOnRegister && !isLoading) {
         return AppRoutes.login;
       }
 
-      // No redirect needed
       return null;
     },
     routes: [
-      // Splash Screen
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
       ),
-
-      // Login Screen
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => LoginScreen(
           onRegisterTap: () => context.go(AppRoutes.register),
         ),
       ),
-
-      // Register Screen
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => RegisterScreen(
           onLoginTap: () => context.go(AppRoutes.login),
         ),
       ),
-
-      // Home Screen (Protected) - Trips Dashboard
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const TripsDashboardScreen(),
       ),
-
-      // Create Trip (Protected)
       GoRoute(
         path: AppRoutes.createTrip,
         builder: (context, state) => const TripFormScreen(),
       ),
-
-      // Edit Trip (Protected)
-      // Note: Edit navigation is currently handled via MaterialPageRoute
-      // in TripsDashboardScreen to pass the trip object directly
       GoRoute(
         path: '${AppRoutes.editTrip}/:id',
-        builder: (context, state) {
-          // TODO: Implement GoRouter-based edit with trip fetching from state
-          return const TripFormScreen();
-        },
+        builder: (context, state) => const TripFormScreen(),
       ),
     ],
   );

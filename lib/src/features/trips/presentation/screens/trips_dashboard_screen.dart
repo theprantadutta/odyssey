@@ -29,6 +29,12 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Invalidate trips provider to ensure fresh data when dashboard loads
+    // This handles the case where provider was built before auth was complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(tripsProvider);
+    });
   }
 
   @override

@@ -53,12 +53,12 @@ class GlassContainer extends StatelessWidget {
           height: height,
           padding: padding,
           decoration: BoxDecoration(
-            color: color ?? Colors.white.withOpacity(opacity),
+            color: color ?? Colors.white.withValues(alpha: opacity),
             gradient: gradient,
             borderRadius: BorderRadius.circular(borderRadius),
             border: border ??
                 Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   width: 1,
                 ),
           ),
@@ -101,7 +101,7 @@ class DarkGlassContainer extends StatelessWidget {
       width: width,
       height: height,
       border: Border.all(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         width: 1,
       ),
       child: child,
@@ -146,13 +146,13 @@ class GoldGlassContainer extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.sunsetGold.withOpacity(0.2),
-                AppColors.softGold.withOpacity(0.1),
+                AppColors.sunsetGold.withValues(alpha: 0.2),
+                AppColors.softGold.withValues(alpha: 0.1),
               ],
             ),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: AppColors.sunsetGold.withOpacity(0.3),
+              color: AppColors.sunsetGold.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
