@@ -14,7 +14,10 @@
       "Bash(flutter analyze:*)",
       "Bash(flutter devices:*)",
       "Bash(flutter run:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(dart run build_runner build:*)",
+      "Bash(tree:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,9 +1,17 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// API Configuration for Odyssey Backend
 class ApiConfig {
   ApiConfig._(); // Private constructor
 
-  // Base URL - Update this for production
-  static const String baseUrl = 'http://localhost:8546';
+  // Base URL - Automatically selects based on build mode
+  static String get baseUrl {
+    if (kReleaseMode) {
+      return dotenv.env['PROD_URL'] ?? 'https://odyssey.pranta.dev';
+    }
+    return dotenv.env['DEV_URL'] ?? 'http://localhost:8546';
+  }
 
   // API Version
   static const String apiVersion = 'v1';
