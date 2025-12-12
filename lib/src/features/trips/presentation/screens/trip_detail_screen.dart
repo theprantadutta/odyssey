@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
@@ -42,7 +44,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   }
 
   void _onScroll() {
-    // Collapse header when scrolled past threshold
     final shouldCollapse = _scrollController.offset > 200;
     if (shouldCollapse != _isCollapsed) {
       setState(() {
@@ -57,8 +58,25 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     final endDate = DateTime.parse(widget.trip.endDate);
     final duration = endDate.difference(startDate).inDays + 1;
 
-    return Scaffold(
-      body: NestedScrollView(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Scroll to top for smooth Hero animation
+        if (_scrollController.offset > 0) {
+          await _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.cloudGray,
+        body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -66,30 +84,70 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,
-              backgroundColor: AppColors.midnightBlue,
-              leading: Container(
-                margin: const EdgeInsets.all(AppSizes.space8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
+              backgroundColor: AppColors.snowWhite,
+              surfaceTintColor: Colors.transparent,
+              leading: Padding(
+                padding: const EdgeInsets.all(AppSizes.space8),
+                child: GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    // Scroll to top for smooth Hero animation
+                    if (_scrollController.offset > 0) {
+                      await _scrollController.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                      );
+                    }
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.snowWhite,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
                 ),
               ),
               actions: [
-                Container(
-                  margin: const EdgeInsets.all(AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    onPressed: () {
+                Padding(
+                  padding: const EdgeInsets.all(AppSizes.space8),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
                       // TODO: Show options menu (edit, delete, share)
                     },
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSizes.space8),
+                      decoration: BoxDecoration(
+                        color: AppColors.snowWhite,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.more_vert_rounded,
+                        color: AppColors.charcoal,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -97,32 +155,47 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                 title: _isCollapsed
                     ? Text(
                         widget.trip.title,
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: Colors.white,
-                          shadows: [
-                            const Shadow(
-                              offset: Offset(0, 1),
-                              blurRadius: 3,
-                              color: Colors.black54,
-                            ),
-                          ],
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.charcoal,
+                          fontWeight: FontWeight.w600,
                         ),
                       )
                     : null,
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Cover Image
-                    if (widget.trip.coverImageUrl != null)
-                      Image.network(
-                        widget.trip.coverImageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildDefaultCover();
-                        },
-                      )
-                    else
-                      _buildDefaultCover(),
+                    // Cover Image with Hero
+                    Hero(
+                      tag: 'trip-image-${widget.trip.id}',
+                      flightShuttleBuilder: (
+                        flightContext,
+                        animation,
+                        flightDirection,
+                        fromHeroContext,
+                        toHeroContext,
+                      ) {
+                        final isPush =
+                            flightDirection == HeroFlightDirection.push;
+                        return AnimatedBuilder(
+                          animation: animation,
+                          builder: (context, child) {
+                            // Card has rounded corners, detail has none
+                            final t = animation.value;
+                            final radius = isPush
+                                ? AppSizes.radiusLg * (1 - t)
+                                : AppSizes.radiusLg * t;
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(radius),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: _buildCoverImage(),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      child: _buildCoverImage(),
+                    ),
                     // Gradient Overlay
                     Container(
                       decoration: BoxDecoration(
@@ -131,7 +204,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.6),
                           ],
                         ),
                       ),
@@ -149,20 +222,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                               widget.trip.title,
                               style: AppTypography.headlineLarge.copyWith(
                                 color: Colors.white,
-                                shadows: [
-                                  const Shadow(
-                                    offset: Offset(0, 2),
-                                    blurRadius: 4,
-                                    color: Colors.black54,
-                                  ),
-                                ],
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: AppSizes.space8),
                             Row(
                               children: [
                                 Icon(
-                                  Icons.calendar_today,
+                                  Icons.calendar_today_rounded,
                                   size: AppSizes.iconSm,
                                   color: Colors.white.withValues(alpha: 0.9),
                                 ),
@@ -174,31 +241,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                                   ),
                                 ),
                                 const SizedBox(width: AppSizes.space16),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSizes.space12,
-                                    vertical: AppSizes.space4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(widget.trip.status)
-                                        .withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(
-                                      AppSizes.radiusFull,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    TripStatus.values
-                                        .firstWhere(
-                                          (s) => s.name == widget.trip.status,
-                                          orElse: () => TripStatus.planned,
-                                        )
-                                        .displayName,
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: AppColors.midnightBlue,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                                _buildStatusBadge(),
                               ],
                             ),
                           ],
@@ -214,10 +257,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
               delegate: _SliverTabBarDelegate(
                 TabBar(
                   controller: _tabController,
-                  labelColor: AppColors.sunsetGold,
-                  unselectedLabelColor: AppColors.textSecondary,
-                  indicatorColor: AppColors.sunsetGold,
-                  labelStyle: AppTypography.labelLarge,
+                  labelColor: AppColors.goldenGlow,
+                  unselectedLabelColor: AppColors.slate,
+                  indicatorColor: AppColors.goldenGlow,
+                  indicatorWeight: 3,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelStyle: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  unselectedLabelStyle: AppTypography.labelLarge,
                   tabs: const [
                     Tab(text: 'Overview'),
                     Tab(text: 'Activities'),
@@ -228,64 +276,107 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             ),
           ];
         },
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.frostedWhite,
-                Colors.white,
-              ],
-            ),
-          ),
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              TripOverviewTab(trip: widget.trip, duration: duration),
-              TripActivitiesTab(tripId: widget.trip.id),
-              TripMemoriesTab(tripId: widget.trip.id),
-            ],
-          ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            TripOverviewTab(trip: widget.trip, duration: duration),
+            TripActivitiesTab(tripId: widget.trip.id),
+            TripMemoriesTab(tripId: widget.trip.id),
+          ],
         ),
+      ),
       ),
     );
   }
 
-  Widget _buildDefaultCover() {
+  Widget _buildCoverImage() {
+    if (widget.trip.coverImageUrl != null &&
+        widget.trip.coverImageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: widget.trip.coverImageUrl!,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => _buildPlaceholderCover(),
+        errorWidget: (context, url, error) => _buildPlaceholderCover(),
+      );
+    }
+    return _buildPlaceholderCover();
+  }
+
+  Widget _buildPlaceholderCover() {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.deepNavy,
-            AppColors.midnightBlue,
-            AppColors.sunsetGold.withValues(alpha: 0.3),
+            AppColors.softCream,
+            AppColors.lemonLight,
+            AppColors.sunnyYellow,
           ],
         ),
       ),
       child: Center(
         child: Icon(
-          Icons.landscape,
+          Icons.landscape_rounded,
           size: 80,
-          color: Colors.white.withValues(alpha: 0.3),
+          color: AppColors.sunnyYellow.withValues(alpha: 0.5),
         ),
       ),
     );
   }
 
-  Color _getStatusColor(String status) {
+  Widget _buildStatusBadge() {
+    final status = TripStatus.values.firstWhere(
+      (s) => s.name == widget.trip.status,
+      orElse: () => TripStatus.planned,
+    );
+
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+
     switch (status) {
-      case 'planned':
-        return AppColors.paleGold;
-      case 'ongoing':
-        return AppColors.sunsetGold;
-      case 'completed':
-        return AppColors.mintGreen;
-      default:
-        return AppColors.paleGold;
+      case TripStatus.planned:
+        bgColor = AppColors.statusPlannedBg;
+        textColor = AppColors.goldenGlow;
+        icon = Icons.schedule_rounded;
+        break;
+      case TripStatus.ongoing:
+        bgColor = AppColors.statusOngoingBg;
+        textColor = AppColors.oceanTeal;
+        icon = Icons.flight_takeoff_rounded;
+        break;
+      case TripStatus.completed:
+        bgColor = AppColors.statusCompletedBg;
+        textColor = AppColors.success;
+        icon = Icons.check_circle_rounded;
+        break;
     }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.space12,
+        vertical: AppSizes.space4,
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: AppSizes.space4),
+          Text(
+            status.displayName,
+            style: AppTypography.caption.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -308,7 +399,7 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return Container(
-      color: Colors.white,
+      color: AppColors.snowWhite,
       child: _tabBar,
     );
   }

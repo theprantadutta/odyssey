@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
+import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 
 class TripFormScreen extends ConsumerStatefulWidget {
-  final TripModel? trip; // null for create, non-null for edit
+  final TripModel? trip;
 
   const TripFormScreen({
     super.key,
@@ -65,6 +67,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    HapticFeedback.selectionClick();
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isStartDate
@@ -76,10 +79,11 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppColors.sunsetGold,
-              onPrimary: AppColors.midnightBlue,
-              onSurface: AppColors.textPrimary,
-            ),
+              primary: AppColors.sunnyYellow,
+              onPrimary: AppColors.charcoal,
+              onSurface: AppColors.charcoal,
+              surface: AppColors.snowWhite,
+            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.snowWhite),
           ),
           child: child!,
         );
@@ -87,10 +91,10 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     );
 
     if (picked != null) {
+      HapticFeedback.lightImpact();
       setState(() {
         if (isStartDate) {
           _startDate = picked;
-          // Auto-adjust end date if it's before start date
           if (_endDate != null && _endDate!.isBefore(picked)) {
             _endDate = picked.add(const Duration(days: 1));
           }
@@ -104,6 +108,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   void _addTag() {
     final tag = _tagController.text.trim().toLowerCase();
     if (tag.isNotEmpty && !_tags.contains(tag)) {
+      HapticFeedback.lightImpact();
       setState(() {
         _tags.add(tag);
         _tagController.clear();
@@ -112,19 +117,34 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   void _removeTag(String tag) {
+    HapticFeedback.selectionClick();
     setState(() {
       _tags.remove(tag);
     });
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
 
     if (_startDate == null || _endDate == null) {
+      HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select start and end dates'),
-          backgroundColor: AppColors.error,
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.warning_rounded, color: Colors.white),
+              SizedBox(width: AppSizes.space12),
+              Text('Please select start and end dates'),
+            ],
+          ),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          ),
         ),
       );
       return;
@@ -150,28 +170,48 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       );
 
       if (widget.trip == null) {
-        // Create new trip
         await ref.read(tripsProvider.notifier).createTrip(request);
         if (mounted) {
+          HapticFeedback.mediumImpact();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip created successfully!'),
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: AppSizes.space12),
+                  Text('Trip created successfully!'),
+                ],
+              ),
               backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
             ),
           );
           Navigator.of(context).pop();
         }
       } else {
-        // Update existing trip
         await ref.read(tripsProvider.notifier).updateTrip(
-          widget.trip!.id,
-          request.toJson(),
-        );
+              widget.trip!.id,
+              request.toJson(),
+            );
         if (mounted) {
+          HapticFeedback.mediumImpact();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip updated successfully!'),
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: AppSizes.space12),
+                  Text('Trip updated successfully!'),
+                ],
+              ),
               backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
             ),
           );
           Navigator.of(context).pop();
@@ -179,10 +219,15 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       }
     } catch (e) {
       if (mounted) {
+        HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
           ),
         );
       }
@@ -198,239 +243,405 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.cloudGray,
       appBar: AppBar(
+        backgroundColor: AppColors.cloudGray,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.charcoal),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).pop();
+          },
+        ),
         title: Text(
           widget.trip == null ? 'Create Trip' : 'Edit Trip',
-          style: AppTypography.headlineSmall,
+          style: AppTypography.headlineSmall.copyWith(
+            color: AppColors.charcoal,
+          ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.frostedWhite,
-              Colors.white,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSizes.space24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Basic Info Card
+              _buildCard(
+                title: 'Basic Info',
+                icon: Icons.info_outline_rounded,
+                children: [
+                  _buildTextField(
+                    controller: _titleController,
+                    label: 'Trip Title',
+                    hint: 'e.g., Paris Adventure',
+                    icon: Icons.title_rounded,
+                    validator: (value) =>
+                        Validators.required(value, fieldName: 'Title'),
+                  ),
+                  const SizedBox(height: AppSizes.space16),
+                  _buildTextField(
+                    controller: _descriptionController,
+                    label: 'Description (Optional)',
+                    hint: 'Tell us about your trip...',
+                    icon: Icons.description_rounded,
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space16),
+
+              // Cover Image Card
+              _buildCard(
+                title: 'Cover Image',
+                icon: Icons.image_rounded,
+                children: [
+                  _buildTextField(
+                    controller: _coverImageUrlController,
+                    label: 'Image URL (Optional)',
+                    hint: 'https://images.unsplash.com/...',
+                    icon: Icons.link_rounded,
+                    validator: Validators.url,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space16),
+
+              // Dates Card
+              _buildCard(
+                title: 'Trip Dates',
+                icon: Icons.calendar_today_rounded,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDateButton(
+                          label: 'Start Date',
+                          date: _startDate,
+                          onTap: () => _selectDate(context, true),
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.space16),
+                      Expanded(
+                        child: _buildDateButton(
+                          label: 'End Date',
+                          date: _endDate,
+                          onTap: () => _selectDate(context, false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space16),
+
+              // Status Card
+              _buildCard(
+                title: 'Trip Status',
+                icon: Icons.flag_rounded,
+                children: [
+                  _buildStatusSelector(),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space16),
+
+              // Tags Card
+              _buildCard(
+                title: 'Tags',
+                icon: Icons.label_rounded,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _tagController,
+                          label: 'Add a tag',
+                          hint: 'adventure, family, beach...',
+                          icon: Icons.tag_rounded,
+                          onSubmitted: (_) => _addTag(),
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.space8),
+                      GestureDetector(
+                        onTap: _isLoading ? null : _addTag,
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSizes.space12),
+                          decoration: BoxDecoration(
+                            color: AppColors.sunnyYellow,
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusMd),
+                          ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            color: AppColors.charcoal,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_tags.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.space12),
+                    Wrap(
+                      spacing: AppSizes.space8,
+                      runSpacing: AppSizes.space8,
+                      children: _tags.map((tag) {
+                        return CustomChip(
+                          label: tag,
+                          onDelete: _isLoading ? null : () => _removeTag(tag),
+                          color: AppColors.oceanTeal,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSizes.space32),
+
+              // Submit Button
+              AnimatedButton(
+                text: widget.trip == null ? 'Create Trip' : 'Update Trip',
+                onPressed: _isLoading ? null : _handleSubmit,
+                isLoading: _isLoading,
+                icon: widget.trip == null
+                    ? Icons.add_rounded
+                    : Icons.save_rounded,
+                height: AppSizes.buttonHeightLg,
+              ),
+              const SizedBox(height: AppSizes.space24),
             ],
           ),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSizes.space24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Title Field
-                Text(
-                  'Trip Title',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., Paris Adventure',
-                    prefixIcon: Icon(Icons.title),
-                  ),
-                  validator: (value) =>
-                      Validators.required(value, fieldName: 'Title'),
-                  enabled: !_isLoading,
-                ),
-                const SizedBox(height: AppSizes.space24),
+      ),
+    );
+  }
 
-                // Description Field
-                Text(
-                  'Description (Optional)',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.space20),
+      decoration: BoxDecoration(
+        color: AppColors.snowWhite,
+        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        boxShadow: AppSizes.softShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.lemonLight,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                 ),
-                const SizedBox(height: AppSizes.space8),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    hintText: 'Tell us about your trip...',
-                    prefixIcon: Icon(Icons.description),
-                  ),
-                  maxLines: 3,
-                  enabled: !_isLoading,
+                child: Icon(icon, color: AppColors.sunnyYellow, size: 20),
+              ),
+              const SizedBox(width: AppSizes.space12),
+              Text(
+                title,
+                style: AppTypography.titleMedium.copyWith(
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: AppSizes.space24),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space16),
+          ...children,
+        ],
+      ),
+    );
+  }
 
-                // Cover Image URL
-                Text(
-                  'Cover Image URL (Optional)',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-                TextFormField(
-                  controller: _coverImageUrlController,
-                  decoration: const InputDecoration(
-                    hintText: 'https://images.unsplash.com/...',
-                    prefixIcon: Icon(Icons.image),
-                  ),
-                  validator: Validators.url,
-                  enabled: !_isLoading,
-                ),
-                const SizedBox(height: AppSizes.space24),
-
-                // Date Selection
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Start Date',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSizes.space8),
-                          OutlinedButton.icon(
-                            onPressed: _isLoading
-                                ? null
-                                : () => _selectDate(context, true),
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text(
-                              _startDate == null
-                                  ? 'Select Date'
-                                  : DateFormat('MMM dd, yyyy')
-                                      .format(_startDate!),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.space16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'End Date',
-                            style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSizes.space8),
-                          OutlinedButton.icon(
-                            onPressed: _isLoading
-                                ? null
-                                : () => _selectDate(context, false),
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text(
-                              _endDate == null
-                                  ? 'Select Date'
-                                  : DateFormat('MMM dd, yyyy')
-                                      .format(_endDate!),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.space24),
-
-                // Status Selection
-                Text(
-                  'Trip Status',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-                SegmentedButton<TripStatus>(
-                  segments: TripStatus.values
-                      .map((status) => ButtonSegment<TripStatus>(
-                            value: status,
-                            label: Text(status.displayName),
-                          ))
-                      .toList(),
-                  selected: {_status},
-                  onSelectionChanged: _isLoading
-                      ? null
-                      : (Set<TripStatus> selected) {
-                          setState(() {
-                            _status = selected.first;
-                          });
-                        },
-                ),
-                const SizedBox(height: AppSizes.space24),
-
-                // Tags
-                Text(
-                  'Tags (Optional)',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _tagController,
-                        decoration: const InputDecoration(
-                          hintText: 'Add a tag',
-                          prefixIcon: Icon(Icons.label),
-                        ),
-                        onFieldSubmitted: (_) => _addTag(),
-                        enabled: !_isLoading,
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.space8),
-                    IconButton(
-                      onPressed: _isLoading ? null : _addTag,
-                      icon: const Icon(Icons.add_circle),
-                      color: AppColors.sunsetGold,
-                      iconSize: 32,
-                    ),
-                  ],
-                ),
-                if (_tags.isNotEmpty) ...[
-                  const SizedBox(height: AppSizes.space12),
-                  Wrap(
-                    spacing: AppSizes.space8,
-                    runSpacing: AppSizes.space8,
-                    children: _tags.map((tag) {
-                      return CustomChip(
-                        label: tag,
-                        onDelete: _isLoading ? null : () => _removeTag(tag),
-                      );
-                    }).toList(),
-                  ),
-                ],
-                const SizedBox(height: AppSizes.space40),
-
-                // Submit Button
-                CustomButton(
-                  text: widget.trip == null ? 'Create Trip' : 'Update Trip',
-                  onPressed: _isLoading ? null : _handleSubmit,
-                  isLoading: _isLoading,
-                  icon: widget.trip == null ? Icons.add : Icons.save,
-                ),
-              ],
-            ),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+    void Function(String)? onSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      enabled: !_isLoading,
+      onFieldSubmitted: onSubmitted,
+      style: AppTypography.bodyLarge.copyWith(
+        color: AppColors.charcoal,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.slate,
+        ),
+        hintStyle: AppTypography.bodyMedium.copyWith(
+          color: AppColors.mutedGray,
+        ),
+        prefixIcon: Icon(icon, color: AppColors.slate),
+        filled: true,
+        fillColor: AppColors.warmGray,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          borderSide: const BorderSide(
+            color: AppColors.sunnyYellow,
+            width: 2,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          borderSide: const BorderSide(
+            color: AppColors.error,
+            width: 1,
           ),
         ),
       ),
+      validator: validator,
+    );
+  }
+
+  Widget _buildDateButton({
+    required String label,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: _isLoading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.space16),
+        decoration: BoxDecoration(
+          color: AppColors.warmGray,
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          border: Border.all(
+            color: date != null ? AppColors.sunnyYellow : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space4),
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: date != null ? AppColors.sunnyYellow : AppColors.slate,
+                ),
+                const SizedBox(width: AppSizes.space8),
+                Text(
+                  date == null
+                      ? 'Select'
+                      : DateFormat('MMM dd, yyyy').format(date),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color:
+                        date != null ? AppColors.charcoal : AppColors.mutedGray,
+                    fontWeight: date != null ? FontWeight.w500 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusSelector() {
+    return Row(
+      children: TripStatus.values.map((status) {
+        final isSelected = _status == status;
+        Color bgColor;
+        Color textColor;
+        IconData icon;
+
+        switch (status) {
+          case TripStatus.planned:
+            bgColor = AppColors.statusPlannedBg;
+            textColor = AppColors.goldenGlow;
+            icon = Icons.schedule_rounded;
+            break;
+          case TripStatus.ongoing:
+            bgColor = AppColors.statusOngoingBg;
+            textColor = AppColors.oceanTeal;
+            icon = Icons.flight_takeoff_rounded;
+            break;
+          case TripStatus.completed:
+            bgColor = AppColors.statusCompletedBg;
+            textColor = AppColors.success;
+            icon = Icons.check_circle_rounded;
+            break;
+        }
+
+        return Expanded(
+          child: GestureDetector(
+            onTap: _isLoading
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _status = status);
+                  },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: EdgeInsets.only(
+                right: status != TripStatus.completed ? AppSizes.space8 : 0,
+              ),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSizes.space12,
+                horizontal: AppSizes.space8,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected ? bgColor : AppColors.warmGray,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(
+                  color: isSelected ? textColor : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    icon,
+                    color: isSelected ? textColor : AppColors.slate,
+                    size: 24,
+                  ),
+                  const SizedBox(height: AppSizes.space4),
+                  Text(
+                    status.displayName,
+                    style: AppTypography.caption.copyWith(
+                      color: isSelected ? textColor : AppColors.slate,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

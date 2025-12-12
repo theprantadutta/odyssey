@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/custom_button.dart';
+import '../../../../common/animations/animation_constants.dart';
+import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../trips/data/repositories/trip_repository.dart';
 import '../providers/auth_provider.dart';
 
-/// Onboarding screen shown after registration
+/// Playful onboarding screen shown after registration
 /// Asks user if they want pre-populated demo trips
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -19,16 +21,54 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  bool _keepClean = false; // Checkbox state: "No, I'll create my own"
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
+    with SingleTickerProviderStateMixin {
+  bool _keepClean = false;
   bool _isLoading = false;
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: AppAnimations.medium,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: AppAnimations.bouncyEnter,
+    ));
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleContinue() async {
     setState(() => _isLoading = true);
+    HapticFeedback.mediumImpact();
 
     try {
       if (!_keepClean) {
-        // User wants default trips - call backend
         AppLogger.action('User chose to add demo trips');
         final tripRepository = TripRepository();
         await tripRepository.createDefaultTrips();
@@ -37,7 +77,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         AppLogger.action('User chose to start fresh (no demo trips)');
       }
 
-      // Mark onboarding as completed
       await ref.read(authProvider.notifier).completeOnboarding();
       AppLogger.lifecycle('Onboarding completed');
 
@@ -47,10 +86,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       AppLogger.error('Onboarding failed', e);
       if (mounted) {
+        HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: AppSizes.space12),
+                Expanded(child: Text('Error: ${e.toString()}')),
+              ],
+            ),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
           ),
         );
         setState(() => _isLoading = false);
@@ -61,117 +111,288 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.primaryGradient,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.space24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
+      backgroundColor: AppColors.cloudGray,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSizes.space24),
+              child: Column(
+                children: [
+                  const Spacer(),
 
-                // Welcome Icon
-                const Icon(
-                  Icons.explore,
-                  size: 80,
-                  color: AppColors.sunsetGold,
-                ),
-                const SizedBox(height: AppSizes.space24),
+                  // Welcome Section
+                  _buildWelcomeSection(),
+                  const Spacer(),
 
-                // Welcome Title
-                Text(
-                  'Welcome to Odyssey!',
-                  style: AppTypography.displaySmall.copyWith(
-                    color: AppColors.textOnDark,
+                  // Demo Trips Card
+                  _buildDemoTripsCard(),
+                  const SizedBox(height: AppSizes.space24),
+
+                  // Keep Clean Checkbox
+                  _buildKeepCleanOption(),
+                  const SizedBox(height: AppSizes.space32),
+
+                  // Continue Button
+                  AnimatedButton(
+                    text: _keepClean
+                        ? 'Start Fresh'
+                        : 'Add Demo Trips & Continue',
+                    onPressed: _isLoading ? null : _handleContinue,
+                    isLoading: _isLoading,
+                    icon: _keepClean
+                        ? Icons.arrow_forward_rounded
+                        : Icons.auto_awesome_rounded,
+                    height: AppSizes.buttonHeightLg,
+                    width: double.infinity,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.space16),
 
-                // Description
-                Text(
-                  'Would you like to start with some sample trips to explore the app?',
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: AppColors.softGold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.space8),
-
-                Text(
-                  "We'll add 4 beautiful demo trips (Paris, Tokyo, Bali, NYC) so you can see how everything works.",
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.softGold.withValues(alpha: 0.8),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const Spacer(),
-
-                // Checkbox for "Keep Clean"
-                InkWell(
-                  onTap: () => setState(() => _keepClean = !_keepClean),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSizes.space16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      border: Border.all(
-                        color: _keepClean
-                            ? AppColors.sunsetGold
-                            : AppColors.softGold.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Checkbox(
-                          value: _keepClean,
-                          onChanged: (value) =>
-                              setState(() => _keepClean = value ?? false),
-                          fillColor: WidgetStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return AppColors.sunsetGold;
-                            }
-                            return Colors.transparent;
-                          }),
-                          checkColor: AppColors.midnightBlue,
-                          side: BorderSide(
-                            color: AppColors.softGold.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.space8),
-                        Expanded(
-                          child: Text(
-                            "No thanks, I'll create my own trips",
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textOnDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space32),
-
-                // Continue Button
-                CustomButton(
-                  text: _keepClean
-                      ? 'Start Fresh'
-                      : 'Add Demo Trips & Continue',
-                  onPressed: _isLoading ? null : _handleContinue,
-                  isLoading: _isLoading,
-                ),
-
-                const SizedBox(height: AppSizes.space48),
-              ],
+                  const SizedBox(height: AppSizes.space24),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    return Column(
+      children: [
+        // Animated Icon
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 1500),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: AppColors.lemonLight,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.sunnyYellow.withValues(alpha: 0.3),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.celebration_rounded,
+                  size: 64,
+                  color: AppColors.sunnyYellow,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: AppSizes.space24),
+
+        // Welcome Title
+        Text(
+          'Welcome to Odyssey!',
+          style: AppTypography.headlineLarge.copyWith(
+            color: AppColors.charcoal,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSizes.space12),
+
+        // Subtitle
+        Text(
+          'Ready to plan your next adventure?',
+          style: AppTypography.bodyLarge.copyWith(
+            color: AppColors.slate,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDemoTripsCard() {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.space20),
+      decoration: BoxDecoration(
+        color: AppColors.snowWhite,
+        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        boxShadow: AppSizes.softShadow,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.statusOngoingBg,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                ),
+                child: const Icon(
+                  Icons.map_rounded,
+                  color: AppColors.oceanTeal,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: AppSizes.space16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sample Trips',
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.charcoal,
+                      ),
+                    ),
+                    Text(
+                      'Explore with demo content',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space16),
+          const Divider(color: AppColors.cloudGray, height: 1),
+          const SizedBox(height: AppSizes.space16),
+
+          // Demo trip previews
+          _buildDemoTripItem(
+            icon: Icons.castle_rounded,
+            title: 'Paris, France',
+            color: AppColors.coralBurst,
+          ),
+          const SizedBox(height: AppSizes.space12),
+          _buildDemoTripItem(
+            icon: Icons.temple_buddhist_rounded,
+            title: 'Tokyo, Japan',
+            color: AppColors.lavenderDream,
+          ),
+          const SizedBox(height: AppSizes.space12),
+          _buildDemoTripItem(
+            icon: Icons.beach_access_rounded,
+            title: 'Bali, Indonesia',
+            color: AppColors.oceanTeal,
+          ),
+          const SizedBox(height: AppSizes.space12),
+          _buildDemoTripItem(
+            icon: Icons.location_city_rounded,
+            title: 'New York, USA',
+            color: AppColors.skyBlue,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoTripItem({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: AppSizes.space12),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.charcoal,
+            ),
+          ),
+        ),
+        Icon(
+          Icons.check_circle_rounded,
+          color: AppColors.success.withValues(alpha: 0.5),
+          size: 18,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeepCleanOption() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _keepClean = !_keepClean);
+      },
+      child: AnimatedContainer(
+        duration: AppAnimations.fast,
+        padding: const EdgeInsets.all(AppSizes.space16),
+        decoration: BoxDecoration(
+          color: _keepClean ? AppColors.lemonLight : AppColors.snowWhite,
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+          border: Border.all(
+            color: _keepClean ? AppColors.sunnyYellow : AppColors.cloudGray,
+            width: 2,
+          ),
+          boxShadow: _keepClean ? AppSizes.softShadow : null,
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: AppAnimations.fast,
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: _keepClean ? AppColors.sunnyYellow : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _keepClean ? AppColors.sunnyYellow : AppColors.slate,
+                  width: 2,
+                ),
+              ),
+              child: _keepClean
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: AppColors.charcoal,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "No thanks, I'll create my own",
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  Text(
+                    'Start with a clean slate',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.slate,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

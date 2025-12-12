@@ -33,7 +33,7 @@ class TripOverviewTab extends StatelessWidget {
             Text(
               'About This Trip',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.midnightBlue,
+                color: AppColors.charcoal,
               ),
             ),
             const SizedBox(height: AppSizes.space12),
@@ -54,7 +54,7 @@ class TripOverviewTab extends StatelessWidget {
             Text(
               'Tags',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.midnightBlue,
+                color: AppColors.charcoal,
               ),
             ),
             const SizedBox(height: AppSizes.space12),
@@ -75,7 +75,7 @@ class TripOverviewTab extends StatelessWidget {
           Text(
             'Trip Timeline',
             style: AppTypography.headlineSmall.copyWith(
-              color: AppColors.midnightBlue,
+              color: AppColors.charcoal,
             ),
           ),
           const SizedBox(height: AppSizes.space12),
@@ -152,7 +152,7 @@ class TripOverviewTab extends StatelessWidget {
           Text(
             value,
             style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.midnightBlue,
+              color: AppColors.charcoal,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -177,12 +177,12 @@ class TripOverviewTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(AppSizes.space12),
           decoration: BoxDecoration(
-            color: AppColors.paleGold,
+            color: AppColors.lemonLight,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
           child: Icon(
             icon,
-            color: AppColors.midnightBlue,
+            color: AppColors.goldenGlow,
             size: AppSizes.iconMd,
           ),
         ),

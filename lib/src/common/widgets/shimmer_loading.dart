@@ -3,20 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 
-/// Premium shimmer loading effect for skeleton screens
-///
-/// Usage:
-/// ```dart
-/// ShimmerLoading(
-///   child: Container(
-///     height: 200,
-///     decoration: BoxDecoration(
-///       color: Colors.white,
-///       borderRadius: BorderRadius.circular(12),
-///     ),
-///   ),
-/// )
-/// ```
+/// Playful shimmer loading effect for skeleton screens
 class ShimmerLoading extends StatelessWidget {
   final Widget child;
   final bool isLoading;
@@ -35,9 +22,7 @@ class ShimmerLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLoading) return child;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final highlight = highlightColor ??
-        (isDark ? AppColors.navyAccent : Colors.grey[100]!);
+    final highlight = highlightColor ?? AppColors.lemonLight;
 
     return child
         .animate(
@@ -51,7 +36,7 @@ class ShimmerLoading extends StatelessWidget {
   }
 }
 
-/// Pre-built shimmer skeleton for trip cards
+/// Pre-built shimmer skeleton for trip cards (new playful style)
 class TripCardSkeleton extends StatelessWidget {
   const TripCardSkeleton({super.key});
 
@@ -60,48 +45,100 @@ class TripCardSkeleton extends StatelessWidget {
     return ShimmerLoading(
       child: Container(
         height: AppSizes.tripCardHeight,
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space16,
+          vertical: AppSizes.space8,
+        ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.snowWhite,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+          boxShadow: AppSizes.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder
-            Container(
-              height: AppSizes.tripCardImageHeight,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppSizes.radiusLg),
+            // Image placeholder (60%)
+            Expanded(
+              flex: 6,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.warmGray,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppSizes.radiusLg),
+                  ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.space16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title placeholder
-                  Container(
-                    height: 20,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+            // Content placeholder (40%)
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.space16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: AppColors.warmGray,
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusSm),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.space12),
+                        Container(
+                          height: 24,
+                          width: 70,
+                          decoration: BoxDecoration(
+                            color: AppColors.lemonLight,
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusFull),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: AppSizes.space8),
-                  // Subtitle placeholder
-                  Container(
-                    height: 16,
-                    width: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                    const Spacer(),
+                    // Date row
+                    Container(
+                      height: 14,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: AppColors.warmGray,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: AppSizes.space8),
+                    // Tags row
+                    Row(
+                      children: [
+                        Container(
+                          height: 24,
+                          width: 60,
+                          decoration: BoxDecoration(
+                            color: AppColors.softCream,
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusFull),
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.space8),
+                        Container(
+                          height: 24,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: AppColors.softCream,
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusFull),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -120,10 +157,12 @@ class ActivityCardSkeleton extends StatelessWidget {
     return ShimmerLoading(
       child: Container(
         height: AppSizes.activityCardHeight,
+        margin: const EdgeInsets.only(bottom: AppSizes.space12),
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.snowWhite,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          boxShadow: AppSizes.softShadow,
         ),
         child: Row(
           children: [
@@ -132,7 +171,7 @@ class ActivityCardSkeleton extends StatelessWidget {
               width: AppSizes.iconXl,
               height: AppSizes.iconXl,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: AppColors.lemonLight,
                 borderRadius: BorderRadius.circular(AppSizes.radiusSm),
               ),
             ),
@@ -147,7 +186,7 @@ class ActivityCardSkeleton extends StatelessWidget {
                     height: 18,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: AppColors.warmGray,
                       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                     ),
                   ),
@@ -157,7 +196,7 @@ class ActivityCardSkeleton extends StatelessWidget {
                     height: 14,
                     width: 120,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: AppColors.warmGray,
                       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                     ),
                   ),
@@ -214,7 +253,7 @@ class ShimmerBox extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.grey[300],
+          color: AppColors.warmGray,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -238,7 +277,7 @@ class ShimmerCircle extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: Colors.grey[300],
+          color: AppColors.warmGray,
           shape: BoxShape.circle,
         ),
       ),

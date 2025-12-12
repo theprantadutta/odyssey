@@ -70,7 +70,7 @@ class Auth extends _$Auth {
       if (isAuth) {
         AppLogger.auth('Token found, fetching user data...');
         final user = await _authRepository.getCurrentUser();
-        AppLogger.auth('User authenticated: ${user?.email}');
+        AppLogger.auth('User authenticated: ${user.email}');
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -108,7 +108,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
-      AppLogger.auth('Registration successful: ${user?.email}');
+      AppLogger.auth('Registration successful: ${user.email}');
 
       state = state.copyWith(
         user: user,
@@ -141,7 +141,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
-      AppLogger.auth('Login successful: ${user?.email}');
+      AppLogger.auth('Login successful: ${user.email}');
 
       state = state.copyWith(
         user: user,
