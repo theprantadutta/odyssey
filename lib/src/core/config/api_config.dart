@@ -28,6 +28,7 @@ class ApiConfig {
   static const String activities = '/activities';
   static const String memories = '/memories';
   static const String expenses = '/expenses';
+  static const String packing = '/packing';
   static const String seed = '/seed';
 
   // Auth endpoints
