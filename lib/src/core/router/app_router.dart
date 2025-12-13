@@ -8,6 +8,10 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/trips/presentation/screens/trips_dashboard_screen.dart';
 import '../../features/trips/presentation/screens/trip_form_screen.dart';
+import '../../features/trips/presentation/screens/trip_detail_screen.dart';
+import '../../features/sharing/presentation/screens/shared_trips_screen.dart';
+import '../../features/sharing/presentation/screens/manage_shares_screen.dart';
+import '../../features/sharing/presentation/screens/accept_invite_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Route paths
@@ -19,6 +23,10 @@ class AppRoutes {
   static const String home = '/';
   static const String createTrip = '/create-trip';
   static const String editTrip = '/edit-trip';
+  static const String tripDetail = '/trips';
+  static const String sharedTrips = '/shared';
+  static const String manageShares = '/shares';
+  static const String acceptInvite = '/invite';
 }
 
 /// A simple listenable for router refresh
@@ -109,6 +117,38 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '${AppRoutes.editTrip}/:id',
         builder: (context, state) => const TripFormScreen(),
+      ),
+      // Trip detail route
+      GoRoute(
+        path: '${AppRoutes.tripDetail}/:id',
+        builder: (context, state) {
+          final tripId = state.pathParameters['id']!;
+          return TripDetailScreen(tripId: tripId);
+        },
+        routes: [
+          // Manage shares route nested under trip
+          GoRoute(
+            path: 'shares',
+            builder: (context, state) {
+              final tripId = state.pathParameters['id']!;
+              final tripTitle = state.uri.queryParameters['title'] ?? 'Trip';
+              return ManageSharesScreen(tripId: tripId, tripTitle: tripTitle);
+            },
+          ),
+        ],
+      ),
+      // Shared trips screen
+      GoRoute(
+        path: AppRoutes.sharedTrips,
+        builder: (context, state) => const SharedTripsScreen(),
+      ),
+      // Accept invite route
+      GoRoute(
+        path: '${AppRoutes.acceptInvite}/:code',
+        builder: (context, state) {
+          final code = state.pathParameters['code']!;
+          return AcceptInviteScreen(inviteCode: code);
+        },
       ),
     ],
   );

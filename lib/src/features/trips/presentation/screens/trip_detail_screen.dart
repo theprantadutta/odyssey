@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../data/models/trip_model.dart';
+import '../providers/trips_provider.dart';
 import '../widgets/trip_overview_tab.dart';
 import '../widgets/trip_activities_tab.dart';
 import '../widgets/trip_packing_tab.dart';
@@ -14,13 +16,15 @@ import '../widgets/trip_expenses_tab.dart';
 import '../widgets/trip_documents_tab.dart';
 import '../widgets/trip_memories_tab.dart';
 import '../widgets/trip_map_tab.dart';
+import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
+import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
-  final TripModel trip;
+  final String tripId;
 
   const TripDetailScreen({
     super.key,
-    required this.trip,
+    required this.tripId,
   });
 
   @override
@@ -58,8 +62,45 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final startDate = DateTime.parse(widget.trip.startDate);
-    final endDate = DateTime.parse(widget.trip.endDate);
+    final tripAsync = ref.watch(tripProvider(widget.tripId));
+
+    return tripAsync.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Scaffold(
+        appBar: AppBar(title: const Text('Trip')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: AppSizes.space16),
+              Text('Failed to load trip', style: AppTypography.titleMedium),
+              const SizedBox(height: AppSizes.space8),
+              FilledButton(
+                onPressed: () => ref.invalidate(tripProvider(widget.tripId)),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      data: (trip) {
+        if (trip == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Trip')),
+            body: const Center(child: Text('Trip not found')),
+          );
+        }
+        return _buildTripDetail(context, trip);
+      },
+    );
+  }
+
+  Widget _buildTripDetail(BuildContext context, TripModel trip) {
+    final startDate = DateTime.parse(trip.startDate);
+    final endDate = DateTime.parse(trip.endDate);
     final duration = endDate.difference(startDate).inDays + 1;
 
     return PopScope(
@@ -127,12 +168,48 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                 ),
               ),
               actions: [
+                // Share button
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSizes.space4),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _showShareDialog(context, trip);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSizes.space8),
+                      decoration: BoxDecoration(
+                        color: AppColors.snowWhite,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.share_outlined,
+                        color: AppColors.oceanTeal,
+                      ),
+                    ),
+                  ),
+                ),
+                // Collaborators indicator
+                CollaborationIndicator(
+                  tripId: trip.id,
+                  onTap: () => context.push(
+                    '/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}',
+                  ),
+                ),
+                // More options
                 Padding(
                   padding: const EdgeInsets.all(AppSizes.space8),
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      // TODO: Show options menu (edit, delete, share)
+                      _showOptionsMenu(context, trip);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(AppSizes.space8),
@@ -158,7 +235,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
               flexibleSpace: FlexibleSpaceBar(
                 title: _isCollapsed
                     ? Text(
-                        widget.trip.title,
+                        trip.title,
                         style: AppTypography.titleMedium.copyWith(
                           color: AppColors.charcoal,
                           fontWeight: FontWeight.w600,
@@ -170,7 +247,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                   children: [
                     // Cover Image with Hero
                     Hero(
-                      tag: 'trip-image-${widget.trip.id}',
+                      tag: 'trip-image-${trip.id}',
                       flightShuttleBuilder: (
                         flightContext,
                         animation,
@@ -192,13 +269,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                               borderRadius: BorderRadius.circular(radius),
                               child: Material(
                                 color: Colors.transparent,
-                                child: _buildCoverImage(),
+                                child: _buildCoverImage(trip),
                               ),
                             );
                           },
                         );
                       },
-                      child: _buildCoverImage(),
+                      child: _buildCoverImage(trip),
                     ),
                     // Gradient Overlay
                     Container(
@@ -223,7 +300,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.trip.title,
+                              trip.title,
                               style: AppTypography.headlineLarge.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -245,7 +322,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                                   ),
                                 ),
                                 const SizedBox(width: AppSizes.space16),
-                                _buildStatusBadge(),
+                                _buildStatusBadge(trip),
                               ],
                             ),
                           ],
@@ -287,13 +364,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            TripOverviewTab(trip: widget.trip, duration: duration),
-            TripActivitiesTab(tripId: widget.trip.id),
-            TripPackingTab(tripId: widget.trip.id),
-            TripExpensesTab(tripId: widget.trip.id),
-            TripDocumentsTab(tripId: widget.trip.id),
-            TripMemoriesTab(tripId: widget.trip.id),
-            TripMapTab(tripId: widget.trip.id),
+            TripOverviewTab(trip: trip, duration: duration),
+            TripActivitiesTab(tripId: trip.id),
+            TripPackingTab(tripId: trip.id),
+            TripExpensesTab(tripId: trip.id),
+            TripDocumentsTab(tripId: trip.id),
+            TripMemoriesTab(tripId: trip.id),
+            TripMapTab(tripId: trip.id),
           ],
         ),
       ),
@@ -301,11 +378,85 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     );
   }
 
-  Widget _buildCoverImage() {
-    if (widget.trip.coverImageUrl != null &&
-        widget.trip.coverImageUrl!.isNotEmpty) {
+  void _showShareDialog(BuildContext context, TripModel trip) {
+    showDialog(
+      context: context,
+      builder: (context) => ShareTripDialog(
+        tripId: trip.id,
+        tripTitle: trip.title,
+      ),
+    );
+  }
+
+  void _showOptionsMenu(BuildContext context, TripModel trip) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit Trip'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/edit-trip/${trip.id}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_outline, color: AppColors.oceanTeal),
+              title: const Text('Manage Sharing'),
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: const Text('Delete Trip', style: TextStyle(color: AppColors.error)),
+              onTap: () async {
+                Navigator.pop(context);
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Trip'),
+                    content: Text('Are you sure you want to delete "${trip.title}"? This cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  await ref.read(tripsProvider.notifier).deleteTrip(trip.id);
+                  if (context.mounted) {
+                    context.go('/');
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoverImage(TripModel trip) {
+    if (trip.coverImageUrl != null &&
+        trip.coverImageUrl!.isNotEmpty) {
       return CachedNetworkImage(
-        imageUrl: widget.trip.coverImageUrl!,
+        imageUrl: trip.coverImageUrl!,
         fit: BoxFit.cover,
         placeholder: (context, url) => _buildPlaceholderCover(),
         errorWidget: (context, url, error) => _buildPlaceholderCover(),
@@ -337,9 +488,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     );
   }
 
-  Widget _buildStatusBadge() {
+  Widget _buildStatusBadge(TripModel trip) {
     final status = TripStatus.values.firstWhere(
-      (s) => s.name == widget.trip.status,
+      (s) => s.name == trip.status,
       orElse: () => TripStatus.planned,
     );
 

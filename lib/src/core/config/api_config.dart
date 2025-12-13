@@ -30,7 +30,16 @@ class ApiConfig {
   static const String expenses = '/expenses';
   static const String packing = '/packing';
   static const String documents = '/documents';
+  static const String sharing = '/share';
   static const String seed = '/seed';
+
+  // Sharing endpoints
+  static const String sharedWithMe = '$trips/shared-with-me';
+  static String tripShares(String tripId) => '$trips/$tripId/shares';
+  static String shareTrip(String tripId) => '$trips/$tripId/share';
+  static String inviteDetails(String code) => '$sharing/invite/$code';
+  static String acceptInvite(String code) => '$sharing/accept/$code';
+  static String declineInvite(String code) => '$sharing/decline/$code';
 
   // Auth endpoints
   static const String register = '$auth/register';

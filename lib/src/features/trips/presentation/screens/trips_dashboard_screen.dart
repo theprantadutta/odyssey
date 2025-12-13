@@ -15,7 +15,6 @@ import '../providers/trips_provider.dart';
 import '../widgets/trip_card.dart';
 import '../widgets/trip_search_filter.dart';
 import 'trip_form_screen.dart';
-import 'trip_detail_screen.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class TripsDashboardScreen extends ConsumerStatefulWidget {
@@ -66,15 +65,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   void _handleTripTap(String tripId) {
     HapticFeedback.selectionClick();
-    final trip = ref.read(tripsProvider).trips.firstWhere(
-          (t) => t.id == tripId,
-        );
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => TripDetailScreen(trip: trip),
-      ),
-    );
+    context.push('/trips/$tripId');
   }
 
   void _handleEditTrip(String tripId) {
