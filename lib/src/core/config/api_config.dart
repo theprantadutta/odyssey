@@ -48,6 +48,19 @@ class ApiConfig {
   static String templateDetail(String id) => '$templates/$id';
   static String useTemplate(String id) => '$templates/use/$id';
 
+  // Weather endpoints
+  static const String weather = '/weather';
+  static const String weatherCurrent = '$weather/current';
+  static const String weatherForecast = '$weather/forecast';
+  static String weatherTrip(String tripId) => '$weather/trip/$tripId';
+
+  // Currency endpoints
+  static const String currency = '/currency';
+  static const String currencyRates = '$currency/rates';
+  static const String currencyConvert = '$currency/convert';
+  static const String currencyBulkConvert = '$currency/bulk-convert';
+  static const String currencySupported = '$currency/supported';
+
   // Auth endpoints
   static const String register = '$auth/register';
   static const String login = '$auth/login';
