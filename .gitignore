@@ -45,3 +45,12 @@ app.*.map.json
 
 .env
 .claude/
+
+# Firebase/Google Services
+google-services.json
+android/app/google-services.json
+
+# Ignore Firebase Files
+**/GoogleService-Info.plist
+**/google-services.json
+**/firebase_options.dart
