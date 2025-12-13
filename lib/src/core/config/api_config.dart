@@ -80,6 +80,13 @@ class ApiConfig {
   static const String me = '$auth/me';
   static const String logout = '$auth/logout';
 
+  // Google Auth endpoints
+  static const String googleAuth = '$auth/google';
+  static const String firebaseAuth = '$auth/firebase';
+  static const String linkGoogle = '$auth/link-google';
+  static const String unlinkGoogle = '$auth/unlink-google';
+  static const String authProviders = '$auth/providers';
+
   // Trip endpoints
   static const String defaultTrips = '$trips/default-trips';
 

@@ -92,24 +92,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Expanded(child: Text(e.toString())),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
+        _showErrorSnackBar(e.toString());
       }
     }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      await ref.read(authProvider.notifier).signInWithGoogle();
+    } catch (e) {
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        _showErrorSnackBar(e.toString());
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+      ),
+    );
   }
 
   @override
@@ -243,12 +258,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             // Register Button
                             AnimatedButton(
                               text: 'Create Account',
-                              onPressed:
-                                  authState.isLoading ? null : _handleRegister,
+                              onPressed: (authState.isLoading || authState.isGoogleLoading)
+                                  ? null
+                                  : _handleRegister,
                               isLoading: authState.isLoading,
                               icon: Icons.rocket_launch_rounded,
                               height: AppSizes.buttonHeightLg,
                             ),
+                            const SizedBox(height: AppSizes.space16),
+
+                            // Divider
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: AppColors.mutedGray,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSizes.space16,
+                                  ),
+                                  child: Text(
+                                    'or',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: AppColors.slate,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: AppColors.mutedGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSizes.space16),
+
+                            // Google Sign-In Button
+                            _buildGoogleSignInButton(authState),
                           ],
                         ),
                       ),
@@ -399,6 +449,73 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         ),
       ),
       validator: validator,
+    );
+  }
+
+  Widget _buildGoogleSignInButton(AuthState authState) {
+    final isLoading = authState.isGoogleLoading;
+    final isDisabled = authState.isLoading || authState.isGoogleLoading;
+
+    return SizedBox(
+      height: AppSizes.buttonHeightLg,
+      child: OutlinedButton(
+        onPressed: isDisabled ? null : _handleGoogleSignIn,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.charcoal,
+          side: BorderSide(
+            color: isDisabled ? AppColors.mutedGray : AppColors.slate.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.space16,
+            vertical: AppSizes.space12,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.slate,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'G',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: const Color(0xFF4285F4),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space12),
+                  Text(
+                    'Continue with Google',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.charcoal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

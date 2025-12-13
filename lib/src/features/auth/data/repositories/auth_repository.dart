@@ -1,13 +1,29 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/google_sign_in_service.dart';
 import '../../../../core/config/api_config.dart';
 import '../models/user_model.dart';
+
+/// Exception thrown when account linking is required
+class AccountLinkingRequiredException implements Exception {
+  final String message;
+  final String firebaseToken;
+
+  AccountLinkingRequiredException({
+    required this.message,
+    required this.firebaseToken,
+  });
+
+  @override
+  String toString() => message;
+}
 
 /// Authentication repository for API calls
 class AuthRepository {
   final DioClient _dioClient = DioClient();
   final StorageService _storageService = StorageService();
+  final GoogleSignInService _googleSignInService = GoogleSignInService();
 
   /// Register new user
   Future<AuthResponse> register({
@@ -89,6 +105,104 @@ class AuthRepository {
   /// Check if user is authenticated
   Future<bool> isAuthenticated() async {
     return await _storageService.isAuthenticated();
+  }
+
+  /// Sign in with Google
+  ///
+  /// Returns AuthResponse on success
+  /// Throws AccountLinkingRequiredException if account linking is needed
+  /// Returns null if user cancelled
+  Future<AuthResponse?> signInWithGoogle() async {
+    try {
+      // Step 1: Sign in with Google via Firebase
+      final userCredential = await _googleSignInService.signInWithGoogle();
+
+      if (userCredential == null) {
+        return null; // User cancelled
+      }
+
+      // Step 2: Get Firebase ID token
+      final firebaseToken = await _googleSignInService.getFirebaseIdToken();
+
+      if (firebaseToken == null) {
+        throw Exception('Failed to get Firebase token');
+      }
+
+      // Step 3: Authenticate with backend
+      return await _authenticateWithFirebaseToken(firebaseToken);
+    } on AccountLinkingRequiredException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      // Sign out from Google if backend auth failed
+      await _googleSignInService.signOut();
+      rethrow;
+    }
+  }
+
+  /// Authenticate with Firebase token (used internally and for linking)
+  Future<AuthResponse> _authenticateWithFirebaseToken(String firebaseToken) async {
+    try {
+      final response = await _dioClient.post(
+        ApiConfig.googleAuth,
+        data: {'firebase_token': firebaseToken},
+      );
+
+      final authResponse = AuthResponse.fromJson(response.data);
+
+      // Save token and user ID
+      await _storageService.saveAccessToken(authResponse.accessToken);
+      await _storageService.saveUserId(authResponse.userId);
+
+      return authResponse;
+    } on DioException catch (e) {
+      // Check for account linking required (409 conflict)
+      if (e.response?.statusCode == 409) {
+        final message = e.response?.data['detail'] ?? 'Account linking required';
+        throw AccountLinkingRequiredException(
+          message: message,
+          firebaseToken: firebaseToken,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Link Google account to existing email/password account
+  Future<AuthResponse> linkGoogleAccount({
+    required String firebaseToken,
+    required String password,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        ApiConfig.linkGoogle,
+        data: {
+          'firebase_token': firebaseToken,
+          'password': password,
+        },
+      );
+
+      final authResponse = AuthResponse.fromJson(response.data);
+
+      // Save token and user ID
+      await _storageService.saveAccessToken(authResponse.accessToken);
+      await _storageService.saveUserId(authResponse.userId);
+
+      return authResponse;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Unlink Google account from user
+  Future<void> unlinkGoogle() async {
+    try {
+      await _dioClient.post(ApiConfig.unlinkGoogle);
+      await _googleSignInService.signOut();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   /// Handle Dio errors and throw user-friendly messages

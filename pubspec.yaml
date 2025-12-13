@@ -43,6 +43,11 @@ dependencies:
   # Secure Storage (JWT tokens)
   flutter_secure_storage: ^10.0.0
 
+  # Firebase & Google Sign-In
+  firebase_core: ^3.9.0
+  firebase_auth: ^5.5.0
+  google_sign_in: ^7.2.0
+
   # Navigation
   go_router: ^17.0.1
 

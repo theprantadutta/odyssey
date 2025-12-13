@@ -10,31 +10,43 @@ part 'auth_provider.g.dart';
 class AuthState {
   final UserModel? user;
   final bool isLoading;
+  final bool isGoogleLoading;
   final String? error;
   final bool isAuthenticated;
   final bool needsOnboarding;
+  final bool needsAccountLinking;
+  final String? pendingFirebaseToken;
 
   const AuthState({
     this.user,
     this.isLoading = false,
+    this.isGoogleLoading = false,
     this.error,
     this.isAuthenticated = false,
     this.needsOnboarding = false,
+    this.needsAccountLinking = false,
+    this.pendingFirebaseToken,
   });
 
   AuthState copyWith({
     UserModel? user,
     bool? isLoading,
+    bool? isGoogleLoading,
     String? error,
     bool? isAuthenticated,
     bool? needsOnboarding,
+    bool? needsAccountLinking,
+    String? pendingFirebaseToken,
   }) {
     return AuthState(
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
+      isGoogleLoading: isGoogleLoading ?? this.isGoogleLoading,
       error: error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       needsOnboarding: needsOnboarding ?? this.needsOnboarding,
+      needsAccountLinking: needsAccountLinking ?? this.needsAccountLinking,
+      pendingFirebaseToken: pendingFirebaseToken ?? this.pendingFirebaseToken,
     );
   }
 }
@@ -187,5 +199,98 @@ class Auth extends _$Auth {
   Future<void> completeOnboarding() async {
     await StorageService().setOnboardingCompleted(true);
     state = state.copyWith(needsOnboarding: false);
+  }
+
+  /// Sign in with Google
+  ///
+  /// Returns true if account linking is required
+  Future<bool> signInWithGoogle() async {
+    AppLogger.auth('Starting Google Sign-In');
+    state = state.copyWith(isGoogleLoading: true, error: null);
+
+    try {
+      final response = await _authRepository.signInWithGoogle();
+
+      if (response == null) {
+        // User cancelled
+        AppLogger.auth('Google Sign-In cancelled by user');
+        state = state.copyWith(isGoogleLoading: false);
+        return false;
+      }
+
+      // Fetch user details
+      final user = await _authRepository.getCurrentUser();
+      AppLogger.auth('Google Sign-In successful: ${user.email}');
+
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isGoogleLoading: false,
+        needsOnboarding: false, // Google users don't need onboarding
+      );
+
+      return false;
+    } on AccountLinkingRequiredException catch (e) {
+      AppLogger.auth('Account linking required: ${e.message}');
+      state = state.copyWith(
+        isGoogleLoading: false,
+        needsAccountLinking: true,
+        pendingFirebaseToken: e.firebaseToken,
+        error: e.message,
+      );
+      return true;
+    } catch (e) {
+      AppLogger.auth('Google Sign-In failed: $e', isError: true);
+      state = state.copyWith(
+        isGoogleLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  /// Link Google account to existing email/password account
+  Future<void> linkGoogleAccount(String password) async {
+    if (state.pendingFirebaseToken == null) {
+      throw Exception('No pending Firebase token for account linking');
+    }
+
+    AppLogger.auth('Linking Google account');
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _authRepository.linkGoogleAccount(
+        firebaseToken: state.pendingFirebaseToken!,
+        password: password,
+      );
+
+      // Fetch user details
+      final user = await _authRepository.getCurrentUser();
+      AppLogger.auth('Account linking successful: ${user.email}');
+
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isLoading: false,
+        needsAccountLinking: false,
+        pendingFirebaseToken: null,
+      );
+    } catch (e) {
+      AppLogger.auth('Account linking failed: $e', isError: true);
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  /// Cancel account linking
+  void cancelAccountLinking() {
+    state = state.copyWith(
+      needsAccountLinking: false,
+      pendingFirebaseToken: null,
+      error: null,
+    );
   }
 }

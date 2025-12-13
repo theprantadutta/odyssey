@@ -87,24 +87,157 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Expanded(child: Text(e.toString())),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
+        _showErrorSnackBar(e.toString());
       }
     }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final needsLinking = await ref.read(authProvider.notifier).signInWithGoogle();
+      if (needsLinking && mounted) {
+        _showAccountLinkingDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        _showErrorSnackBar(e.toString());
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+      ),
+    );
+  }
+
+  void _showAccountLinkingDialog() {
+    final passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.snowWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.sunnyYellow.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.link, color: AppColors.sunnyYellow),
+            ),
+            const SizedBox(width: AppSizes.space12),
+            Text(
+              'Link Account',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'An account with this email already exists. Enter your password to link your Google account.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                hintText: 'Enter your password',
+                prefixIcon: const Icon(Icons.lock_outline),
+                filled: true,
+                fillColor: AppColors.warmGray,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ref.read(authProvider.notifier).cancelAccountLinking();
+              Navigator.pop(context);
+            },
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isLoading = ref.watch(authProvider).isLoading;
+              return FilledButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        try {
+                          await ref.read(authProvider.notifier).linkGoogleAccount(
+                                passwordController.text,
+                              );
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.sunnyYellow,
+                  foregroundColor: AppColors.charcoal,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Link Account'),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -205,11 +338,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             // Login Button
                             AnimatedButton(
                               text: 'Sign In',
-                              onPressed: authState.isLoading ? null : _handleLogin,
+                              onPressed: (authState.isLoading || authState.isGoogleLoading)
+                                  ? null
+                                  : _handleLogin,
                               isLoading: authState.isLoading,
                               icon: Icons.arrow_forward_rounded,
                               height: AppSizes.buttonHeightLg,
                             ),
+                            const SizedBox(height: AppSizes.space16),
+
+                            // Divider
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: AppColors.mutedGray,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSizes.space16,
+                                  ),
+                                  child: Text(
+                                    'or',
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      color: AppColors.slate,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: AppColors.mutedGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSizes.space16),
+
+                            // Google Sign-In Button
+                            _buildGoogleSignInButton(authState),
                           ],
                         ),
                       ),
@@ -360,6 +529,74 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
       ),
       validator: validator,
+    );
+  }
+
+  Widget _buildGoogleSignInButton(AuthState authState) {
+    final isLoading = authState.isGoogleLoading;
+    final isDisabled = authState.isLoading || authState.isGoogleLoading;
+
+    return SizedBox(
+      height: AppSizes.buttonHeightLg,
+      child: OutlinedButton(
+        onPressed: isDisabled ? null : _handleGoogleSignIn,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.charcoal,
+          side: BorderSide(
+            color: isDisabled ? AppColors.mutedGray : AppColors.slate.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.space16,
+            vertical: AppSizes.space12,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.slate,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Google logo (simplified)
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'G',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: const Color(0xFF4285F4), // Google blue
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space12),
+                  Text(
+                    'Continue with Google',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.charcoal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
