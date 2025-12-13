@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
-import 'package:odyssey/src/common/theme/app_sizes.dart';
-import 'package:odyssey/src/features/templates/data/models/template_model.dart';
-import 'package:odyssey/src/features/templates/presentation/providers/templates_provider.dart';
-import 'package:odyssey/src/features/templates/presentation/widgets/template_card.dart';
-import 'package:odyssey/src/features/templates/presentation/widgets/use_template_dialog.dart';
+import '../../../../common/theme/app_colors.dart';
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../data/models/template_model.dart';
+import '../providers/templates_provider.dart';
+import '../widgets/template_card.dart';
+import '../widgets/use_template_dialog.dart';
 
 class TemplateGalleryScreen extends ConsumerStatefulWidget {
   const TemplateGalleryScreen({super.key});
@@ -37,14 +39,49 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.cloudGray,
       appBar: AppBar(
-        title: const Text('Trip Templates'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Discover'),
-            Tab(text: 'My Templates'),
+        backgroundColor: AppColors.cloudGray,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: _buildBackButton(context),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Trip Templates',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              'Discover and save travel plans',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
           ],
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            color: AppColors.snowWhite,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: AppColors.goldenGlow,
+              unselectedLabelColor: AppColors.slate,
+              indicatorColor: AppColors.goldenGlow,
+              indicatorWeight: 3,
+              labelStyle: AppTypography.labelLarge.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: const [
+                Tab(text: 'Discover'),
+                Tab(text: 'My Templates'),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -53,6 +90,35 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
           _PublicTemplatesTab(searchController: _searchController),
           const _MyTemplatesTab(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSizes.space8),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).pop();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.snowWhite,
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.charcoal,
+          ),
+        ),
       ),
     );
   }
@@ -80,62 +146,95 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
         // Search bar
         Padding(
           padding: const EdgeInsets.all(AppSizes.space16),
-          child: TextField(
-            controller: widget.searchController,
-            decoration: InputDecoration(
-              hintText: 'Search templates...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: widget.searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        widget.searchController.clear();
-                        ref.read(templateGalleryProvider.notifier).search(null);
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.snowWhite,
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            onSubmitted: (value) {
-              ref.read(templateGalleryProvider.notifier).search(value);
-            },
+            child: TextField(
+              controller: widget.searchController,
+              style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+              decoration: InputDecoration(
+                hintText: 'Search templates...',
+                hintStyle: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.mutedGray,
+                ),
+                prefixIcon: const Icon(Icons.search, color: AppColors.slate),
+                suffixIcon: widget.searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: AppColors.slate),
+                        onPressed: () {
+                          widget.searchController.clear();
+                          ref.read(templateGalleryProvider.notifier).search(null);
+                          setState(() {});
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.snowWhite,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  borderSide: const BorderSide(
+                    color: AppColors.sunnyYellow,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space16,
+                  vertical: AppSizes.space12,
+                ),
+              ),
+              onChanged: (value) => setState(() {}),
+              onSubmitted: (value) {
+                ref.read(templateGalleryProvider.notifier).search(value);
+              },
+            ),
           ),
         ),
 
         // Category filter
         SizedBox(
-          height: 50,
+          height: 44,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
             children: [
-              FilterChip(
-                label: const Text('All'),
-                selected: _selectedCategory == null,
-                onSelected: (_) {
+              _CategoryChip(
+                label: 'All',
+                isSelected: _selectedCategory == null,
+                onTap: () {
+                  HapticFeedback.selectionClick();
                   setState(() => _selectedCategory = null);
-                  ref
-                      .read(templateGalleryProvider.notifier)
-                      .filterByCategory(null);
+                  ref.read(templateGalleryProvider.notifier).filterByCategory(null);
                 },
               ),
               const SizedBox(width: AppSizes.space8),
               ...TemplateCategory.values.map((category) {
                 return Padding(
                   padding: const EdgeInsets.only(right: AppSizes.space8),
-                  child: FilterChip(
-                    label: Text('${category.icon} ${category.displayName}'),
-                    selected: _selectedCategory == category,
-                    onSelected: (_) {
+                  child: _CategoryChip(
+                    label: '${category.icon} ${category.displayName}',
+                    isSelected: _selectedCategory == category,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
                       setState(() => _selectedCategory = category);
-                      ref
-                          .read(templateGalleryProvider.notifier)
-                          .filterByCategory(category);
+                      ref.read(templateGalleryProvider.notifier).filterByCategory(category);
                     },
-                    selectedColor: AppColors.oceanTeal.withValues(alpha: 0.2),
-                    checkmarkColor: AppColors.oceanTeal,
                   ),
                 );
               }),
@@ -143,12 +242,16 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
           ),
         ),
 
-        const SizedBox(height: AppSizes.space8),
+        const SizedBox(height: AppSizes.space16),
 
         // Templates list
         Expanded(
           child: galleryState.isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.sunnyYellow,
+                  ),
+                )
               : galleryState.error != null
                   ? _ErrorWidget(
                       message: galleryState.error!,
@@ -165,11 +268,15 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
                               : 'Be the first to share a template!',
                         )
                       : RefreshIndicator(
+                          color: AppColors.sunnyYellow,
+                          backgroundColor: AppColors.snowWhite,
                           onRefresh: () => ref
                               .read(templateGalleryProvider.notifier)
                               .refresh(),
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(AppSizes.space16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSizes.space16,
+                            ),
                             itemCount: galleryState.templates.length,
                             itemBuilder: (context, index) {
                               final template = galleryState.templates[index];
@@ -197,8 +304,11 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.snowWhite,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusXl),
+        ),
       ),
       builder: (context) => _TemplateDetailsSheet(template: template),
     );
@@ -215,12 +325,57 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
     );
 
     if (result != null && context.mounted) {
-      // Navigate to the created trip
       final tripId = result['id'] as String?;
       if (tripId != null) {
         context.push('/trips/$tripId');
       }
     }
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space16,
+          vertical: AppSizes.space8,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.sunnyYellow : AppColors.snowWhite,
+          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.sunnyYellow.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelMedium.copyWith(
+            color: isSelected ? AppColors.charcoal : AppColors.slate,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -232,7 +387,9 @@ class _MyTemplatesTab extends ConsumerWidget {
     final myTemplatesState = ref.watch(myTemplatesProvider);
 
     if (myTemplatesState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.sunnyYellow),
+      );
     }
 
     if (myTemplatesState.error != null) {
@@ -251,6 +408,8 @@ class _MyTemplatesTab extends ConsumerWidget {
     }
 
     return RefreshIndicator(
+      color: AppColors.sunnyYellow,
+      backgroundColor: AppColors.snowWhite,
       onRefresh: () => ref.read(myTemplatesProvider.notifier).refresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -276,8 +435,11 @@ class _MyTemplatesTab extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.snowWhite,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusXl),
+        ),
       ),
       builder: (context) => _TemplateDetailsSheet(template: template),
     );
@@ -306,20 +468,48 @@ class _MyTemplatesTab extends ConsumerWidget {
     WidgetRef ref,
     TripTemplateModel template,
   ) async {
+    HapticFeedback.lightImpact();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Template'),
-        content: Text('Are you sure you want to delete "${template.name}"?'),
+        backgroundColor: AppColors.snowWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Delete Template',
+          style: AppTypography.headlineSmall.copyWith(
+            color: AppColors.charcoal,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${template.name}"?',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.slate,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
+            child: Text(
+              'Delete',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -329,10 +519,21 @@ class _MyTemplatesTab extends ConsumerWidget {
       final success =
           await ref.read(myTemplatesProvider.notifier).deleteTemplate(template.id);
       if (success && context.mounted) {
+        HapticFeedback.mediumImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Template "${template.name}" deleted'),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: AppSizes.space12),
+                Text('Template "${template.name}" deleted'),
+              ],
+            ),
             backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
           ),
         );
       }
@@ -347,7 +548,6 @@ class _TemplateDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final structure = template.structure;
 
     return DraggableScrollableSheet(
@@ -358,7 +558,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
       builder: (context, scrollController) {
         return SingleChildScrollView(
           controller: scrollController,
-          padding: const EdgeInsets.all(AppSizes.space20),
+          padding: const EdgeInsets.all(AppSizes.space24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -373,15 +573,15 @@ class _TemplateDetailsSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSizes.space20),
+              const SizedBox(height: AppSizes.space24),
 
               // Header
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppSizes.space12),
+                    padding: const EdgeInsets.all(AppSizes.space16),
                     decoration: BoxDecoration(
-                      color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                      color: AppColors.lemonLight,
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Text(
@@ -396,15 +596,16 @@ class _TemplateDetailsSheet extends StatelessWidget {
                       children: [
                         Text(
                           template.name,
-                          style: theme.textTheme.titleLarge?.copyWith(
+                          style: AppTypography.headlineSmall.copyWith(
+                            color: AppColors.charcoal,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         if (template.category != null)
                           Text(
                             template.category!.displayName,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.slate,
                             ),
                           ),
                       ],
@@ -417,47 +618,55 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 const SizedBox(height: AppSizes.space16),
                 Text(
                   template.description!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.slate,
                   ),
                 ),
               ],
 
               const SizedBox(height: AppSizes.space24),
-              const Divider(),
-              const SizedBox(height: AppSizes.space16),
+              Container(
+                height: 1,
+                color: AppColors.warmGray,
+              ),
+              const SizedBox(height: AppSizes.space24),
 
               // Stats
               Text(
                 'Template Contents',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: AppTypography.titleMedium.copyWith(
+                  color: AppColors.charcoal,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: AppSizes.space12),
+              const SizedBox(height: AppSizes.space16),
 
               Wrap(
                 spacing: AppSizes.space12,
-                runSpacing: AppSizes.space8,
+                runSpacing: AppSizes.space12,
                 children: [
                   if (structure.durationDays != null)
                     _InfoChip(
                       icon: Icons.calendar_today_outlined,
                       label: '${structure.durationDays} days',
+                      color: AppColors.oceanTeal,
                     ),
                   if (structure.activities.isNotEmpty)
                     _InfoChip(
                       icon: Icons.checklist_outlined,
                       label: '${structure.activities.length} activities',
+                      color: AppColors.coralBurst,
                     ),
                   if (structure.packingItems.isNotEmpty)
                     _InfoChip(
                       icon: Icons.luggage_outlined,
                       label: '${structure.packingItems.length} packing items',
+                      color: AppColors.lavenderDream,
                     ),
                   _InfoChip(
                     icon: Icons.trending_up_outlined,
                     label: '${template.useCount} uses',
+                    color: AppColors.sunnyYellow,
                   ),
                 ],
               ),
@@ -467,33 +676,58 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 const SizedBox(height: AppSizes.space24),
                 Text(
                   'Included Activities',
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.charcoal,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: AppSizes.space8),
+                const SizedBox(height: AppSizes.space12),
                 ...structure.activities.take(5).map((activity) {
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.warmGray,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _getCategoryIcon(activity.category),
-                        size: 20,
-                        color: AppColors.oceanTeal,
-                      ),
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: AppSizes.space8),
+                    padding: const EdgeInsets.all(AppSizes.space12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warmGray,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
-                    title: Text(activity.title),
-                    subtitle: activity.location != null
-                        ? Text(
-                            activity.location!,
-                            style: TextStyle(color: AppColors.textSecondary),
-                          )
-                        : null,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.snowWhite,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _getCategoryIcon(activity.category),
+                            size: 20,
+                            color: AppColors.oceanTeal,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.space12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                activity.title,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.charcoal,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (activity.location != null)
+                                Text(
+                                  activity.location!,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.slate,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }),
                 if (structure.activities.length > 5)
@@ -501,8 +735,8 @@ class _TemplateDetailsSheet extends StatelessWidget {
                     padding: const EdgeInsets.only(top: AppSizes.space8),
                     child: Text(
                       '+${structure.activities.length - 5} more activities',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.slate,
                       ),
                     ),
                   ),
@@ -513,27 +747,37 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 const SizedBox(height: AppSizes.space24),
                 Text(
                   'Tips',
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.charcoal,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: AppSizes.space8),
+                const SizedBox(height: AppSizes.space12),
                 ...structure.tips.map((tip) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSizes.space8),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.lightbulb_outline,
-                          size: 18,
-                          color: AppColors.goldenGlow,
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.lemonLight,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(
+                            Icons.lightbulb_outline,
+                            size: 16,
+                            color: AppColors.goldenGlow,
+                          ),
                         ),
-                        const SizedBox(width: AppSizes.space8),
+                        const SizedBox(width: AppSizes.space12),
                         Expanded(
                           child: Text(
                             tip,
-                            style: theme.textTheme.bodySmall,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.slate,
+                            ),
                           ),
                         ),
                       ],
@@ -569,8 +813,13 @@ class _TemplateDetailsSheet extends StatelessWidget {
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final Color color;
 
-  const _InfoChip({required this.icon, required this.label});
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -580,19 +829,22 @@ class _InfoChip extends StatelessWidget {
         vertical: AppSizes.space8,
       ),
       decoration: BoxDecoration(
-        color: AppColors.warmGray,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
+          Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
+            style: AppTypography.labelSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -614,8 +866,6 @@ class _EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -623,21 +873,22 @@ class _EmptyStateWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSizes.space20),
+              padding: const EdgeInsets.all(AppSizes.space24),
               decoration: BoxDecoration(
-                color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                color: AppColors.lemonLight,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                size: 48,
-                color: AppColors.oceanTeal,
+                size: 56,
+                color: AppColors.sunnyYellow,
               ),
             ),
-            const SizedBox(height: AppSizes.space20),
+            const SizedBox(height: AppSizes.space24),
             Text(
               title,
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -645,8 +896,8 @@ class _EmptyStateWidget extends StatelessWidget {
             const SizedBox(height: AppSizes.space8),
             Text(
               subtitle,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
               ),
               textAlign: TextAlign.center,
             ),
@@ -665,39 +916,61 @@ class _ErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 48,
-              color: AppColors.error,
+            Container(
+              padding: const EdgeInsets.all(AppSizes.space20),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.error,
+              ),
             ),
-            const SizedBox(height: AppSizes.space16),
+            const SizedBox(height: AppSizes.space20),
             Text(
               'Something went wrong',
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: AppSizes.space8),
             Text(
               message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSizes.space20),
-            OutlinedButton.icon(
+            const SizedBox(height: AppSizes.space24),
+            TextButton.icon(
               onPressed: onRetry,
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.sunnyYellow,
+                foregroundColor: AppColors.charcoal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space24,
+                  vertical: AppSizes.space12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                ),
+              ),
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(
+                'Retry',
+                style: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),

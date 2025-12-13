@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
-import 'package:odyssey/src/common/theme/app_sizes.dart';
-import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
-import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../common/theme/app_colors.dart';
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../data/models/trip_share_model.dart';
+import '../providers/sharing_provider.dart';
 
 class SharedTripsScreen extends ConsumerWidget {
   const SharedTripsScreen({super.key});
@@ -14,23 +16,91 @@ class SharedTripsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sharedTripsState = ref.watch(sharedTripsProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: AppColors.cloudGray,
       appBar: AppBar(
-        title: const Text('Shared with Me'),
+        backgroundColor: AppColors.cloudGray,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: _buildBackButton(context),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Shared with Me',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              'Trips from friends and family',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () =>
-                ref.read(sharedTripsProvider.notifier).refresh(),
+          Container(
+            margin: const EdgeInsets.only(right: AppSizes.space16),
+            decoration: BoxDecoration(
+              color: AppColors.snowWhite,
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: AppColors.oceanTeal),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref.read(sharedTripsProvider.notifier).refresh();
+              },
+              tooltip: 'Refresh',
+            ),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(sharedTripsProvider.notifier).refresh(),
-        child: _buildContent(context, sharedTripsState, theme),
+        color: AppColors.sunnyYellow,
+        backgroundColor: AppColors.snowWhite,
+        onRefresh: () => ref.read(sharedTripsProvider.notifier).refresh(),
+        child: _buildContent(context, sharedTripsState, ref),
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSizes.space8),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).pop();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.snowWhite,
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.charcoal,
+          ),
+        ),
       ),
     );
   }
@@ -38,16 +108,18 @@ class SharedTripsScreen extends ConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     SharedTripsState state,
-    ThemeData theme,
+    WidgetRef ref,
   ) {
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.sunnyYellow),
+      );
     }
 
     if (state.error != null) {
       return _ErrorState(
         error: state.error!,
-        onRetry: () {},
+        onRetry: () => ref.read(sharedTripsProvider.notifier).refresh(),
       );
     }
 
@@ -73,140 +145,236 @@ class _SharedTripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final dateFormat = DateFormat('MMM d, yyyy');
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.space16),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: AppColors.snowWhite,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: () => context.push('/trips/${trip.tripId}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cover image
-            if (trip.coverImageUrl != null)
-              SizedBox(
-                height: 140,
-                width: double.infinity,
-                child: CachedNetworkImage(
-                  imageUrl: trip.coverImageUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppColors.oceanTeal.withValues(alpha: 0.1),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.oceanTeal.withValues(alpha: 0.1),
-                    child: const Icon(
-                      Icons.image_not_supported_outlined,
-                      size: 48,
-                      color: AppColors.oceanTeal,
-                    ),
-                  ),
-                ),
-              )
-            else
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.oceanTeal.withValues(alpha: 0.3),
-                      AppColors.lavenderDream.withValues(alpha: 0.3),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.flight_takeoff,
-                  size: 48,
-                  color: AppColors.oceanTeal,
-                ),
-              ),
-
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.space16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Shared by indicator
-                  Row(
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.push('/trips/${trip.tripId}');
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover image
+              if (trip.coverImageUrl != null)
+                SizedBox(
+                  height: 140,
+                  width: double.infinity,
+                  child: Stack(
                     children: [
-                      const Icon(
-                        Icons.person_outline,
-                        size: 14,
-                        color: AppColors.textSecondary,
+                      CachedNetworkImage(
+                        imageUrl: trip.coverImageUrl!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 140,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.lemonLight,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.sunnyYellow,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => _buildPlaceholderCover(),
                       ),
-                      const SizedBox(width: AppSizes.space4),
-                      Text(
-                        'Shared by ${trip.ownerEmail}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                      // Gradient overlay
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.3),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      _PermissionBadge(permission: trip.permission),
+                      // Status badge
+                      Positioned(
+                        top: AppSizes.space12,
+                        right: AppSizes.space12,
+                        child: _TripStatusBadge(status: trip.status),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: AppSizes.space8),
-
-                  // Title
-                  Text(
-                    trip.title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  if (trip.description != null) ...[
-                    const SizedBox(height: AppSizes.space4),
-                    Text(
-                      trip.description!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                )
+              else
+                Stack(
+                  children: [
+                    _buildPlaceholderCover(),
+                    Positioned(
+                      top: AppSizes.space12,
+                      right: AppSizes.space12,
+                      child: _TripStatusBadge(status: trip.status),
                     ),
                   ],
+                ),
 
-                  const SizedBox(height: AppSizes.space12),
-
-                  // Date and status
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: AppSizes.space4),
-                      Text(
-                        trip.endDate != null
-                            ? '${dateFormat.format(trip.startDate)} - ${dateFormat.format(trip.endDate!)}'
-                            : dateFormat.format(trip.startDate),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+              Padding(
+                padding: const EdgeInsets.all(AppSizes.space16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Shared by indicator
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                          ),
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: AppColors.oceanTeal,
+                          ),
                         ),
+                        const SizedBox(width: AppSizes.space8),
+                        Expanded(
+                          child: Text(
+                            'Shared by ${trip.ownerEmail}',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.slate,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        _PermissionBadge(permission: trip.permission),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.space12),
+
+                    // Title
+                    Text(
+                      trip.title,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.charcoal,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const Spacer(),
-                      _TripStatusBadge(status: trip.status),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    if (trip.description != null) ...[
+                      const SizedBox(height: AppSizes.space4),
+                      Text(
+                        trip.description!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.slate,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
-                  ),
-                ],
+
+                    const SizedBox(height: AppSizes.space12),
+
+                    // Date
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.lemonLight,
+                            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 14,
+                            color: AppColors.goldenGlow,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.space8),
+                        Expanded(
+                          child: Text(
+                            trip.endDate != null
+                                ? '${dateFormat.format(trip.startDate)} - ${dateFormat.format(trip.endDate!)}'
+                                : dateFormat.format(trip.startDate),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.slate,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSizes.space12,
+                            vertical: AppSizes.space4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.sunnyYellow,
+                            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 14,
+                                color: AppColors.charcoal,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'View',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.charcoal,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderCover() {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.lemonLight,
+            AppColors.sunnyYellow.withValues(alpha: 0.3),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.flight_takeoff,
+          size: 48,
+          color: AppColors.sunnyYellow.withValues(alpha: 0.5),
         ),
       ),
     );
@@ -220,31 +388,37 @@ class _PermissionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = permission == SharePermission.edit;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSizes.space8,
         vertical: AppSizes.space4,
       ),
       decoration: BoxDecoration(
-        color: AppColors.oceanTeal.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+        color: isEdit
+            ? AppColors.lavenderDream.withValues(alpha: 0.1)
+            : AppColors.oceanTeal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+        border: Border.all(
+          color: isEdit
+              ? AppColors.lavenderDream.withValues(alpha: 0.3)
+              : AppColors.oceanTeal.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            permission == SharePermission.view
-                ? Icons.visibility_outlined
-                : Icons.edit_outlined,
+            isEdit ? Icons.edit_outlined : Icons.visibility_outlined,
             size: 12,
-            color: AppColors.oceanTeal,
+            color: isEdit ? AppColors.lavenderDream : AppColors.oceanTeal,
           ),
           const SizedBox(width: 4),
           Text(
             permission.displayName,
-            style: const TextStyle(
-              color: AppColors.oceanTeal,
-              fontSize: 11,
+            style: AppTypography.labelSmall.copyWith(
+              color: isEdit ? AppColors.lavenderDream : AppColors.oceanTeal,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -261,23 +435,27 @@ class _TripStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
+    Color bgColor;
+    Color textColor;
     IconData icon;
     String label;
 
     switch (status.toLowerCase()) {
       case 'ongoing':
-        color = AppColors.oceanTeal;
+        bgColor = AppColors.oceanTeal;
+        textColor = Colors.white;
         icon = Icons.flight_takeoff;
         label = 'Ongoing';
         break;
       case 'completed':
-        color = AppColors.success;
+        bgColor = AppColors.success;
+        textColor = Colors.white;
         icon = Icons.check_circle_outline;
         label = 'Completed';
         break;
       default:
-        color = AppColors.warning;
+        bgColor = AppColors.sunnyYellow;
+        textColor = AppColors.charcoal;
         icon = Icons.schedule;
         label = 'Planned';
     }
@@ -288,19 +466,25 @@ class _TripStatusBadge extends StatelessWidget {
         vertical: AppSizes.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 12, color: textColor),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
+            style: AppTypography.labelSmall.copyWith(
+              color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -315,8 +499,6 @@ class _NoSharedTripsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -326,36 +508,65 @@ class _NoSharedTripsState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSizes.space24),
               decoration: BoxDecoration(
-                color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                color: AppColors.lemonLight,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.sunnyYellow.withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.people_outline,
                 size: 64,
-                color: AppColors.oceanTeal,
+                color: AppColors.sunnyYellow,
               ),
             ),
             const SizedBox(height: AppSizes.space24),
             Text(
               'No shared trips yet',
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: AppSizes.space8),
             Text(
-              'When someone shares a trip with you, it will appear here.',
+              'When someone shares a trip with you,\nit will appear here.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: AppColors.textSecondary,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
               ),
             ),
-            const SizedBox(height: AppSizes.space8),
-            Text(
-              'Ask your friends to share their travel plans!',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+            const SizedBox(height: AppSizes.space16),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.space20,
+                vertical: AppSizes.space12,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppColors.oceanTeal,
+                  ),
+                  const SizedBox(width: AppSizes.space8),
+                  Text(
+                    'Ask friends to share their travel plans!',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.oceanTeal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -376,23 +587,29 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.error,
+            Container(
+              padding: const EdgeInsets.all(AppSizes.space20),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                size: 56,
+                color: AppColors.error,
+              ),
             ),
-            const SizedBox(height: AppSizes.space16),
+            const SizedBox(height: AppSizes.space20),
             Text(
               'Failed to load shared trips',
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.charcoal,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -400,15 +617,31 @@ class _ErrorState extends StatelessWidget {
             Text(
               error,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
               ),
             ),
-            const SizedBox(height: AppSizes.space16),
-            FilledButton.icon(
+            const SizedBox(height: AppSizes.space24),
+            TextButton.icon(
               onPressed: onRetry,
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.sunnyYellow,
+                foregroundColor: AppColors.charcoal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space24,
+                  vertical: AppSizes.space12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                ),
+              ),
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(
+                'Retry',
+                style: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),

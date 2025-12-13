@@ -92,7 +92,7 @@ BEGIN
             VALUE "CompanyName", "com.example" "\0"
             VALUE "FileDescription", "odyssey" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "odyssey" "\0"
+            VALUE "InternalName", "com.pranta.odyssey" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "odyssey.exe" "\0"
             VALUE "ProductName", "odyssey" "\0"
