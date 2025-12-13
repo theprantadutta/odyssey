@@ -213,112 +213,10 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               toolbarHeight: 80,
+              centerTitle: false,
+              titleSpacing: AppSizes.space16,
               title: _buildHeader(authState),
               actions: [
-                // Templates button
-                Container(
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.bookmarks_outlined,
-                      color: AppColors.lavenderDream,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.templates);
-                    },
-                    tooltip: 'Templates',
-                  ),
-                ),
-                // Shared trips button
-                Container(
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.people_outline_rounded,
-                      color: AppColors.oceanTeal,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.sharedTrips);
-                    },
-                    tooltip: 'Shared trips',
-                  ),
-                ),
-                // Achievements button
-                Container(
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.emoji_events_outlined,
-                      color: AppColors.sunnyYellow,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.achievements);
-                    },
-                    tooltip: 'Achievements',
-                  ),
-                ),
-                // Statistics button
-                Container(
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.bar_chart_outlined,
-                      color: AppColors.mintGreen,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.statistics);
-                    },
-                    tooltip: 'Statistics',
-                  ),
-                ),
                 // World Map button
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space8),
@@ -345,7 +243,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                     tooltip: 'World Map',
                   ),
                 ),
-                // Logout button
+                // More menu
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space16),
                   decoration: BoxDecoration(
@@ -359,16 +257,93 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                       ),
                     ],
                   ),
-                  child: IconButton(
+                  child: PopupMenuButton<String>(
                     icon: const Icon(
-                      Icons.logout_rounded,
+                      Icons.more_vert_rounded,
                       color: AppColors.slate,
                     ),
-                    onPressed: () {
+                    tooltip: 'More options',
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    ),
+                    onSelected: (value) {
                       HapticFeedback.lightImpact();
-                      ref.read(authProvider.notifier).logout();
+                      switch (value) {
+                        case 'templates':
+                          context.push(AppRoutes.templates);
+                          break;
+                        case 'shared':
+                          context.push(AppRoutes.sharedTrips);
+                          break;
+                        case 'achievements':
+                          context.push(AppRoutes.achievements);
+                          break;
+                        case 'statistics':
+                          context.push(AppRoutes.statistics);
+                          break;
+                        case 'logout':
+                          ref.read(authProvider.notifier).logout();
+                          break;
+                      }
                     },
-                    tooltip: 'Logout',
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'templates',
+                        child: Row(
+                          children: [
+                            Icon(Icons.bookmarks_outlined,
+                                color: AppColors.lavenderDream, size: 20),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Templates'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'shared',
+                        child: Row(
+                          children: [
+                            Icon(Icons.people_outline_rounded,
+                                color: AppColors.oceanTeal, size: 20),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Shared Trips'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'achievements',
+                        child: Row(
+                          children: [
+                            Icon(Icons.emoji_events_outlined,
+                                color: AppColors.sunnyYellow, size: 20),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Achievements'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'statistics',
+                        child: Row(
+                          children: [
+                            Icon(Icons.bar_chart_outlined,
+                                color: AppColors.mintGreen, size: 20),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Statistics'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout_rounded,
+                                color: AppColors.error, size: 20),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Logout'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -445,15 +420,18 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   Widget _buildHeader(AuthState authState) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           _getGreeting(),
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.slate,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(6),

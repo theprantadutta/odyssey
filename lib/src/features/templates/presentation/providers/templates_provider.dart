@@ -50,7 +50,8 @@ class MyTemplatesState {
 class MyTemplates extends _$MyTemplates {
   @override
   MyTemplatesState build() {
-    _loadTemplates();
+    // Delay loading until after provider is initialized (Riverpod 3 requirement)
+    Future.microtask(() => _loadTemplates());
     return const MyTemplatesState(isLoading: true);
   }
 
@@ -178,7 +179,8 @@ class TemplateGalleryState {
 class TemplateGallery extends _$TemplateGallery {
   @override
   TemplateGalleryState build() {
-    _loadTemplates();
+    // Delay loading until after provider is initialized (Riverpod 3 requirement)
+    Future.microtask(() => _loadTemplates());
     return const TemplateGalleryState(isLoading: true);
   }
 

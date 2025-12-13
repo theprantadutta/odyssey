@@ -168,7 +168,8 @@ class SharedTripsState {
 class SharedTrips extends _$SharedTrips {
   @override
   SharedTripsState build() {
-    _loadSharedTrips();
+    // Delay loading until after provider is initialized (Riverpod 3 requirement)
+    Future.microtask(() => _loadSharedTrips());
     return const SharedTripsState(isLoading: true);
   }
 
