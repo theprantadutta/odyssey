@@ -31,6 +31,7 @@ class ApiConfig {
   static const String packing = '/packing';
   static const String documents = '/documents';
   static const String sharing = '/share';
+  static const String templates = '/templates';
   static const String seed = '/seed';
 
   // Sharing endpoints
@@ -40,6 +41,12 @@ class ApiConfig {
   static String inviteDetails(String code) => '$sharing/invite/$code';
   static String acceptInvite(String code) => '$sharing/accept/$code';
   static String declineInvite(String code) => '$sharing/decline/$code';
+
+  // Template endpoints
+  static const String publicTemplates = '$templates/public';
+  static const String templateFromTrip = '$templates/from-trip';
+  static String templateDetail(String id) => '$templates/$id';
+  static String useTemplate(String id) => '$templates/use/$id';
 
   // Auth endpoints
   static const String register = '$auth/register';

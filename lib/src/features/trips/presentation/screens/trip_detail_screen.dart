@@ -18,6 +18,7 @@ import '../widgets/trip_memories_tab.dart';
 import '../widgets/trip_map_tab.dart';
 import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
 import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
+import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -388,6 +389,16 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     );
   }
 
+  void _showSaveAsTemplateDialog(BuildContext context, TripModel trip) {
+    showDialog(
+      context: context,
+      builder: (context) => SaveAsTemplateDialog(
+        tripId: trip.id,
+        tripTitle: trip.title,
+      ),
+    );
+  }
+
   void _showOptionsMenu(BuildContext context, TripModel trip) {
     showModalBottomSheet(
       context: context,
@@ -413,6 +424,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
               onTap: () {
                 Navigator.pop(context);
                 context.push('/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined, color: AppColors.lavenderDream),
+              title: const Text('Save as Template'),
+              onTap: () {
+                Navigator.pop(context);
+                _showSaveAsTemplateDialog(context, trip);
               },
             ),
             ListTile(

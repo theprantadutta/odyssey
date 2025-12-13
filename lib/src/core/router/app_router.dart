@@ -12,6 +12,7 @@ import '../../features/trips/presentation/screens/trip_detail_screen.dart';
 import '../../features/sharing/presentation/screens/shared_trips_screen.dart';
 import '../../features/sharing/presentation/screens/manage_shares_screen.dart';
 import '../../features/sharing/presentation/screens/accept_invite_screen.dart';
+import '../../features/templates/presentation/screens/template_gallery_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Route paths
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String sharedTrips = '/shared';
   static const String manageShares = '/shares';
   static const String acceptInvite = '/invite';
+  static const String templates = '/templates';
 }
 
 /// A simple listenable for router refresh
@@ -149,6 +151,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final code = state.pathParameters['code']!;
           return AcceptInviteScreen(inviteCode: code);
         },
+      ),
+      // Templates route
+      GoRoute(
+        path: AppRoutes.templates,
+        builder: (context, state) => const TemplateGalleryScreen(),
       ),
     ],
   );
