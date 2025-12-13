@@ -4,27 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../activities/data/models/activity_model.dart';
-import '../../../activities/presentation/providers/activities_provider.dart';
-import '../../../activities/presentation/screens/activity_form_screen.dart';
-import '../../../activities/presentation/widgets/activity_list_widget.dart';
+import '../../../expenses/data/models/expense_model.dart';
+import '../../../expenses/presentation/providers/expenses_provider.dart';
+import '../../../expenses/presentation/screens/expense_form_screen.dart';
+import '../../../expenses/presentation/widgets/expense_list_widget.dart';
 
-class TripActivitiesTab extends ConsumerWidget {
+class TripExpensesTab extends ConsumerWidget {
   final String tripId;
 
-  const TripActivitiesTab({
+  const TripExpensesTab({
     super.key,
     required this.tripId,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activitiesState = ref.watch(tripActivitiesProvider(tripId));
+    final expensesState = ref.watch(tripExpensesProvider(tripId));
 
     return Stack(
       children: [
         // Main content
-        _buildContent(context, ref, activitiesState),
+        _buildContent(context, ref, expensesState),
         // FAB
         Positioned(
           right: AppSizes.space16,
@@ -38,40 +38,46 @@ class TripActivitiesTab extends ConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     WidgetRef ref,
-    ActivitiesState state,
+    ExpensesState state,
   ) {
     // Loading state
-    if (state.isLoading && state.activities.isEmpty) {
+    if (state.isLoading && state.expenses.isEmpty) {
       return _buildLoadingState();
     }
 
     // Error state
-    if (state.error != null && state.activities.isEmpty) {
+    if (state.error != null && state.expenses.isEmpty) {
       return _buildErrorState(context, ref, state.error!);
     }
 
     // Empty state
-    if (state.activities.isEmpty) {
-      return NoActivitiesState(
-        onAddActivity: () => _navigateToAddActivity(context),
+    if (state.expenses.isEmpty) {
+      return NoExpensesState(
+        onAddExpense: () => _navigateToAddExpense(context),
       );
     }
 
-    // Activities list
+    // Expenses list
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       onRefresh: () async {
-        await ref.read(tripActivitiesProvider(tripId).notifier).refresh();
+        await ref.read(tripExpensesProvider(tripId).notifier).refresh();
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(
-          top: AppSizes.space16,
           bottom: AppSizes.space80,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Budget summary
+            ExpenseSummaryWidget(
+              summary: state.summary,
+              totalAmount: state.totalAmount,
+              currency: state.summary?.currency ?? 'USD',
+            ),
+
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
@@ -79,55 +85,21 @@ class TripActivitiesTab extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${state.activities.length} ${state.activities.length == 1 ? 'Activity' : 'Activities'}',
+                    '${state.expenses.length} ${state.expenses.length == 1 ? 'Expense' : 'Expenses'}',
                     style: AppTypography.titleSmall.copyWith(
                       color: AppColors.slate,
                     ),
                   ),
-                  if (state.activities.length > 1)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSizes.space12,
-                        vertical: AppSizes.space4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.lemonLight,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.drag_indicator_rounded,
-                            size: AppSizes.iconXs,
-                            color: AppColors.goldenGlow,
-                          ),
-                          const SizedBox(width: AppSizes.space4),
-                          Text(
-                            'Drag to reorder',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.goldenGlow,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),
             const SizedBox(height: AppSizes.space8),
-            // Activities list
-            ActivityListWidget(
-              activities: state.activities,
-              onReorder: (oldIndex, newIndex) {
-                ref
-                    .read(tripActivitiesProvider(tripId).notifier)
-                    .reorderActivities(oldIndex, newIndex);
-              },
-              onActivityTap: (activity) =>
-                  _navigateToEditActivity(context, activity),
-              onActivityDelete: (activity) =>
-                  _showDeleteDialog(context, ref, activity),
+
+            // Expenses list
+            ExpenseListWidget(
+              expenses: state.expenses,
+              onExpenseTap: (expense) => _navigateToEditExpense(context, expense),
+              onExpenseDelete: (expense) => _showDeleteDialog(context, ref, expense),
             ),
           ],
         ),
@@ -139,17 +111,29 @@ class TripActivitiesTab extends ConsumerWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: Column(
-        children: List.generate(
-          3,
-          (index) => Container(
-            margin: const EdgeInsets.only(bottom: AppSizes.space16),
-            height: AppSizes.activityCardHeight,
+        children: [
+          // Summary skeleton
+          Container(
+            height: 180,
             decoration: BoxDecoration(
               color: AppColors.warmGray,
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+              borderRadius: BorderRadius.circular(AppSizes.radiusXl),
             ),
           ),
-        ),
+          const SizedBox(height: AppSizes.space16),
+          // Expense card skeletons
+          ...List.generate(
+            3,
+            (index) => Container(
+              margin: const EdgeInsets.only(bottom: AppSizes.space12),
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.warmGray,
+                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -176,7 +160,7 @@ class TripActivitiesTab extends ConsumerWidget {
             ),
             const SizedBox(height: AppSizes.space24),
             Text(
-              'Failed to load activities',
+              'Failed to load expenses',
               style: AppTypography.headlineMedium.copyWith(
                 color: AppColors.charcoal,
               ),
@@ -194,7 +178,7 @@ class TripActivitiesTab extends ConsumerWidget {
             TextButton.icon(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                ref.read(tripActivitiesProvider(tripId).notifier).refresh();
+                ref.read(tripExpensesProvider(tripId).notifier).refresh();
               },
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Try Again'),
@@ -220,7 +204,7 @@ class TripActivitiesTab extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
-        _navigateToAddActivity(context);
+        _navigateToAddExpense(context);
       },
       child: Container(
         width: 56,
@@ -245,20 +229,20 @@ class TripActivitiesTab extends ConsumerWidget {
     );
   }
 
-  void _navigateToAddActivity(BuildContext context) {
+  void _navigateToAddExpense(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ActivityFormScreen(tripId: tripId),
+        builder: (context) => ExpenseFormScreen(tripId: tripId),
       ),
     );
   }
 
-  void _navigateToEditActivity(BuildContext context, ActivityModel activity) {
+  void _navigateToEditExpense(BuildContext context, ExpenseModel expense) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ActivityFormScreen(
+        builder: (context) => ExpenseFormScreen(
           tripId: tripId,
-          activity: activity,
+          expense: expense,
         ),
       ),
     );
@@ -267,7 +251,7 @@ class TripActivitiesTab extends ConsumerWidget {
   void _showDeleteDialog(
     BuildContext context,
     WidgetRef ref,
-    ActivityModel activity,
+    ExpenseModel expense,
   ) {
     HapticFeedback.mediumImpact();
     showDialog(
@@ -278,13 +262,13 @@ class TripActivitiesTab extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
-          'Delete Activity',
+          'Delete Expense',
           style: AppTypography.headlineSmall.copyWith(
             color: AppColors.charcoal,
           ),
         ),
         content: Text(
-          'Are you sure you want to delete "${activity.title}"? This action cannot be undone.',
+          'Are you sure you want to delete "${expense.title}"? This action cannot be undone.',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.slate,
           ),
@@ -308,8 +292,8 @@ class TripActivitiesTab extends ConsumerWidget {
               Navigator.of(context).pop();
               try {
                 await ref
-                    .read(tripActivitiesProvider(tripId).notifier)
-                    .deleteActivity(activity.id);
+                    .read(tripExpensesProvider(tripId).notifier)
+                    .deleteExpense(expense.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -317,7 +301,7 @@ class TripActivitiesTab extends ConsumerWidget {
                         children: [
                           Icon(Icons.check_circle_rounded, color: Colors.white),
                           SizedBox(width: AppSizes.space12),
-                          Text('Activity deleted'),
+                          Text('Expense deleted'),
                         ],
                       ),
                       backgroundColor: AppColors.success,

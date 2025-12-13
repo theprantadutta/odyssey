@@ -27,6 +27,7 @@ class ApiConfig {
   static const String trips = '/trips';
   static const String activities = '/activities';
   static const String memories = '/memories';
+  static const String expenses = '/expenses';
   static const String seed = '/seed';
 
   // Auth endpoints
