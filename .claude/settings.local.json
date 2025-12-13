@@ -20,7 +20,10 @@
       "Bash(xargs:*)",
       "Bash(cat:*)",
       "Bash(./venv/Scripts/alembic stamp fea09b7319f9)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(.venvScriptsalembic revision --autogenerate -m \"add achievements tables\")",
+      "Bash(./venv/Scripts/alembic stamp fefe1ca604e4)"
     ],
     "deny": [],
     "ask": []

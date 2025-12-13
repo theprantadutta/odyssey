@@ -61,6 +61,19 @@ class ApiConfig {
   static const String currencyBulkConvert = '$currency/bulk-convert';
   static const String currencySupported = '$currency/supported';
 
+  // Achievements endpoints
+  static const String achievements = '/achievements';
+  static const String achievementsMe = '$achievements/me';
+  static const String achievementsCheck = '$achievements/check';
+  static const String achievementsUnseen = '$achievements/unseen';
+  static const String achievementsLeaderboard = '$achievements/leaderboard';
+  static String achievementSeen(String id) => '$achievements/$id/seen';
+
+  // Statistics endpoints
+  static const String statistics = '/statistics';
+  static const String statisticsYearInReview = '$statistics/year-in-review';
+  static const String statisticsTimeline = '$statistics/timeline';
+
   // Auth endpoints
   static const String register = '$auth/register';
   static const String login = '$auth/login';
