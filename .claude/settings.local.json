@@ -17,7 +17,10 @@
       "Bash(git add:*)",
       "Bash(dart run build_runner build:*)",
       "Bash(tree:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(cat:*)",
+      "Bash(./venv/Scripts/alembic stamp fea09b7319f9)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

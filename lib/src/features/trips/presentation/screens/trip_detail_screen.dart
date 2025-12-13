@@ -11,6 +11,7 @@ import '../widgets/trip_overview_tab.dart';
 import '../widgets/trip_activities_tab.dart';
 import '../widgets/trip_packing_tab.dart';
 import '../widgets/trip_expenses_tab.dart';
+import '../widgets/trip_documents_tab.dart';
 import '../widgets/trip_memories_tab.dart';
 import '../widgets/trip_map_tab.dart';
 
@@ -35,7 +36,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _scrollController.addListener(_onScroll);
   }
 
@@ -274,6 +275,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                     Tab(text: 'Activities'),
                     Tab(text: 'Packing'),
                     Tab(text: 'Budget'),
+                    Tab(text: 'Docs'),
                     Tab(text: 'Memories'),
                     Tab(text: 'Map'),
                   ],
@@ -289,6 +291,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             TripActivitiesTab(tripId: widget.trip.id),
             TripPackingTab(tripId: widget.trip.id),
             TripExpensesTab(tripId: widget.trip.id),
+            TripDocumentsTab(tripId: widget.trip.id),
             TripMemoriesTab(tripId: widget.trip.id),
             TripMapTab(tripId: widget.trip.id),
           ],

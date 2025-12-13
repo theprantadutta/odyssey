@@ -1,0 +1,416 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../common/theme/app_colors.dart';
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../../documents/data/models/document_model.dart';
+import '../../../documents/presentation/providers/documents_provider.dart';
+import '../../../documents/presentation/screens/document_upload_screen.dart';
+import '../../../documents/presentation/widgets/document_list_widget.dart';
+
+class TripDocumentsTab extends ConsumerWidget {
+  final String tripId;
+
+  const TripDocumentsTab({
+    super.key,
+    required this.tripId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final documentsState = ref.watch(tripDocumentsProvider(tripId));
+
+    return Stack(
+      children: [
+        // Main content
+        _buildContent(context, ref, documentsState),
+        // FAB
+        Positioned(
+          right: AppSizes.space16,
+          bottom: AppSizes.space16,
+          child: _buildFAB(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    DocumentsState state,
+  ) {
+    // Loading state
+    if (state.isLoading && state.documents.isEmpty) {
+      return _buildLoadingState();
+    }
+
+    // Error state
+    if (state.error != null && state.documents.isEmpty) {
+      return _buildErrorState(context, ref, state.error!);
+    }
+
+    // Empty state
+    if (state.documents.isEmpty) {
+      return NoDocumentsState(
+        onUpload: () => _navigateToUpload(context),
+      );
+    }
+
+    // Documents list
+    return RefreshIndicator(
+      color: AppColors.lavenderDream,
+      onRefresh: () async {
+        await ref.read(tripDocumentsProvider(tripId).notifier).refresh();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(
+          top: AppSizes.space16,
+          bottom: AppSizes.space80,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary header
+            _buildSummaryHeader(state),
+            const SizedBox(height: AppSizes.space16),
+
+            // Documents grouped by type
+            DocumentListWidget(
+              groupedDocuments: state.groupedDocuments,
+              onDocumentTap: (doc) => _openDocument(context, doc),
+              onDocumentDelete: (doc) => _showDeleteDialog(context, ref, doc),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryHeader(DocumentsState state) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.space16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.lavenderDream,
+              AppColors.lavenderDream.withValues(alpha: 0.8),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.lavenderDream.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: const Icon(
+                Icons.folder_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: AppSizes.space16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Documents',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space4),
+                  Text(
+                    '${state.total} ${state.total == 1 ? 'document' : 'documents'} • ${state.groupedDocuments.length} ${state.groupedDocuments.length == 1 ? 'category' : 'categories'}',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSizes.space16),
+      child: Column(
+        children: [
+          // Summary skeleton
+          Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.warmGray,
+              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+            ),
+          ),
+          const SizedBox(height: AppSizes.space20),
+          // Document card skeletons
+          ...List.generate(
+            4,
+            (index) => Container(
+              margin: const EdgeInsets.only(bottom: AppSizes.space12),
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.warmGray,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.space32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 40,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space24),
+            Text(
+              'Failed to load documents',
+              style: AppTypography.headlineMedium.copyWith(
+                color: AppColors.charcoal,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSizes.space8),
+            Text(
+              error,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.slate,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSizes.space24),
+            TextButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref.read(tripDocumentsProvider(tripId).notifier).refresh();
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.lavenderDream,
+                backgroundColor: AppColors.lavenderDream.withValues(alpha: 0.1),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space20,
+                  vertical: AppSizes.space12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFAB(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        _navigateToUpload(context);
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.lavenderDream,
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.lavenderDream.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.upload_file_rounded,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  void _navigateToUpload(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DocumentUploadScreen(tripId: tripId),
+      ),
+    );
+  }
+
+  Future<void> _openDocument(BuildContext context, DocumentModel document) async {
+    HapticFeedback.lightImpact();
+
+    final uri = Uri.parse(document.fileUrl);
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Could not open document'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening document: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteDialog(
+    BuildContext context,
+    WidgetRef ref,
+    DocumentModel document,
+  ) {
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.snowWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Delete Document',
+          style: AppTypography.headlineSmall.copyWith(
+            color: AppColors.charcoal,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${document.name}"? This action cannot be undone.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.slate,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).pop();
+            },
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              HapticFeedback.mediumImpact();
+              Navigator.of(context).pop();
+              try {
+                await ref
+                    .read(tripDocumentsProvider(tripId).notifier)
+                    .deleteDocument(document.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.check_circle_rounded, color: Colors.white),
+                          SizedBox(width: AppSizes.space12),
+                          Text('Document deleted'),
+                        ],
+                      ),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete: $e'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Delete',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
