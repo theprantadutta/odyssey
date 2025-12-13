@@ -293,6 +293,32 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                     tooltip: 'Achievements',
                   ),
                 ),
+                // Statistics button
+                Container(
+                  margin: const EdgeInsets.only(right: AppSizes.space8),
+                  decoration: BoxDecoration(
+                    color: AppColors.snowWhite,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.bar_chart_outlined,
+                      color: AppColors.mintGreen,
+                    ),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.push(AppRoutes.statistics);
+                    },
+                    tooltip: 'Statistics',
+                  ),
+                ),
                 // Logout button
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space16),

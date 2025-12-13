@@ -14,6 +14,8 @@ import '../../features/sharing/presentation/screens/manage_shares_screen.dart';
 import '../../features/sharing/presentation/screens/accept_invite_screen.dart';
 import '../../features/templates/presentation/screens/template_gallery_screen.dart';
 import '../../features/achievements/presentation/screens/achievements_screen.dart';
+import '../../features/statistics/presentation/screens/statistics_dashboard_screen.dart';
+import '../../features/statistics/presentation/screens/year_in_review_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Route paths
@@ -164,6 +166,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.achievements,
         builder: (context, state) => const AchievementsScreen(),
+      ),
+      // Statistics routes
+      GoRoute(
+        path: AppRoutes.statistics,
+        builder: (context, state) => const StatisticsDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'year-review',
+            builder: (context, state) => const YearInReviewScreen(),
+          ),
+        ],
       ),
     ],
   );
