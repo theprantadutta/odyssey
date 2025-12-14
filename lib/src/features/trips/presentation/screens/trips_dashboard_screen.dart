@@ -418,18 +418,14 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   }
 
   Widget _buildHeader(AuthState authState) {
+    final displayName = authState.user?.displayName;
+    // Use displayName if available, otherwise fall back to extracting from email
+    final firstName = displayName ?? _getFirstNameFromEmail(authState.user?.email);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          _getGreeting(),
-          style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 2),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -455,8 +451,23 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 2),
+        Text(
+          '${_getGreeting()}${firstName != null && firstName.isNotEmpty ? ', $firstName' : ''}',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.slate,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
+  }
+
+  String? _getFirstNameFromEmail(String? email) {
+    if (email == null || email.isEmpty) return null;
+    final namePart = email.split('@').first;
+    if (namePart.isEmpty) return null;
+    return namePart[0].toUpperCase() + namePart.substring(1);
   }
 
   String _getGreeting() {

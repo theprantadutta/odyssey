@@ -84,6 +84,7 @@ class ApiConfig {
   static const String googleAuth = '$auth/google';
   static const String firebaseAuth = '$auth/firebase';
   static const String linkGoogle = '$auth/link-google';
+  static const String autoLinkGoogle = '$auth/auto-link-google';
   static const String unlinkGoogle = '$auth/unlink-google';
   static const String authProviders = '$auth/providers';
 

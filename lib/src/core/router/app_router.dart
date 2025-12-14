@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/logger_service.dart';
+import '../../features/auth/presentation/screens/intro_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -22,6 +23,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 /// Route paths
 class AppRoutes {
   static const String splash = '/splash';
+  static const String intro = '/intro';
   static const String login = '/login';
   static const String register = '/register';
   static const String onboarding = '/onboarding';
@@ -61,33 +63,41 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuthenticated = authState.isAuthenticated;
       final isLoading = authState.isLoading;
+      final hasSeenIntro = authState.hasSeenIntro;
       final needsOnboarding = authState.needsOnboarding;
       final currentLocation = state.matchedLocation;
       final isOnSplash = currentLocation == AppRoutes.splash;
+      final isOnIntro = currentLocation == AppRoutes.intro;
       final isOnLogin = currentLocation == AppRoutes.login;
       final isOnRegister = currentLocation == AppRoutes.register;
       final isOnOnboarding = currentLocation == AppRoutes.onboarding;
       final isOnAuthScreen = isOnLogin || isOnRegister;
 
-      // Show splash while checking auth (but NOT if already on auth screens)
-      if (isLoading && !isOnSplash && !isOnAuthScreen) {
+      // Show splash while checking auth (but NOT if already on auth/intro screens)
+      if (isLoading && !isOnSplash && !isOnAuthScreen && !isOnIntro) {
         return AppRoutes.splash;
       }
 
-      // Redirect to onboarding if user just registered
+      // Show intro for first-time users (before authentication)
+      if (!isLoading && !hasSeenIntro && !isOnIntro) {
+        AppLogger.navigation('Redirecting to intro (first-time user)');
+        return AppRoutes.intro;
+      }
+
+      // Redirect to post-auth onboarding if user just registered/logged in
       if (isAuthenticated && needsOnboarding && !isOnOnboarding) {
         AppLogger.navigation('Redirecting to onboarding (new user)');
         return AppRoutes.onboarding;
       }
 
       // Redirect to home if authenticated and onboarding complete
-      if (isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding)) {
+      if (isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro)) {
         AppLogger.navigation('Redirecting to home (authenticated)');
         return AppRoutes.home;
       }
 
-      // Redirect to login if not authenticated
-      if (!isAuthenticated && !isOnLogin && !isOnRegister && !isLoading) {
+      // Redirect to login if not authenticated (but has seen intro)
+      if (!isAuthenticated && hasSeenIntro && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
         AppLogger.navigation('Redirecting to login (not authenticated)');
         return AppRoutes.login;
       }
@@ -98,6 +108,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.intro,
+        builder: (context, state) => const IntroScreen(),
       ),
       GoRoute(
         path: AppRoutes.login,

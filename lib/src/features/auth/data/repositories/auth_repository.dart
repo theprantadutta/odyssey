@@ -29,9 +29,14 @@ class AuthRepository {
   Future<AuthResponse> register({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     try {
-      final request = AuthRequest(email: email, password: password);
+      final request = RegisterRequest(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
       final response = await _dioClient.post(
         ApiConfig.register,
         data: request.toJson(),
@@ -169,7 +174,7 @@ class AuthRepository {
     }
   }
 
-  /// Link Google account to existing email/password account
+  /// Link Google account to existing email/password account (with password)
   Future<AuthResponse> linkGoogleAccount({
     required String firebaseToken,
     required String password,
@@ -180,6 +185,31 @@ class AuthRepository {
         data: {
           'firebase_token': firebaseToken,
           'password': password,
+        },
+      );
+
+      final authResponse = AuthResponse.fromJson(response.data);
+
+      // Save token and user ID
+      await _storageService.saveAccessToken(authResponse.accessToken);
+      await _storageService.saveUserId(authResponse.userId);
+
+      return authResponse;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Auto-link Google account to existing email/password account (no password required)
+  /// This relies on Google's email verification for security
+  Future<AuthResponse> autoLinkGoogleAccount({
+    required String firebaseToken,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        ApiConfig.autoLinkGoogle,
+        data: {
+          'firebase_token': firebaseToken,
         },
       );
 

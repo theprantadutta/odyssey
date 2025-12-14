@@ -126,8 +126,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _showAccountLinkingDialog() {
-    final passwordController = TextEditingController();
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -147,41 +145,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               child: const Icon(Icons.link, color: AppColors.sunnyYellow),
             ),
             const SizedBox(width: AppSizes.space12),
-            Text(
-              'Link Account',
-              style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'An account with this email already exists. Enter your password to link your Google account.',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                hintText: 'Enter your password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                filled: true,
-                fillColor: AppColors.warmGray,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  borderSide: BorderSide.none,
+            Expanded(
+              child: Text(
+                'Link Account',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: AppColors.charcoal,
                 ),
               ),
             ),
           ],
+        ),
+        content: Text(
+          'An account with this email already exists. Would you like to link your Google account to it?',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.slate,
+          ),
         ),
         actions: [
           TextButton(
@@ -190,7 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               Navigator.pop(context);
             },
             child: Text(
-              'Cancel',
+              'No',
               style: AppTypography.labelLarge.copyWith(
                 color: AppColors.slate,
               ),
@@ -204,9 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ? null
                     : () async {
                         try {
-                          await ref.read(authProvider.notifier).linkGoogleAccount(
-                                passwordController.text,
-                              );
+                          await ref.read(authProvider.notifier).autoLinkGoogleAccount();
                           if (context.mounted) {
                             Navigator.pop(context);
                           }
@@ -231,7 +207,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Link Account'),
+                    : const Text('Yes, Link Account'),
               );
             },
           ),

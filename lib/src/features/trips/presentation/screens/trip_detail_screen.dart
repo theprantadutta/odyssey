@@ -339,6 +339,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
               delegate: _SliverTabBarDelegate(
                 TabBar(
                   controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   labelColor: AppColors.goldenGlow,
                   unselectedLabelColor: AppColors.slate,
                   indicatorColor: AppColors.goldenGlow,
@@ -348,12 +350,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                     fontWeight: FontWeight.w600,
                   ),
                   unselectedLabelStyle: AppTypography.labelLarge,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
                   tabs: const [
                     Tab(text: 'Overview'),
                     Tab(text: 'Activities'),
                     Tab(text: 'Packing'),
                     Tab(text: 'Budget'),
-                    Tab(text: 'Docs'),
+                    Tab(text: 'Documents'),
                     Tab(text: 'Memories'),
                     Tab(text: 'Map'),
                   ],

@@ -26,9 +26,11 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _nameFocusNode = FocusNode();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _confirmPasswordFocusNode = FocusNode();
@@ -68,9 +70,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _nameFocusNode.dispose();
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _confirmPasswordFocusNode.dispose();
@@ -85,9 +89,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     }
 
     try {
+      final name = _nameController.text.trim();
       await ref.read(authProvider.notifier).register(
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            displayName: name.isNotEmpty ? name : null,
           );
     } catch (e) {
       if (mounted) {
@@ -99,13 +105,107 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   Future<void> _handleGoogleSignIn() async {
     try {
-      await ref.read(authProvider.notifier).signInWithGoogle();
+      final needsLinking = await ref.read(authProvider.notifier).signInWithGoogle();
+      if (needsLinking && mounted) {
+        _showAccountLinkingDialog();
+      }
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
         _showErrorSnackBar(e.toString());
       }
     }
+  }
+
+  void _showAccountLinkingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.snowWhite,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.sunnyYellow.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.link, color: AppColors.sunnyYellow),
+            ),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(
+              child: Text(
+                'Link Account',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: AppColors.charcoal,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'An account with this email already exists. Would you like to link your Google account to it?',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.slate,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ref.read(authProvider.notifier).cancelAccountLinking();
+              Navigator.pop(context);
+            },
+            child: Text(
+              'No',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.slate,
+              ),
+            ),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isLoading = ref.watch(authProvider).isLoading;
+              return FilledButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        try {
+                          await ref.read(authProvider.notifier).autoLinkGoogleAccount();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.sunnyYellow,
+                  foregroundColor: AppColors.charcoal,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Yes, Link Account'),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _showErrorSnackBar(String message) {
@@ -178,6 +278,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: AppSizes.space24),
+
+                            // Name Field
+                            _buildTextField(
+                              controller: _nameController,
+                              focusNode: _nameFocusNode,
+                              label: 'Name',
+                              hint: 'Your name',
+                              icon: Icons.person_outline,
+                              keyboardType: TextInputType.name,
+                              validator: (value) => Validators.required(value, fieldName: 'Name'),
+                              enabled: !authState.isLoading,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) => _emailFocusNode.requestFocus(),
+                            ),
+                            const SizedBox(height: AppSizes.space16),
 
                             // Email Field
                             _buildTextField(

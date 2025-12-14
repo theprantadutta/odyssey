@@ -71,8 +71,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       if (!_keepClean) {
         AppLogger.action('User chose to add demo trips');
         final tripRepository = TripRepository();
-        await tripRepository.createDefaultTrips();
-        AppLogger.info('Demo trips created successfully');
+        try {
+          await tripRepository.createDefaultTrips();
+          AppLogger.info('Demo trips created successfully');
+        } catch (e) {
+          // If user already has trips (409 error), that's fine - just continue
+          if (e.toString().contains('already has trips') || e.toString().contains('409')) {
+            AppLogger.info('User already has trips, skipping demo trip creation');
+          } else {
+            rethrow;
+          }
+        }
       } else {
         AppLogger.action('User chose to start fresh (no demo trips)');
       }
@@ -117,40 +126,49 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSizes.space24),
-              child: Column(
-                children: [
-                  const Spacer(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom -
+                      48, // padding
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: AppSizes.space24),
 
-                  // Welcome Section
-                  _buildWelcomeSection(),
-                  const Spacer(),
+                    // Welcome Section
+                    _buildWelcomeSection(),
+                    const SizedBox(height: AppSizes.space32),
 
-                  // Demo Trips Card
-                  _buildDemoTripsCard(),
-                  const SizedBox(height: AppSizes.space24),
+                    // Demo Trips Card
+                    _buildDemoTripsCard(),
+                    const SizedBox(height: AppSizes.space24),
 
-                  // Keep Clean Checkbox
-                  _buildKeepCleanOption(),
-                  const SizedBox(height: AppSizes.space32),
+                    // Keep Clean Checkbox
+                    _buildKeepCleanOption(),
+                    const SizedBox(height: AppSizes.space32),
 
-                  // Continue Button
-                  AnimatedButton(
-                    text: _keepClean
-                        ? 'Start Fresh'
-                        : 'Add Demo Trips & Continue',
-                    onPressed: _isLoading ? null : _handleContinue,
-                    isLoading: _isLoading,
-                    icon: _keepClean
-                        ? Icons.arrow_forward_rounded
-                        : Icons.auto_awesome_rounded,
-                    height: AppSizes.buttonHeightLg,
-                    width: double.infinity,
-                  ),
+                    // Continue Button
+                    AnimatedButton(
+                      text: _keepClean
+                          ? 'Start Fresh'
+                          : 'Add Demo Trips & Continue',
+                      onPressed: _isLoading ? null : _handleContinue,
+                      isLoading: _isLoading,
+                      icon: _keepClean
+                          ? Icons.arrow_forward_rounded
+                          : Icons.auto_awesome_rounded,
+                      height: AppSizes.buttonHeightLg,
+                      width: double.infinity,
+                    ),
 
-                  const SizedBox(height: AppSizes.space24),
-                ],
+                    const SizedBox(height: AppSizes.space24),
+                  ],
+                ),
               ),
             ),
           ),

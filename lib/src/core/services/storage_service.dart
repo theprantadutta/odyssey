@@ -42,7 +42,19 @@ class StorageService {
     await _storage.delete(key: ApiConfig.userIdKey);
   }
 
-  // Onboarding
+  // Intro (first-time app launch)
+  static const String _introSeenKey = 'intro_seen';
+
+  Future<void> setIntroSeen(bool seen) async {
+    await _storage.write(key: _introSeenKey, value: seen.toString());
+  }
+
+  Future<bool> hasSeenIntro() async {
+    final value = await _storage.read(key: _introSeenKey);
+    return value == 'true';
+  }
+
+  // Onboarding (post-authentication)
   Future<void> setOnboardingCompleted(bool completed) async {
     await _storage.write(
       key: ApiConfig.onboardingCompletedKey,

@@ -13,6 +13,7 @@ class AuthState {
   final bool isGoogleLoading;
   final String? error;
   final bool isAuthenticated;
+  final bool hasSeenIntro;
   final bool needsOnboarding;
   final bool needsAccountLinking;
   final String? pendingFirebaseToken;
@@ -23,6 +24,7 @@ class AuthState {
     this.isGoogleLoading = false,
     this.error,
     this.isAuthenticated = false,
+    this.hasSeenIntro = true, // Default to true to avoid flash
     this.needsOnboarding = false,
     this.needsAccountLinking = false,
     this.pendingFirebaseToken,
@@ -34,6 +36,7 @@ class AuthState {
     bool? isGoogleLoading,
     String? error,
     bool? isAuthenticated,
+    bool? hasSeenIntro,
     bool? needsOnboarding,
     bool? needsAccountLinking,
     String? pendingFirebaseToken,
@@ -44,6 +47,7 @@ class AuthState {
       isGoogleLoading: isGoogleLoading ?? this.isGoogleLoading,
       error: error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
       needsOnboarding: needsOnboarding ?? this.needsOnboarding,
       needsAccountLinking: needsAccountLinking ?? this.needsAccountLinking,
       pendingFirebaseToken: pendingFirebaseToken ?? this.pendingFirebaseToken,
@@ -78,21 +82,29 @@ class Auth extends _$Auth {
     AppLogger.auth('Checking authentication status...');
     state = state.copyWith(isLoading: true);
     try {
+      // Check if user has seen intro (first-time app launch)
+      final hasSeenIntro = await StorageService().hasSeenIntro();
+      AppLogger.auth('Has seen intro: $hasSeenIntro');
+
       final isAuth = await _authRepository.isAuthenticated();
       if (isAuth) {
         AppLogger.auth('Token found, fetching user data...');
         final user = await _authRepository.getCurrentUser();
-        AppLogger.auth('User authenticated: ${user.email}');
+        final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
+        AppLogger.auth('User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding');
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
           isLoading: false,
+          hasSeenIntro: hasSeenIntro,
+          needsOnboarding: !hasCompletedOnboarding,
         );
       } else {
         AppLogger.auth('No valid token found');
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
+          hasSeenIntro: hasSeenIntro,
         );
       }
     } catch (e) {
@@ -109,6 +121,7 @@ class Auth extends _$Auth {
   Future<void> register({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     AppLogger.auth('Registering new user: $email');
     state = state.copyWith(isLoading: true, error: null);
@@ -116,6 +129,7 @@ class Auth extends _$Auth {
       await _authRepository.register(
         email: email,
         password: password,
+        displayName: displayName,
       );
 
       // Fetch user details
@@ -222,11 +236,14 @@ class Auth extends _$Auth {
       final user = await _authRepository.getCurrentUser();
       AppLogger.auth('Google Sign-In successful: ${user.email}');
 
+      // Check if onboarding was completed
+      final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
+
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
         isGoogleLoading: false,
-        needsOnboarding: false, // Google users don't need onboarding
+        needsOnboarding: !hasCompletedOnboarding, // Show onboarding if not completed
       );
 
       return false;
@@ -277,6 +294,46 @@ class Auth extends _$Auth {
       );
     } catch (e) {
       AppLogger.auth('Account linking failed: $e', isError: true);
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  /// Auto-link Google account to existing email/password account
+  /// This uses Google's email verification for security (no password required)
+  Future<void> autoLinkGoogleAccount() async {
+    if (state.pendingFirebaseToken == null) {
+      throw Exception('No pending Firebase token for account linking');
+    }
+
+    AppLogger.auth('Auto-linking Google account');
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _authRepository.autoLinkGoogleAccount(
+        firebaseToken: state.pendingFirebaseToken!,
+      );
+
+      // Fetch user details
+      final user = await _authRepository.getCurrentUser();
+      AppLogger.auth('Auto-link successful: ${user.email}');
+
+      // Check if onboarding was completed
+      final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
+
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isLoading: false,
+        needsAccountLinking: false,
+        pendingFirebaseToken: null,
+        needsOnboarding: !hasCompletedOnboarding,
+      );
+    } catch (e) {
+      AppLogger.auth('Auto-link failed: $e', isError: true);
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),

@@ -60,6 +60,9 @@ class TripActivities extends _$TripActivities {
     try {
       final response = await _activityRepository.getActivities(tripId: tripId);
 
+      // Check if provider is still mounted after async gap
+      if (!ref.mounted) return;
+
       AppLogger.state(
           'Activities', 'Loaded ${response.activities.length} activities');
 
@@ -69,6 +72,9 @@ class TripActivities extends _$TripActivities {
         isLoading: false,
       );
     } catch (e) {
+      // Check if provider is still mounted after async gap
+      if (!ref.mounted) return;
+
       AppLogger.error('Failed to load activities: $e');
       state = state.copyWith(
         isLoading: false,
@@ -87,6 +93,9 @@ class TripActivities extends _$TripActivities {
     AppLogger.action('Creating activity: ${request.title}');
     try {
       final newActivity = await _activityRepository.createActivity(request);
+
+      if (!ref.mounted) return;
+
       AppLogger.info('Activity created successfully: ${newActivity.title}');
 
       // Add to list and sort by sort_order
@@ -109,6 +118,9 @@ class TripActivities extends _$TripActivities {
     try {
       final updatedActivity =
           await _activityRepository.updateActivity(id, updates);
+
+      if (!ref.mounted) return;
+
       final updatedActivities = state.activities.map((activity) {
         return activity.id == id ? updatedActivity : activity;
       }).toList();
@@ -125,6 +137,9 @@ class TripActivities extends _$TripActivities {
     AppLogger.action('Deleting activity: $id');
     try {
       await _activityRepository.deleteActivity(id);
+
+      if (!ref.mounted) return;
+
       final updatedActivities =
           state.activities.where((activity) => activity.id != id).toList();
       AppLogger.info('Activity deleted successfully');
@@ -164,10 +179,15 @@ class TripActivities extends _$TripActivities {
         tripId: tripId,
         activityOrders: activityOrders,
       );
+
+      if (!ref.mounted) return;
+
       AppLogger.info('Activities reordered successfully');
       // Refresh to get updated sort orders from server
       await refresh();
     } catch (e) {
+      if (!ref.mounted) return;
+
       AppLogger.error('Failed to reorder activities: $e');
       // Revert on failure
       await refresh();

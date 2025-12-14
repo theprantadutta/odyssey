@@ -10,11 +10,14 @@ class UserModel extends Equatable {
   final String email;
   @JsonKey(name: 'is_active')
   final bool isActive;
+  @JsonKey(name: 'display_name')
+  final String? displayName;
 
   const UserModel({
     required this.id,
     required this.email,
     required this.isActive,
+    this.displayName,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -23,10 +26,10 @@ class UserModel extends Equatable {
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   @override
-  List<Object?> get props => [id, email, isActive];
+  List<Object?> get props => [id, email, isActive, displayName];
 }
 
-/// Login/Register request
+/// Login request
 @JsonSerializable()
 class AuthRequest {
   final String email;
@@ -38,6 +41,23 @@ class AuthRequest {
   });
 
   Map<String, dynamic> toJson() => _$AuthRequestToJson(this);
+}
+
+/// Register request (with optional name)
+@JsonSerializable()
+class RegisterRequest {
+  final String email;
+  final String password;
+  @JsonKey(name: 'display_name')
+  final String? displayName;
+
+  const RegisterRequest({
+    required this.email,
+    required this.password,
+    this.displayName,
+  });
+
+  Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
 }
 
 /// Login/Register response
