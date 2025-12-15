@@ -10,6 +10,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/trips/presentation/screens/trips_dashboard_screen.dart';
 import '../../features/trips/presentation/screens/trip_form_screen.dart';
 import '../../features/trips/presentation/screens/trip_detail_screen.dart';
+import '../../features/trips/data/models/trip_model.dart';
 import '../../features/sharing/presentation/screens/shared_trips_screen.dart';
 import '../../features/sharing/presentation/screens/manage_shares_screen.dart';
 import '../../features/sharing/presentation/screens/accept_invite_screen.dart';
@@ -146,7 +147,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '${AppRoutes.tripDetail}/:id',
         builder: (context, state) {
           final tripId = state.pathParameters['id']!;
-          return TripDetailScreen(tripId: tripId);
+          final trip = state.extra as TripModel?;
+          return TripDetailScreen(tripId: tripId, initialTrip: trip);
         },
         routes: [
           // Manage shares route nested under trip

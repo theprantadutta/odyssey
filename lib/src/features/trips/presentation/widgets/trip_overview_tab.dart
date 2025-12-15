@@ -24,6 +24,39 @@ class TripOverviewTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Swipe hint
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.space12,
+                vertical: AppSizes.space8,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.swipe,
+                    size: 16,
+                    color: AppColors.oceanTeal,
+                  ),
+                  const SizedBox(width: AppSizes.space8),
+                  Text(
+                    'Swipe left or right to explore more sections',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.oceanTeal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSizes.space16),
+
           // Trip Stats
           _buildStatsRow(),
           const SizedBox(height: AppSizes.space24),

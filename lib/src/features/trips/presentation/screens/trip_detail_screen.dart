@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/pill_tab_bar.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 import '../widgets/trip_overview_tab.dart';
@@ -16,38 +17,54 @@ import '../widgets/trip_expenses_tab.dart';
 import '../widgets/trip_documents_tab.dart';
 import '../widgets/trip_memories_tab.dart';
 import '../widgets/trip_map_tab.dart';
+import 'trip_form_screen.dart';
 import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
 import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
 import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
+  final TripModel? initialTrip;
 
   const TripDetailScreen({
     super.key,
     required this.tripId,
+    this.initialTrip,
   });
 
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
 }
 
-class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
+  final PageController _pageController = PageController();
   final ScrollController _scrollController = ScrollController();
   bool _isCollapsed = false;
+  TripModel? _currentTrip;
+  int _selectedTabIndex = 0;
+
+  // Tab items with icons
+  static const List<PillTabItem> _tabItems = [
+    PillTabItem(label: 'Overview', icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard),
+    PillTabItem(label: 'Activities', icon: Icons.event_outlined, activeIcon: Icons.event),
+    PillTabItem(label: 'Packing', icon: Icons.luggage_outlined, activeIcon: Icons.luggage),
+    PillTabItem(label: 'Budget', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet),
+    PillTabItem(label: 'Documents', icon: Icons.folder_outlined, activeIcon: Icons.folder),
+    PillTabItem(label: 'Memories', icon: Icons.photo_library_outlined, activeIcon: Icons.photo_library),
+    PillTabItem(label: 'Map', icon: Icons.map_outlined, activeIcon: Icons.map),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
     _scrollController.addListener(_onScroll);
+    // Use initial trip data immediately for Hero animation
+    _currentTrip = widget.initialTrip;
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _pageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -63,13 +80,36 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Watch the trip provider for fresh data
     final tripAsync = ref.watch(tripProvider(widget.tripId));
 
-    return tripAsync.when(
-      loading: () => const Scaffold(
+    // Update current trip when fresh data arrives
+    tripAsync.whenData((trip) {
+      if (trip != null && trip != _currentTrip) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _currentTrip = trip;
+            });
+          }
+        });
+      }
+    });
+
+    // Check loading state for tabs
+    final isLoading = tripAsync.isLoading && _currentTrip == null;
+    final hasError = tripAsync.hasError && _currentTrip == null;
+
+    // If we have no initial trip and are loading, show loading
+    if (isLoading) {
+      return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stack) => Scaffold(
+      );
+    }
+
+    // If we have no initial trip and there's an error
+    if (hasError) {
+      return Scaffold(
         appBar: AppBar(title: const Text('Trip')),
         body: Center(
           child: Column(
@@ -86,20 +126,22 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             ],
           ),
         ),
-      ),
-      data: (trip) {
-        if (trip == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Trip')),
-            body: const Center(child: Text('Trip not found')),
-          );
-        }
-        return _buildTripDetail(context, trip);
-      },
-    );
+      );
+    }
+
+    // If still no trip data (edge case: no initial trip and fetch returned null)
+    if (_currentTrip == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Trip')),
+        body: const Center(child: Text('Trip not found')),
+      );
+    }
+
+    // Render with current trip data (Hero animation works immediately)
+    return _buildTripDetail(context, _currentTrip!, tripAsync.isLoading);
   }
 
-  Widget _buildTripDetail(BuildContext context, TripModel trip) {
+  Widget _buildTripDetail(BuildContext context, TripModel trip, bool isTabsLoading) {
     final startDate = DateTime.parse(trip.startDate);
     final endDate = DateTime.parse(trip.endDate);
     final duration = endDate.difference(startDate).inDays + 1;
@@ -333,40 +375,26 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
                 ),
               ),
             ),
-            // Tab Bar
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverTabBarDelegate(
-                TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  labelColor: AppColors.goldenGlow,
-                  unselectedLabelColor: AppColors.slate,
-                  indicatorColor: AppColors.goldenGlow,
-                  indicatorWeight: 3,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  labelStyle: AppTypography.labelLarge.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  unselectedLabelStyle: AppTypography.labelLarge,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
-                  tabs: const [
-                    Tab(text: 'Overview'),
-                    Tab(text: 'Activities'),
-                    Tab(text: 'Packing'),
-                    Tab(text: 'Budget'),
-                    Tab(text: 'Documents'),
-                    Tab(text: 'Memories'),
-                    Tab(text: 'Map'),
-                  ],
-                ),
-              ),
+            // Pill Tab Bar
+            SliverPillTabBar(
+              tabs: _tabItems,
+              selectedIndex: _selectedTabIndex,
+              onTabSelected: (index) {
+                setState(() => _selectedTabIndex = index);
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                );
+              },
             ),
           ];
         },
-        body: TabBarView(
-          controller: _tabController,
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() => _selectedTabIndex = index);
+          },
           children: [
             TripOverviewTab(trip: trip, duration: duration),
             TripActivitiesTab(tripId: trip.id),
@@ -405,6 +433,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
   void _showOptionsMenu(BuildContext context, TripModel trip) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.snowWhite,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
       ),
@@ -414,16 +443,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit Trip'),
+              leading: const Icon(Icons.edit_outlined, color: AppColors.charcoal),
+              title: const Text('Edit Trip', style: TextStyle(color: AppColors.charcoal)),
               onTap: () {
                 Navigator.pop(context);
-                context.push('/edit-trip/${trip.id}');
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TripFormScreen(trip: trip),
+                  ),
+                ).then((_) {
+                  // Refresh trip data after editing
+                  ref.invalidate(tripProvider(trip.id));
+                });
               },
             ),
             ListTile(
               leading: const Icon(Icons.people_outline, color: AppColors.oceanTeal),
-              title: const Text('Manage Sharing'),
+              title: const Text('Manage Sharing', style: TextStyle(color: AppColors.charcoal)),
               onTap: () {
                 Navigator.pop(context);
                 context.push('/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}');
@@ -431,7 +467,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             ),
             ListTile(
               leading: const Icon(Icons.bookmark_add_outlined, color: AppColors.lavenderDream),
-              title: const Text('Save as Template'),
+              title: const Text('Save as Template', style: TextStyle(color: AppColors.charcoal)),
               onTap: () {
                 Navigator.pop(context);
                 _showSaveAsTemplateDialog(context, trip);
@@ -562,35 +598,5 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
         ],
       ),
     );
-  }
-}
-
-/// Custom delegate for pinned tab bar
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
-
-  _SliverTabBarDelegate(this._tabBar);
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      color: AppColors.snowWhite,
-      child: _tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return false;
   }
 }

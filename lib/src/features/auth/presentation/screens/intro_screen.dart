@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/animations/animation_constants.dart';
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/router/app_router.dart';
+import '../providers/auth_provider.dart';
 
 /// Intro data model for each page
 class IntroPage {
@@ -26,14 +27,14 @@ class IntroPage {
 }
 
 /// Intro screen shown on first app launch (before authentication)
-class IntroScreen extends StatefulWidget {
+class IntroScreen extends ConsumerStatefulWidget {
   const IntroScreen({super.key});
 
   @override
-  State<IntroScreen> createState() => _IntroScreenState();
+  ConsumerState<IntroScreen> createState() => _IntroScreenState();
 }
 
-class _IntroScreenState extends State<IntroScreen>
+class _IntroScreenState extends ConsumerState<IntroScreen>
     with TickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
@@ -104,7 +105,7 @@ class _IntroScreenState extends State<IntroScreen>
 
   Future<void> _completeIntro() async {
     HapticFeedback.mediumImpact();
-    await StorageService().setIntroSeen(true);
+    await ref.read(authProvider.notifier).setIntroSeen();
     if (mounted) {
       context.go(AppRoutes.login);
     }

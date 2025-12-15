@@ -12,6 +12,7 @@ import '../../../../common/animations/animation_constants.dart' as anim;
 import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../core/router/app_router.dart';
 import '../providers/trips_provider.dart';
+import '../../data/models/trip_model.dart';
 import '../widgets/trip_card.dart';
 import '../widgets/trip_search_filter.dart';
 import 'trip_form_screen.dart';
@@ -63,9 +64,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     });
   }
 
-  void _handleTripTap(String tripId) {
+  void _handleTripTap(TripModel trip) {
     HapticFeedback.selectionClick();
-    context.push('/trips/$tripId');
+    context.push('/trips/${trip.id}', extra: trip);
   }
 
   void _handleEditTrip(String tripId) {
@@ -586,7 +587,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
             return TripCard(
               trip: trip,
               staggerIndex: index,
-              onTap: () => _handleTripTap(trip.id),
+              onTap: () => _handleTripTap(trip),
               onEdit: () => _handleEditTrip(trip.id),
               onDelete: () => _handleDeleteTrip(trip.id, trip.title),
             );

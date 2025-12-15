@@ -350,4 +350,10 @@ class Auth extends _$Auth {
       error: null,
     );
   }
+
+  /// Mark intro as seen (updates both storage and state)
+  Future<void> setIntroSeen() async {
+    await StorageService().setIntroSeen(true);
+    state = state.copyWith(hasSeenIntro: true);
+  }
 }
