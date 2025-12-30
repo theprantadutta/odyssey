@@ -350,6 +350,7 @@ class _CategoryChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.space16,
           vertical: AppSizes.space8,
