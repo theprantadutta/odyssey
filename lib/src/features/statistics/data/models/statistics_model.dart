@@ -195,31 +195,50 @@ class SocialStatistics extends Equatable {
       ];
 }
 
+/// Overall statistics from the backend (flat structure)
 @JsonSerializable()
 class OverallStatistics extends Equatable {
-  final TripStatistics trips;
-  final ActivityStatistics activities;
-  final MemoryStatistics memories;
-  final ExpenseStatistics expenses;
-  final PackingStatistics packing;
-  final SocialStatistics social;
-  @JsonKey(name: 'total_days_traveled')
-  final int totalDaysTraveled;
-  @JsonKey(name: 'member_since')
-  final String memberSince;
-  @JsonKey(name: 'achievement_points')
-  final int achievementPoints;
+  @JsonKey(name: 'total_trips')
+  final int totalTrips;
+  @JsonKey(name: 'completed_trips')
+  final int completedTrips;
+  @JsonKey(name: 'ongoing_trips')
+  final int ongoingTrips;
+  @JsonKey(name: 'planned_trips')
+  final int plannedTrips;
+  @JsonKey(name: 'total_activities')
+  final int totalActivities;
+  @JsonKey(name: 'total_memories')
+  final int totalMemories;
+  @JsonKey(name: 'total_expenses')
+  final int totalExpenses;
+  @JsonKey(name: 'total_expense_amount')
+  final double totalExpenseAmount;
+  @JsonKey(name: 'countries_visited')
+  final int countriesVisited;
+  @JsonKey(name: 'total_days_of_travel')
+  final int totalDaysOfTravel;
+  @JsonKey(name: 'unique_destinations')
+  final List<String> uniqueDestinations;
+  @JsonKey(name: 'activities_by_category')
+  final Map<String, int> activitiesByCategory;
+  @JsonKey(name: 'expenses_by_category')
+  final Map<String, double> expensesByCategory;
 
   const OverallStatistics({
-    required this.trips,
-    required this.activities,
-    required this.memories,
-    required this.expenses,
-    required this.packing,
-    required this.social,
-    required this.totalDaysTraveled,
-    required this.memberSince,
-    required this.achievementPoints,
+    required this.totalTrips,
+    required this.completedTrips,
+    required this.ongoingTrips,
+    required this.plannedTrips,
+    required this.totalActivities,
+    required this.totalMemories,
+    required this.totalExpenses,
+    required this.totalExpenseAmount,
+    required this.countriesVisited,
+    required this.totalDaysOfTravel,
+    required this.uniqueDestinations,
+    required this.activitiesByCategory,
+    required this.expensesByCategory,
   });
 
   factory OverallStatistics.fromJson(Map<String, dynamic> json) =>
@@ -229,15 +248,19 @@ class OverallStatistics extends Equatable {
 
   @override
   List<Object?> get props => [
-        trips,
-        activities,
-        memories,
-        expenses,
-        packing,
-        social,
-        totalDaysTraveled,
-        memberSince,
-        achievementPoints,
+        totalTrips,
+        completedTrips,
+        ongoingTrips,
+        plannedTrips,
+        totalActivities,
+        totalMemories,
+        totalExpenses,
+        totalExpenseAmount,
+        countriesVisited,
+        totalDaysOfTravel,
+        uniqueDestinations,
+        activitiesByCategory,
+        expensesByCategory,
       ];
 }
 

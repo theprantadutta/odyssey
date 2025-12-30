@@ -193,27 +193,23 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           const SizedBox(height: AppSizes.space20),
 
           // Trips section
-          _buildTripsSection(context, stats.trips),
+          _buildTripsSection(context, stats),
           const SizedBox(height: AppSizes.space16),
 
           // Activities section
-          _buildActivitiesSection(context, stats.activities),
+          _buildActivitiesSection(context, stats),
           const SizedBox(height: AppSizes.space16),
 
           // Memories section
-          _buildMemoriesSection(context, stats.memories),
+          _buildMemoriesSection(context, stats),
           const SizedBox(height: AppSizes.space16),
 
           // Budget section
-          _buildBudgetSection(context, stats.expenses),
+          _buildBudgetSection(context, stats),
           const SizedBox(height: AppSizes.space16),
 
-          // Packing section
-          _buildPackingSection(context, stats.packing),
-          const SizedBox(height: AppSizes.space16),
-
-          // Social section
-          _buildSocialSection(context, stats.social),
+          // Destinations section
+          _buildDestinationsSection(context, stats),
           const SizedBox(height: AppSizes.space24),
         ],
       ),
@@ -271,7 +267,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Member since ${stats.memberSince}',
+                      '${stats.totalTrips} trips, ${stats.countriesVisited} destinations',
                       style: AppTypography.bodySmall.copyWith(
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
@@ -288,7 +284,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 child: _buildOverviewStat(
                   context,
                   'Days Traveled',
-                  '${stats.totalDaysTraveled}',
+                  '${stats.totalDaysOfTravel}',
                   Icons.calendar_today_rounded,
                 ),
               ),
@@ -296,9 +292,9 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               Expanded(
                 child: _buildOverviewStat(
                   context,
-                  'Achievement Points',
-                  '${stats.achievementPoints}',
-                  Icons.stars_rounded,
+                  'Activities',
+                  '${stats.totalActivities}',
+                  Icons.local_activity_rounded,
                 ),
               ),
             ],
@@ -344,7 +340,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTripsSection(BuildContext context, trips) {
+  Widget _buildTripsSection(BuildContext context, stats) {
     return _StatsSectionCard(
       title: 'Trips',
       subtitle: 'Your travel adventures',
@@ -357,7 +353,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               child: _buildMiniStat(
                 context,
                 'Total',
-                '${trips.totalTrips}',
+                '${stats.totalTrips}',
                 AppColors.oceanTeal,
               ),
             ),
@@ -365,8 +361,8 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             Expanded(
               child: _buildMiniStat(
                 context,
-                'This Year',
-                '${trips.tripsThisYear}',
+                'Completed',
+                '${stats.completedTrips}',
                 AppColors.mintGreen,
               ),
             ),
@@ -383,67 +379,45 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             children: [
               _StatsRow(
                 label: 'Planned',
-                value: '${trips.plannedTrips}',
+                value: '${stats.plannedTrips}',
                 icon: Icons.schedule_rounded,
                 color: AppColors.slate,
               ),
               const SizedBox(height: AppSizes.space8),
               _StatsRow(
                 label: 'Ongoing',
-                value: '${trips.ongoingTrips}',
+                value: '${stats.ongoingTrips}',
                 icon: Icons.play_circle_outline_rounded,
                 color: AppColors.sunnyYellow,
               ),
               const SizedBox(height: AppSizes.space8),
               _StatsRow(
                 label: 'Completed',
-                value: '${trips.completedTrips}',
+                value: '${stats.completedTrips}',
                 icon: Icons.check_circle_outline_rounded,
                 color: AppColors.mintGreen,
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSizes.space12),
-        _StatsRow(
-          label: 'Average Trip Duration',
-          value: '${trips.averageTripDuration.toStringAsFixed(1)} days',
-          icon: Icons.timer_outlined,
-          color: AppColors.oceanTeal,
-        ),
       ],
     );
   }
 
-  Widget _buildActivitiesSection(BuildContext context, activities) {
+  Widget _buildActivitiesSection(BuildContext context, stats) {
     return _StatsSectionCard(
       title: 'Activities',
       subtitle: 'Things you\'ve done',
       icon: Icons.local_activity_rounded,
       color: AppColors.coralBurst,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'Total',
-                '${activities.totalActivities}',
-                AppColors.coralBurst,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'Completed',
-                '${activities.completedActivities}',
-                AppColors.mintGreen,
-              ),
-            ),
-          ],
+        _buildMiniStat(
+          context,
+          'Total Activities',
+          '${stats.totalActivities}',
+          AppColors.coralBurst,
         ),
-        if (activities.activitiesByCategory.isNotEmpty) ...[
+        if (stats.activitiesByCategory.isNotEmpty) ...[
           const SizedBox(height: AppSizes.space16),
           Container(
             padding: const EdgeInsets.all(AppSizes.space12),
@@ -462,7 +436,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSizes.space8),
-                ...activities.activitiesByCategory.entries.map(
+                ...stats.activitiesByCategory.entries.map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _StatsRow(
@@ -480,59 +454,52 @@ class StatisticsDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMemoriesSection(BuildContext context, memories) {
+  Widget _buildMemoriesSection(BuildContext context, stats) {
     return _StatsSectionCard(
       title: 'Memories',
       subtitle: 'Captured moments',
       icon: Icons.photo_camera_rounded,
       color: AppColors.lavenderDream,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'Total',
-                '${memories.totalMemories}',
-                AppColors.lavenderDream,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'This Year',
-                '${memories.memoriesThisYear}',
-                AppColors.oceanTeal,
-              ),
-            ),
-          ],
+        _buildMiniStat(
+          context,
+          'Total Photos',
+          '${stats.totalMemories}',
+          AppColors.lavenderDream,
         ),
       ],
     );
   }
 
-  Widget _buildBudgetSection(BuildContext context, expenses) {
+  Widget _buildBudgetSection(BuildContext context, stats) {
     return _StatsSectionCard(
       title: 'Budget',
       subtitle: 'Your travel spending',
       icon: Icons.account_balance_wallet_rounded,
       color: AppColors.mintGreen,
       children: [
-        _StatsRow(
-          label: 'Total Expenses',
-          value: '${expenses.totalExpenses}',
-          icon: Icons.receipt_long_rounded,
-          color: AppColors.mintGreen,
+        Row(
+          children: [
+            Expanded(
+              child: _buildMiniStat(
+                context,
+                'Total Expenses',
+                '${stats.totalExpenses}',
+                AppColors.mintGreen,
+              ),
+            ),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(
+              child: _buildMiniStat(
+                context,
+                'Total Amount',
+                '\$${stats.totalExpenseAmount.toStringAsFixed(0)}',
+                AppColors.sunnyYellow,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppSizes.space8),
-        _StatsRow(
-          label: 'Average Expense',
-          value: '\$${expenses.averageExpense.toStringAsFixed(2)}',
-          icon: Icons.trending_up_rounded,
-          color: AppColors.sunnyYellow,
-        ),
-        if (expenses.totalAmountByCurrency.isNotEmpty) ...[
+        if (stats.expensesByCategory.isNotEmpty) ...[
           const SizedBox(height: AppSizes.space12),
           Container(
             padding: const EdgeInsets.all(AppSizes.space12),
@@ -544,19 +511,19 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'By Currency',
+                  'By Category',
                   style: AppTypography.labelSmall.copyWith(
                     color: AppColors.slate,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: AppSizes.space8),
-                ...expenses.totalAmountByCurrency.entries.map(
+                ...stats.expensesByCategory.entries.map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: _StatsRow(
-                      label: entry.key,
-                      value: entry.value.toStringAsFixed(2),
+                      label: _formatCategoryName(entry.key),
+                      value: '\$${entry.value.toStringAsFixed(0)}',
                       color: AppColors.mintGreen,
                     ),
                   ),
@@ -569,149 +536,42 @@ class StatisticsDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPackingSection(BuildContext context, packing) {
-    final progress = packing.totalPackingItems > 0
-        ? packing.packedItems / packing.totalPackingItems
-        : 0.0;
+  Widget _buildDestinationsSection(BuildContext context, stats) {
+    if (stats.uniqueDestinations.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space16),
-      decoration: BoxDecoration(
-        color: AppColors.snowWhite,
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.lavenderDream.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                ),
-                child: const Icon(
-                  Icons.luggage_rounded,
-                  color: AppColors.lavenderDream,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: AppSizes.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Packing Progress',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.charcoal,
-                      ),
-                    ),
-                    Text(
-                      '${packing.packedItems} of ${packing.totalPackingItems} items packed',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space12,
-                  vertical: AppSizes.space4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.lavenderDream.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-                ),
-                child: Text(
-                  '${(progress * 100).toInt()}%',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.lavenderDream,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.space16),
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: AppColors.warmGray,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: Colors.transparent,
-                valueColor: const AlwaysStoppedAnimation(AppColors.lavenderDream),
-                minHeight: 8,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSocialSection(BuildContext context, social) {
     return _StatsSectionCard(
-      title: 'Social',
-      subtitle: 'Sharing with others',
-      icon: Icons.people_rounded,
-      color: AppColors.sunnyYellow,
+      title: 'Destinations',
+      subtitle: 'Places you\'ve explored',
+      icon: Icons.place_rounded,
+      color: AppColors.oceanTeal,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'Trips Shared',
-                '${social.tripsShared}',
-                AppColors.sunnyYellow,
+        Wrap(
+          spacing: AppSizes.space8,
+          runSpacing: AppSizes.space8,
+          children: stats.uniqueDestinations.take(10).map<Widget>((destination) {
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.space12,
+                vertical: AppSizes.space6,
               ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            Expanded(
-              child: _buildMiniStat(
-                context,
-                'Shared with Me',
-                '${social.tripsSharedWithMe}',
-                AppColors.oceanTeal,
+              decoration: BoxDecoration(
+                color: AppColors.oceanTeal.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+                border: Border.all(
+                  color: AppColors.oceanTeal.withValues(alpha: 0.3),
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSizes.space12),
-        Container(
-          padding: const EdgeInsets.all(AppSizes.space12),
-          decoration: BoxDecoration(
-            color: AppColors.warmGray,
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-          child: Column(
-            children: [
-              _StatsRow(
-                label: 'Templates Created',
-                value: '${social.templatesCreated}',
-                icon: Icons.bookmarks_outlined,
-                color: AppColors.sunnyYellow,
+              child: Text(
+                _formatCategoryName(destination),
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.oceanTeal,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: AppSizes.space8),
-              _StatsRow(
-                label: 'Template Uses',
-                value: '${social.templatesUsedByOthers}',
-                icon: Icons.people_outline_rounded,
-                color: AppColors.oceanTeal,
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         ),
       ],
     );
