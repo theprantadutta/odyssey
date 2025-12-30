@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/memory_model.dart';
 
 /// Photo gallery grid widget for displaying memories
@@ -87,7 +88,7 @@ class PhotoThumbnail extends StatelessWidget {
               children: [
                 // Photo
                 CachedNetworkImage(
-                  imageUrl: memory.photoUrl,
+                  imageUrl: FileUrlHelper.getAuthenticatedUrl(memory.photoUrl),
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
                     color: AppColors.warmGray,

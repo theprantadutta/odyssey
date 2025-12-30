@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/memory_model.dart';
 import '../providers/memories_provider.dart';
 
@@ -505,7 +506,7 @@ class _PhotoPageState extends State<_PhotoPage>
           maxScale: 4.0,
           child: Center(
             child: CachedNetworkImage(
-              imageUrl: widget.memory.photoUrl,
+              imageUrl: FileUrlHelper.getAuthenticatedUrl(widget.memory.photoUrl),
               fit: BoxFit.contain,
               placeholder: (context, url) => const Center(
                 child: CircularProgressIndicator(

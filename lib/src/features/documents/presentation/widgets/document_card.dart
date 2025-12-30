@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/document_model.dart';
 
 /// Card widget for displaying a document
@@ -160,7 +161,7 @@ class DocumentCard extends StatelessWidget {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
         child: CachedNetworkImage(
-          imageUrl: document.fileUrl,
+          imageUrl: FileUrlHelper.getAuthenticatedUrl(document.fileUrl),
           width: 56,
           height: 56,
           fit: BoxFit.cover,
