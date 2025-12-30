@@ -29,7 +29,8 @@ class ActivityListWidget extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    // Group activities by date
+    // Group activities by date (for future grouping implementation)
+    // ignore: unused_local_variable
     final groupedActivities = _groupActivitiesByDate(activities);
 
     return ReorderableListView.builder(

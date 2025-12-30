@@ -85,7 +85,9 @@ class TripPacking extends _$TripPacking {
 
     try {
       final response = await _packingRepository.getPackingItems(tripId: tripId);
+      if (!ref.mounted) return;
       final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.state('Packing', 'Loaded ${response.items.length} packing items');
 
@@ -98,6 +100,7 @@ class TripPacking extends _$TripPacking {
         isLoading: false,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to load packing items: $e');
       state = state.copyWith(
         isLoading: false,
@@ -117,6 +120,7 @@ class TripPacking extends _$TripPacking {
 
     try {
       final newItem = await _packingRepository.createPackingItem(request);
+      if (!ref.mounted) return;
 
       AppLogger.info('Packing item created successfully');
 
@@ -125,6 +129,7 @@ class TripPacking extends _$TripPacking {
 
       // Reload progress
       final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      if (!ref.mounted) return;
 
       state = state.copyWith(
         items: updatedItems,
@@ -133,6 +138,7 @@ class TripPacking extends _$TripPacking {
         progress: progress,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to create packing item: $e');
       rethrow;
     }
@@ -144,6 +150,7 @@ class TripPacking extends _$TripPacking {
 
     try {
       final updatedItem = await _packingRepository.updatePackingItem(id, updates);
+      if (!ref.mounted) return;
 
       AppLogger.info('Packing item updated successfully');
 
@@ -154,12 +161,14 @@ class TripPacking extends _$TripPacking {
 
       // Reload progress
       final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      if (!ref.mounted) return;
 
       state = state.copyWith(
         items: updatedItems,
         progress: progress,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to update packing item: $e');
       rethrow;
     }
@@ -193,6 +202,7 @@ class TripPacking extends _$TripPacking {
 
     try {
       final updatedItem = await _packingRepository.togglePackedStatus(id);
+      if (!ref.mounted) return;
 
       // Update with server response
       final updatedItems = state.items.map((item) {
@@ -201,6 +211,7 @@ class TripPacking extends _$TripPacking {
 
       // Reload progress for accurate category breakdown
       final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.info('Packed status toggled successfully');
 
@@ -209,6 +220,7 @@ class TripPacking extends _$TripPacking {
         progress: progress,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to toggle packed status: $e');
       // Revert optimistic update
       await _loadPackingItems();
@@ -233,12 +245,14 @@ class TripPacking extends _$TripPacking {
         itemIds: categoryItemIds,
         isPacked: isPacked,
       );
+      if (!ref.mounted) return;
 
       AppLogger.info('Bulk toggle successful');
 
       // Reload to get updated state
       await _loadPackingItems();
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to bulk toggle: $e');
       rethrow;
     }
@@ -252,6 +266,7 @@ class TripPacking extends _$TripPacking {
       final itemToDelete = state.items.firstWhere((item) => item.id == id);
 
       await _packingRepository.deletePackingItem(id);
+      if (!ref.mounted) return;
 
       final updatedItems =
           state.items.where((item) => item.id != id).toList();
@@ -266,6 +281,7 @@ class TripPacking extends _$TripPacking {
 
       // Reload progress
       final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.info('Packing item deleted successfully');
 
@@ -277,6 +293,7 @@ class TripPacking extends _$TripPacking {
         progress: progress,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to delete packing item: $e');
       rethrow;
     }
@@ -296,12 +313,14 @@ class TripPacking extends _$TripPacking {
         tripId: tripId,
         itemOrders: itemOrders,
       );
+      if (!ref.mounted) return;
 
       AppLogger.info('Items reordered successfully');
 
       // Reload to get updated state
       await _loadPackingItems();
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to reorder items: $e');
       await _loadPackingItems();
       rethrow;

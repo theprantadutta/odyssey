@@ -67,6 +67,7 @@ class TripMemories extends _$TripMemories {
 
     try {
       final response = await _memoryRepository.getMemories(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.state(
           'Memories', 'Loaded ${response.memories.length} memories');
@@ -77,6 +78,7 @@ class TripMemories extends _$TripMemories {
         isLoading: false,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to load memories: $e');
       state = state.copyWith(
         isLoading: false,
@@ -110,10 +112,12 @@ class TripMemories extends _$TripMemories {
         caption: caption,
         takenAt: takenAt,
         onProgress: (sent, total) {
+          if (!ref.mounted) return;
           final progress = sent / total;
           state = state.copyWith(uploadProgress: progress);
         },
       );
+      if (!ref.mounted) return;
 
       AppLogger.info('Memory uploaded successfully');
 
@@ -127,6 +131,7 @@ class TripMemories extends _$TripMemories {
         uploadProgress: 1.0,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to upload memory: $e');
       state = state.copyWith(
         isUploading: false,
@@ -142,6 +147,7 @@ class TripMemories extends _$TripMemories {
     AppLogger.action('Deleting memory: $id');
     try {
       await _memoryRepository.deleteMemory(id);
+      if (!ref.mounted) return;
       final updatedMemories =
           state.memories.where((memory) => memory.id != id).toList();
       AppLogger.info('Memory deleted successfully');
@@ -150,6 +156,7 @@ class TripMemories extends _$TripMemories {
         total: state.total - 1,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to delete memory: $e');
       rethrow;
     }

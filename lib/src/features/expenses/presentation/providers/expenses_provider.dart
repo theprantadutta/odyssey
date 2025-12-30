@@ -66,7 +66,9 @@ class TripExpenses extends _$TripExpenses {
 
     try {
       final response = await _expenseRepository.getExpenses(tripId: tripId);
+      if (!ref.mounted) return;
       final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.state(
           'Expenses', 'Loaded ${response.expenses.length} expenses');
@@ -79,6 +81,7 @@ class TripExpenses extends _$TripExpenses {
         isLoading: false,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to load expenses: $e');
       state = state.copyWith(
         isLoading: false,
@@ -98,6 +101,7 @@ class TripExpenses extends _$TripExpenses {
 
     try {
       final newExpense = await _expenseRepository.createExpense(request);
+      if (!ref.mounted) return;
 
       AppLogger.info('Expense created successfully');
 
@@ -106,6 +110,7 @@ class TripExpenses extends _$TripExpenses {
 
       // Reload summary
       final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      if (!ref.mounted) return;
 
       state = state.copyWith(
         expenses: updatedExpenses,
@@ -114,6 +119,7 @@ class TripExpenses extends _$TripExpenses {
         totalAmount: summary.totalAmount,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to create expense: $e');
       rethrow;
     }
@@ -125,6 +131,7 @@ class TripExpenses extends _$TripExpenses {
 
     try {
       final updatedExpense = await _expenseRepository.updateExpense(id, updates);
+      if (!ref.mounted) return;
 
       AppLogger.info('Expense updated successfully');
 
@@ -135,6 +142,7 @@ class TripExpenses extends _$TripExpenses {
 
       // Reload summary
       final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      if (!ref.mounted) return;
 
       state = state.copyWith(
         expenses: updatedExpenses,
@@ -142,6 +150,7 @@ class TripExpenses extends _$TripExpenses {
         totalAmount: summary.totalAmount,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to update expense: $e');
       rethrow;
     }
@@ -153,12 +162,14 @@ class TripExpenses extends _$TripExpenses {
 
     try {
       await _expenseRepository.deleteExpense(id);
+      if (!ref.mounted) return;
 
       final updatedExpenses =
           state.expenses.where((expense) => expense.id != id).toList();
 
       // Reload summary
       final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      if (!ref.mounted) return;
 
       AppLogger.info('Expense deleted successfully');
 
@@ -169,6 +180,7 @@ class TripExpenses extends _$TripExpenses {
         totalAmount: summary.totalAmount,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       AppLogger.error('Failed to delete expense: $e');
       rethrow;
     }

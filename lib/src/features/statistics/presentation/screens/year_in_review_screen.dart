@@ -379,21 +379,6 @@ class YearInReviewScreen extends ConsumerWidget {
   }
 
   Widget _buildTripsByMonth(BuildContext context, YearInReviewStats stats) {
-    final months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),

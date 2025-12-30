@@ -100,7 +100,7 @@ class TripDocuments extends _$TripDocuments {
     AppLogger.action('Uploading document: $name');
 
     try {
-      final newDocument = await _documentRepository.uploadDocument(
+      await _documentRepository.uploadDocument(
         tripId: tripId,
         name: name,
         type: type,

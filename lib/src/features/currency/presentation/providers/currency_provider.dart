@@ -30,10 +30,6 @@ class ExchangeRates extends _$ExchangeRates {
       return repository.getExchangeRates(base: baseCurrency);
     });
   }
-
-  String get baseCurrency => arg;
-
-  String get arg => throw UnimplementedError();
 }
 
 /// Supported currencies

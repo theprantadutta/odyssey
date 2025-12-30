@@ -126,7 +126,8 @@ class AchievementBadge extends StatelessWidget {
   }
 
   Widget _buildProgressIndicator(BuildContext context) {
-    final progressPercent = (progress! / achievement.threshold).clamp(0.0, 1.0);
+    // Progress ratio used for display
+    final _ = (progress! / achievement.threshold).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),

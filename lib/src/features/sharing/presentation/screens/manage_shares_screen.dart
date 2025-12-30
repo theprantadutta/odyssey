@@ -21,7 +21,6 @@ class ManageSharesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sharesState = ref.watch(tripSharesProvider(tripId));
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(

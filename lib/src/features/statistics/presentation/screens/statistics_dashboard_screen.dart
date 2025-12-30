@@ -7,8 +7,6 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/app_router.dart';
 import '../providers/statistics_provider.dart';
-import '../widgets/stats_card.dart';
-
 class StatisticsDashboardScreen extends ConsumerWidget {
   const StatisticsDashboardScreen({super.key});
 
