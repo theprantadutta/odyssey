@@ -554,7 +554,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             return Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.space12,
-                vertical: AppSizes.space6,
+                vertical: AppSizes.space4,
               ),
               decoration: BoxDecoration(
                 color: AppColors.oceanTeal.withValues(alpha: 0.1),
