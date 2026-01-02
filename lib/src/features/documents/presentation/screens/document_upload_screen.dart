@@ -7,6 +7,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../data/models/document_model.dart';
+import '../../data/repositories/document_repository.dart';
 import '../providers/documents_provider.dart';
 
 /// Screen for uploading a document
@@ -552,12 +553,17 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     try {
       final mimeType = _getMimeType(_selectedFile!.extension ?? '');
 
+      // Create a SelectedDocumentFile from the picked file
+      final documentFile = SelectedDocumentFile(
+        file: File(_selectedFile!.path!),
+        fileName: _selectedFile!.name,
+        mimeType: mimeType,
+      );
+
       await ref.read(tripDocumentsProvider(widget.tripId).notifier).uploadDocument(
             name: _nameController.text.trim(),
+            files: [documentFile],
             type: _selectedType.name,
-            filePath: _selectedFile!.path!,
-            fileName: _selectedFile!.name,
-            mimeType: mimeType,
             notes: _notesController.text.trim().isEmpty
                 ? null
                 : _notesController.text.trim(),

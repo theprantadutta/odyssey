@@ -88,26 +88,24 @@ class TripDocuments extends _$TripDocuments {
     await _loadDocuments();
   }
 
-  /// Upload a new document
+  /// Upload a new document with multiple files
   Future<void> uploadDocument({
     required String name,
-    required String type,
-    required String filePath,
-    required String fileName,
-    required String mimeType,
+    required List<SelectedDocumentFile> files,
+    String? type,
     String? notes,
+    ProgressCallback? onProgress,
   }) async {
-    AppLogger.action('Uploading document: $name');
+    AppLogger.action('Uploading document: $name with ${files.length} file(s)');
 
     try {
       await _documentRepository.uploadDocument(
         tripId: tripId,
         name: name,
+        files: files,
         type: type,
-        filePath: filePath,
-        fileName: fileName,
-        mimeType: mimeType,
         notes: notes,
+        onProgress: onProgress,
       );
 
       AppLogger.info('Document uploaded successfully');

@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
+import 'document_file_model.dart';
 
 part 'document_model.g.dart';
 
@@ -9,12 +10,25 @@ class DocumentModel extends Equatable {
   final String id;
   @JsonKey(name: 'trip_id')
   final String tripId;
+
+  /// Document type (defaults to "other" if not specified)
   final String type;
+
+  /// Document name (MANDATORY)
   final String name;
+
+  /// Collection of files for this document
+  @JsonKey(name: 'files', defaultValue: [])
+  final List<DocumentFileModel> files;
+
+  /// Legacy field for backward compatibility. Use files instead.
   @JsonKey(name: 'file_url')
-  final String fileUrl;
+  final String? fileUrl;
+
+  /// Legacy file type field
   @JsonKey(name: 'file_type')
-  final String fileType;
+  final String? fileType;
+
   final String? notes;
   @JsonKey(name: 'created_at')
   final String createdAt;
@@ -26,8 +40,9 @@ class DocumentModel extends Equatable {
     required this.tripId,
     required this.type,
     required this.name,
-    required this.fileUrl,
-    required this.fileType,
+    this.files = const [],
+    this.fileUrl,
+    this.fileType,
     this.notes,
     required this.createdAt,
     this.updatedAt,
@@ -38,12 +53,29 @@ class DocumentModel extends Equatable {
 
   Map<String, dynamic> toJson() => _$DocumentModelToJson(this);
 
+  /// Check if this document has any files
+  bool get hasFiles => files.isNotEmpty || (fileUrl?.isNotEmpty ?? false);
+
+  /// Get the number of files in this document
+  int get fileCount => files.isNotEmpty ? files.length : (fileUrl != null ? 1 : 0);
+
+  /// Get the primary file (first in list or legacy fileUrl)
+  DocumentFileModel? get primaryFile =>
+      files.isNotEmpty ? files.first : null;
+
+  /// Get the primary URL for display (first file or legacy fileUrl)
+  String? get primaryUrl => primaryFile?.url ?? fileUrl;
+
+  /// Get the document type enum
+  DocumentType get documentType => DocumentType.fromString(type);
+
   @override
   List<Object?> get props => [
         id,
         tripId,
         type,
         name,
+        files,
         fileUrl,
         fileType,
         notes,

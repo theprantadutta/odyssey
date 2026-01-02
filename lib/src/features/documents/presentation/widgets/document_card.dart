@@ -23,7 +23,7 @@ class DocumentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final docType = DocumentType.fromString(document.type);
-    final fileType = FileType.fromString(document.fileType);
+    final fileType = FileType.fromString(document.fileType ?? 'other');
 
     return Dismissible(
       key: Key(document.id),

@@ -288,7 +288,24 @@ class TripDocumentsTab extends ConsumerWidget {
   Future<void> _openDocument(BuildContext context, DocumentModel document) async {
     HapticFeedback.lightImpact();
 
-    final uri = Uri.parse(document.fileUrl);
+    final url = document.primaryUrl;
+    if (url == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No file available for this document'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final uri = Uri.parse(url);
 
     try {
       if (await canLaunchUrl(uri)) {
