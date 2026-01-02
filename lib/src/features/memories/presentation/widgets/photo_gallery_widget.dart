@@ -8,7 +8,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/memory_model.dart';
 
-/// Photo gallery grid widget for displaying memories
+/// Photo/video gallery grid widget for displaying memories
 class PhotoGalleryWidget extends StatelessWidget {
   final List<MemoryModel> memories;
   final Function(MemoryModel memory, int index)? onPhotoTap;
@@ -40,7 +40,7 @@ class PhotoGalleryWidget extends StatelessWidget {
       itemCount: memories.length,
       itemBuilder: (context, index) {
         final memory = memories[index];
-        return PhotoThumbnail(
+        return MediaThumbnail(
           memory: memory,
           onTap: () {
             HapticFeedback.lightImpact();
@@ -56,13 +56,13 @@ class PhotoGalleryWidget extends StatelessWidget {
   }
 }
 
-/// Individual photo thumbnail widget
-class PhotoThumbnail extends StatelessWidget {
+/// Individual media thumbnail widget (photo or video)
+class MediaThumbnail extends StatelessWidget {
   final MemoryModel memory;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
-  const PhotoThumbnail({
+  const MediaThumbnail({
     super.key,
     required this.memory,
     this.onTap,
@@ -71,6 +71,10 @@ class PhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayUrl = memory.displayUrl;
+    final hasVideo = memory.hasVideo;
+    final mediaCount = memory.mediaItems.length;
+
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -86,27 +90,96 @@ class PhotoThumbnail extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Photo
-                CachedNetworkImage(
-                  imageUrl: FileUrlHelper.getAuthenticatedUrl(memory.photoUrl),
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppColors.warmGray,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.sunnyYellow,
+                // Photo/Video thumbnail or placeholder
+                if (displayUrl != null)
+                  CachedNetworkImage(
+                    imageUrl: FileUrlHelper.getAuthenticatedUrl(displayUrl),
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: AppColors.warmGray,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.sunnyYellow,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: AppColors.warmGray,
+                      child: const Icon(
+                        Icons.broken_image_rounded,
+                        color: AppColors.mutedGray,
+                      ),
+                    ),
+                  )
+                else
+                  // No media - show caption indicator
+                  Container(
+                    color: AppColors.lemonLight,
+                    child: Center(
+                      child: Icon(
+                        Icons.notes_rounded,
+                        size: 32,
+                        color: AppColors.goldenGlow,
                       ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.warmGray,
-                    child: const Icon(
-                      Icons.broken_image_rounded,
-                      color: AppColors.mutedGray,
+
+                // Video play indicator
+                if (hasVideo)
+                  Positioned(
+                    top: AppSizes.space4,
+                    left: AppSizes.space4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
-                ),
+
+                // Media count badge (if multiple media items)
+                if (mediaCount > 1)
+                  Positioned(
+                    top: AppSizes.space4,
+                    right: AppSizes.space4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.space4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.collections_rounded,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '$mediaCount',
+                            style: AppTypography.caption.copyWith(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                 // Date overlay
                 if (memory.takenAt != null || memory.createdAt.isNotEmpty)
                   Positioned(
@@ -157,6 +230,9 @@ class PhotoThumbnail extends StatelessWidget {
   }
 }
 
+/// Legacy alias for backwards compatibility
+typedef PhotoThumbnail = MediaThumbnail;
+
 /// Empty state for memories
 class NoMemoriesState extends StatelessWidget {
   final VoidCallback? onAddMemory;
@@ -201,7 +277,7 @@ class NoMemoriesState extends StatelessWidget {
             const SizedBox(height: AppSizes.space8),
             // Description
             Text(
-              'Capture your favorite moments by uploading photos from your trip.',
+              'Capture your favorite moments by uploading photos and videos from your trip.',
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.slate,
               ),
@@ -236,17 +312,21 @@ class NoMemoriesState extends StatelessWidget {
   }
 }
 
-/// Photo count badge widget
-class PhotoCountBadge extends StatelessWidget {
-  final int count;
+/// Media count badge widget (updated from photo count)
+class MediaCountBadge extends StatelessWidget {
+  final int photoCount;
+  final int videoCount;
 
-  const PhotoCountBadge({
+  const MediaCountBadge({
     super.key,
-    required this.count,
+    required this.photoCount,
+    this.videoCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final totalCount = photoCount + videoCount;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSizes.space12,
@@ -260,13 +340,13 @@ class PhotoCountBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.photo_library_rounded,
+            videoCount > 0 ? Icons.perm_media_rounded : Icons.photo_library_rounded,
             size: AppSizes.iconXs,
             color: AppColors.goldenGlow,
           ),
           const SizedBox(width: AppSizes.space4),
           Text(
-            '$count ${count == 1 ? 'Photo' : 'Photos'}',
+            '$totalCount ${totalCount == 1 ? 'Memory' : 'Memories'}',
             style: AppTypography.caption.copyWith(
               color: AppColors.goldenGlow,
             ),
@@ -276,3 +356,6 @@ class PhotoCountBadge extends StatelessWidget {
     );
   }
 }
+
+/// Legacy alias for backwards compatibility
+typedef PhotoCountBadge = MediaCountBadge;

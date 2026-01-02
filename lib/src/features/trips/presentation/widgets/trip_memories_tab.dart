@@ -86,7 +86,10 @@ class TripMemoriesTab extends ConsumerWidget {
                       color: AppColors.slate,
                     ),
                   ),
-                  PhotoCountBadge(count: state.memories.length),
+                  MediaCountBadge(
+                    photoCount: state.memories.where((m) => !m.hasVideo).length,
+                    videoCount: state.memories.where((m) => m.hasVideo).length,
+                  ),
                 ],
               ),
             ),
