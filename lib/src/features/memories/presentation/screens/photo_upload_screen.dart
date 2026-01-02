@@ -3,13 +3,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_thumbnail/video_thumbnail.dart' as vt;
+import 'package:path_provider/path_provider.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../data/repositories/memory_repository.dart';
 import '../providers/memories_provider.dart';
 
-/// Screen for uploading a new photo memory
+/// Maximum file size for photos (10MB)
+const int _maxPhotoSizeBytes = 10 * 1024 * 1024;
+
+/// Maximum file size for videos (100MB)
+const int _maxVideoSizeBytes = 100 * 1024 * 1024;
+
+/// Maximum number of media files per memory
+const int _maxMediaFiles = 10;
+
+/// Represents a selected media item (photo or video)
+class _SelectedMedia {
+  final File file;
+  final bool isVideo;
+  final String fileName;
+  File? thumbnail;
+
+  _SelectedMedia({
+    required this.file,
+    required this.isVideo,
+    required this.fileName,
+    this.thumbnail,
+  });
+}
+
+/// Screen for uploading a new memory with photos/videos
 class PhotoUploadScreen extends ConsumerStatefulWidget {
   final String tripId;
   final double? initialLatitude;
@@ -33,17 +59,21 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   final _longitudeController = TextEditingController();
   final _imagePicker = ImagePicker();
 
-  File? _selectedImage;
+  final List<_SelectedMedia> _selectedMedia = [];
   DateTime? _takenAt;
+  TimeOfDay? _takenAtTime;
+  bool _showLocationFields = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialLatitude != null) {
       _latitudeController.text = widget.initialLatitude.toString();
+      _showLocationFields = true;
     }
     if (widget.initialLongitude != null) {
       _longitudeController.text = widget.initialLongitude.toString();
+      _showLocationFields = true;
     }
   }
 
@@ -72,20 +102,20 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image picker section
-                    _buildImagePicker(),
+                    // Media picker grid
+                    _buildMediaPickerSection(),
                     const SizedBox(height: AppSizes.space24),
 
                     // Caption field
                     _buildCaptionField(),
                     const SizedBox(height: AppSizes.space16),
 
-                    // Location section
+                    // Location section (collapsible)
                     _buildLocationSection(),
                     const SizedBox(height: AppSizes.space16),
 
-                    // Date taken
-                    _buildDateField(),
+                    // Date & Time taken
+                    _buildDateTimeField(),
                   ],
                 ),
               ),
@@ -120,100 +150,191 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     );
   }
 
-  Widget _buildImagePicker() {
+  Widget _buildMediaPickerSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Photo',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
-        GestureDetector(
-          onTap: _showImageSourceDialog,
-          child: Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              color: AppColors.warmGray,
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-              border: Border.all(
-                color: _selectedImage == null
-                    ? AppColors.mutedGray
-                    : AppColors.sunnyYellow,
-                width: 2,
+        Row(
+          children: [
+            Text(
+              'Photos & Videos',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.charcoal,
               ),
             ),
-            child: _selectedImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusLg - 2),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.file(
-                          _selectedImage!,
-                          fit: BoxFit.cover,
-                        ),
-                        Positioned(
-                          top: AppSizes.space8,
-                          right: AppSizes.space8,
-                          child: GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              setState(() => _selectedImage = null);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(AppSizes.space8),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius:
-                                    BorderRadius.circular(AppSizes.radiusFull),
-                              ),
-                              child: const Icon(
-                                Icons.close_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(AppSizes.space16),
-                        decoration: BoxDecoration(
-                          color: AppColors.lemonLight,
-                          borderRadius:
-                              BorderRadius.circular(AppSizes.radiusFull),
-                        ),
+            const SizedBox(width: AppSizes.space8),
+            Text(
+              '(Optional)',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.mutedGray,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${_selectedMedia.length}/$_maxMediaFiles',
+              style: AppTypography.caption.copyWith(
+                color: _selectedMedia.length >= _maxMediaFiles
+                    ? AppColors.error
+                    : AppColors.slate,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.space8),
+        _buildMediaGrid(),
+        const SizedBox(height: AppSizes.space8),
+        Text(
+          'Photos: max 10MB each • Videos: max 100MB each',
+          style: AppTypography.caption.copyWith(
+            color: AppColors.mutedGray,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMediaGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: AppSizes.space8,
+        mainAxisSpacing: AppSizes.space8,
+      ),
+      itemCount: _selectedMedia.length + (_selectedMedia.length < _maxMediaFiles ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == _selectedMedia.length) {
+          // Add button
+          return _buildAddMediaButton();
+        }
+        return _buildMediaTile(_selectedMedia[index], index);
+      },
+    );
+  }
+
+  Widget _buildAddMediaButton() {
+    return GestureDetector(
+      onTap: _showMediaSourceDialog,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.warmGray,
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          border: Border.all(
+            color: AppColors.mutedGray,
+            width: 2,
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSizes.space12),
+              decoration: BoxDecoration(
+                color: AppColors.lemonLight,
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+              ),
+              child: Icon(
+                Icons.add_rounded,
+                size: 24,
+                color: AppColors.goldenGlow,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space8),
+            Text(
+              'Add',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.slate,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaTile(_SelectedMedia media, int index) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Image or video thumbnail
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          child: media.isVideo
+              ? (media.thumbnail != null
+                  ? Image.file(media.thumbnail!, fit: BoxFit.cover)
+                  : Container(
+                      color: AppColors.charcoal,
+                      child: const Center(
                         child: Icon(
-                          Icons.add_a_photo_rounded,
+                          Icons.videocam_rounded,
+                          color: Colors.white,
                           size: 32,
-                          color: AppColors.goldenGlow,
                         ),
                       ),
-                      const SizedBox(height: AppSizes.space12),
-                      Text(
-                        'Tap to add a photo',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.slate,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.space4),
-                      Text(
-                        'Camera or Gallery',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.mutedGray,
-                        ),
-                      ),
-                    ],
+                    ))
+              : Image.file(media.file, fit: BoxFit.cover),
+        ),
+
+        // Video indicator
+        if (media.isVideo)
+          Positioned(
+            bottom: AppSizes.space4,
+            left: AppSizes.space4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.space8,
+                vertical: AppSizes.space4,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.videocam_rounded,
+                    color: Colors.white,
+                    size: 12,
                   ),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Video',
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Remove button
+        Positioned(
+          top: AppSizes.space4,
+          right: AppSizes.space4,
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _selectedMedia.removeAt(index));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
           ),
         ),
       ],
@@ -224,11 +345,22 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Caption (Optional)',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
+        Row(
+          children: [
+            Text(
+              'Caption',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.charcoal,
+              ),
+            ),
+            const SizedBox(width: AppSizes.space8),
+            Text(
+              '(Optional)',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.mutedGray,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSizes.space8),
         TextFormField(
@@ -271,155 +403,17 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Location (Optional)',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _latitudeController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Latitude',
-                  labelStyle: AppTypography.bodySmall.copyWith(
-                    color: AppColors.slate,
-                  ),
-                  hintText: 'e.g., 23.8103',
-                  hintStyle: AppTypography.bodySmall.copyWith(
-                    color: AppColors.mutedGray,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.warmGray,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.sunnyYellow,
-                      width: 2,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.error,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(AppSizes.space12),
-                ),
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.charcoal,
-                ),
-                validator: (value) {
-                  // Optional field - only validate if not empty
-                  if (value != null && value.isNotEmpty) {
-                    final lat = double.tryParse(value);
-                    if (lat == null || lat < -90 || lat > 90) {
-                      return 'Invalid latitude';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            Expanded(
-              child: TextFormField(
-                controller: _longitudeController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Longitude',
-                  labelStyle: AppTypography.bodySmall.copyWith(
-                    color: AppColors.slate,
-                  ),
-                  hintText: 'e.g., 90.4125',
-                  hintStyle: AppTypography.bodySmall.copyWith(
-                    color: AppColors.mutedGray,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.warmGray,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.sunnyYellow,
-                      width: 2,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.error,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(AppSizes.space12),
-                ),
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.charcoal,
-                ),
-                validator: (value) {
-                  // Optional field - only validate if not empty
-                  if (value != null && value.isNotEmpty) {
-                    final lng = double.tryParse(value);
-                    if (lng == null || lng < -180 || lng > 180) {
-                      return 'Invalid longitude';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSizes.space8),
-        Text(
-          'Enter the coordinates where this photo was taken',
-          style: AppTypography.caption.copyWith(
-            color: AppColors.mutedGray,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Date Taken (Optional)',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
+        // Location header with toggle
         GestureDetector(
-          onTap: _selectDate,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() => _showLocationFields = !_showLocationFields);
+          },
           child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSizes.space16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.space16,
+              vertical: AppSizes.space12,
+            ),
             decoration: BoxDecoration(
               color: AppColors.warmGray,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -427,39 +421,291 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             child: Row(
               children: [
                 Icon(
-                  Icons.calendar_today_rounded,
-                  color: _takenAt != null
+                  Icons.location_on_rounded,
+                  color: _showLocationFields
                       ? AppColors.goldenGlow
                       : AppColors.mutedGray,
                   size: 20,
                 ),
                 const SizedBox(width: AppSizes.space12),
-                Text(
-                  _takenAt != null
-                      ? _formatDate(_takenAt!)
-                      : 'Select date',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: _takenAt != null
-                        ? AppColors.charcoal
-                        : AppColors.mutedGray,
-                  ),
-                ),
-                const Spacer(),
-                if (_takenAt != null)
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      setState(() => _takenAt = null);
-                    },
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: AppColors.mutedGray,
-                      size: 20,
+                Expanded(
+                  child: Text(
+                    'Add Location',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: _showLocationFields
+                          ? AppColors.charcoal
+                          : AppColors.slate,
                     ),
                   ),
+                ),
+                Text(
+                  '(Optional)',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.mutedGray,
+                  ),
+                ),
+                const SizedBox(width: AppSizes.space8),
+                Icon(
+                  _showLocationFields
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.mutedGray,
+                ),
               ],
             ),
           ),
+        ),
+
+        // Location fields (collapsible)
+        if (_showLocationFields) ...[
+          const SizedBox(height: AppSizes.space12),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _latitudeController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Latitude',
+                    labelStyle: AppTypography.bodySmall.copyWith(
+                      color: AppColors.slate,
+                    ),
+                    hintText: 'e.g., 23.8103',
+                    hintStyle: AppTypography.bodySmall.copyWith(
+                      color: AppColors.mutedGray,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.warmGray,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: const BorderSide(
+                        color: AppColors.sunnyYellow,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.all(AppSizes.space12),
+                  ),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.charcoal,
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      final lat = double.tryParse(value);
+                      if (lat == null || lat < -90 || lat > 90) {
+                        return 'Invalid';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSizes.space12),
+              Expanded(
+                child: TextFormField(
+                  controller: _longitudeController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Longitude',
+                    labelStyle: AppTypography.bodySmall.copyWith(
+                      color: AppColors.slate,
+                    ),
+                    hintText: 'e.g., 90.4125',
+                    hintStyle: AppTypography.bodySmall.copyWith(
+                      color: AppColors.mutedGray,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.warmGray,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: const BorderSide(
+                        color: AppColors.sunnyYellow,
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      borderSide: const BorderSide(
+                        color: AppColors.error,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.all(AppSizes.space12),
+                  ),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.charcoal,
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      final lng = double.tryParse(value);
+                      if (lng == null || lng < -180 || lng > 180) {
+                        return 'Invalid';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDateTimeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Date & Time Taken',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.charcoal,
+              ),
+            ),
+            const SizedBox(width: AppSizes.space8),
+            Text(
+              '(Optional)',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.mutedGray,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.space8),
+        Row(
+          children: [
+            // Date picker
+            Expanded(
+              child: GestureDetector(
+                onTap: _selectDate,
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.space16),
+                  decoration: BoxDecoration(
+                    color: AppColors.warmGray,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        color: _takenAt != null
+                            ? AppColors.goldenGlow
+                            : AppColors.mutedGray,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppSizes.space12),
+                      Expanded(
+                        child: Text(
+                          _takenAt != null
+                              ? _formatDate(_takenAt!)
+                              : 'Select date',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: _takenAt != null
+                                ? AppColors.charcoal
+                                : AppColors.mutedGray,
+                          ),
+                        ),
+                      ),
+                      if (_takenAt != null)
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() {
+                              _takenAt = null;
+                              _takenAtTime = null;
+                            });
+                          },
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: AppColors.mutedGray,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSizes.space12),
+            // Time picker
+            Expanded(
+              child: GestureDetector(
+                onTap: _takenAt != null ? _selectTime : null,
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.space16),
+                  decoration: BoxDecoration(
+                    color: _takenAt != null
+                        ? AppColors.warmGray
+                        : AppColors.warmGray.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        color: _takenAtTime != null
+                            ? AppColors.goldenGlow
+                            : AppColors.mutedGray,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppSizes.space12),
+                      Expanded(
+                        child: Text(
+                          _takenAtTime != null
+                              ? _formatTime(_takenAtTime!)
+                              : 'Time',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: _takenAtTime != null
+                                ? AppColors.charcoal
+                                : AppColors.mutedGray,
+                          ),
+                        ),
+                      ),
+                      if (_takenAtTime != null)
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _takenAtTime = null);
+                          },
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: AppColors.mutedGray,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -468,6 +714,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   Widget _buildUploadButton(MemoriesState memoriesState) {
     final isUploading = memoriesState.isUploading;
     final progress = memoriesState.uploadProgress;
+    final hasContent = _selectedMedia.isNotEmpty || _captionController.text.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
@@ -509,9 +756,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: isUploading || _selectedImage == null
-                    ? null
-                    : _handleUpload,
+                onPressed: isUploading || !hasContent ? null : _handleUpload,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sunnyYellow,
                   foregroundColor: AppColors.charcoal,
@@ -552,7 +797,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     );
   }
 
-  void _showImageSourceDialog() {
+  void _showMediaSourceDialog() {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
@@ -578,7 +823,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               ),
               const SizedBox(height: AppSizes.space24),
               Text(
-                'Choose Photo Source',
+                'Add Media',
                 style: AppTypography.headlineSmall.copyWith(
                   color: AppColors.charcoal,
                 ),
@@ -590,20 +835,50 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                     child: _buildSourceOption(
                       icon: Icons.camera_alt_rounded,
                       label: 'Camera',
+                      subtitle: 'Photo',
                       onTap: () {
                         Navigator.pop(context);
-                        _pickImage(ImageSource.camera);
+                        _pickMedia(ImageSource.camera, isVideo: false);
                       },
                     ),
                   ),
-                  const SizedBox(width: AppSizes.space16),
+                  const SizedBox(width: AppSizes.space12),
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.videocam_rounded,
+                      label: 'Camera',
+                      subtitle: 'Video',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickMedia(ImageSource.camera, isVideo: true);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space12),
+              Row(
+                children: [
                   Expanded(
                     child: _buildSourceOption(
                       icon: Icons.photo_library_rounded,
                       label: 'Gallery',
+                      subtitle: 'Photos',
                       onTap: () {
                         Navigator.pop(context);
-                        _pickImage(ImageSource.gallery);
+                        _pickMedia(ImageSource.gallery, isVideo: false);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space12),
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.video_library_rounded,
+                      label: 'Gallery',
+                      subtitle: 'Videos',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickMedia(ImageSource.gallery, isVideo: true);
                       },
                     ),
                   ),
@@ -620,6 +895,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   Widget _buildSourceOption({
     required IconData icon,
     required String label,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -628,7 +904,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(AppSizes.space24),
+        padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
           color: AppColors.warmGray,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
@@ -636,22 +912,28 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSizes.space16),
+              padding: const EdgeInsets.all(AppSizes.space12),
               decoration: BoxDecoration(
                 color: AppColors.lemonLight,
                 borderRadius: BorderRadius.circular(AppSizes.radiusFull),
               ),
               child: Icon(
                 icon,
-                size: 32,
+                size: 24,
                 color: AppColors.goldenGlow,
               ),
             ),
-            const SizedBox(height: AppSizes.space12),
+            const SizedBox(height: AppSizes.space8),
             Text(
               label,
-              style: AppTypography.labelLarge.copyWith(
+              style: AppTypography.labelMedium.copyWith(
                 color: AppColors.charcoal,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: AppTypography.caption.copyWith(
+                color: AppColors.slate,
               ),
             ),
           ],
@@ -660,34 +942,104 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
     try {
-      final pickedFile = await _imagePicker.pickImage(
-        source: source,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
+      if (isVideo) {
+        final pickedFile = await _imagePicker.pickVideo(
+          source: source,
+          maxDuration: const Duration(minutes: 5),
+        );
 
-      if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
+        if (pickedFile != null) {
+          final file = File(pickedFile.path);
+          final fileSize = await file.length();
+
+          if (fileSize > _maxVideoSizeBytes) {
+            if (mounted) {
+              _showError('Video exceeds maximum size of 100MB');
+            }
+            return;
+          }
+
+          // Generate thumbnail
+          File? thumbnail;
+          try {
+            final tempDir = await getTemporaryDirectory();
+            final thumbnailPath = await vt.VideoThumbnail.thumbnailFile(
+              video: pickedFile.path,
+              thumbnailPath: tempDir.path,
+              imageFormat: vt.ImageFormat.JPEG,
+              maxWidth: 200,
+              quality: 75,
+            );
+            if (thumbnailPath != null) {
+              thumbnail = File(thumbnailPath);
+            }
+          } catch (e) {
+            // Thumbnail generation failed, continue without it
+          }
+
+          setState(() {
+            _selectedMedia.add(_SelectedMedia(
+              file: file,
+              isVideo: true,
+              fileName: pickedFile.name,
+              thumbnail: thumbnail,
+            ));
+          });
+        }
+      } else {
+        final pickedFile = await _imagePicker.pickImage(
+          source: source,
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 85,
+        );
+
+        if (pickedFile != null) {
+          final file = File(pickedFile.path);
+          final fileSize = await file.length();
+
+          if (fileSize > _maxPhotoSizeBytes) {
+            if (mounted) {
+              _showError('Photo exceeds maximum size of 10MB');
+            }
+            return;
+          }
+
+          setState(() {
+            _selectedMedia.add(_SelectedMedia(
+              file: file,
+              isVideo: false,
+              fileName: pickedFile.name,
+            ));
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
+        _showError('Failed to pick media: $e');
       }
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_rounded, color: Colors.white),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+      ),
+    );
   }
 
   Future<void> _selectDate() async {
@@ -718,6 +1070,31 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     }
   }
 
+  Future<void> _selectTime() async {
+    HapticFeedback.lightImpact();
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _takenAtTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.sunnyYellow,
+              onPrimary: AppColors.charcoal,
+              surface: AppColors.snowWhite,
+              onSurface: AppColors.charcoal,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (time != null) {
+      setState(() => _takenAtTime = time);
+    }
+  }
+
   String _formatDate(DateTime date) {
     final months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -726,48 +1103,37 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
   Future<void> _handleUpload() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate: must have either a photo or a caption
-    final hasMedia = _selectedImage != null;
+    final hasMedia = _selectedMedia.isNotEmpty;
     final hasCaption = _captionController.text.isNotEmpty;
 
     if (!hasMedia && !hasCaption) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning_rounded, color: Colors.white),
-              SizedBox(width: AppSizes.space12),
-              Expanded(
-                child: Text('Please add a photo or write a caption'),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-        ),
-      );
+      _showError('Please add media or write a caption');
       return;
     }
 
     HapticFeedback.mediumImpact();
 
     try {
-      // Build media files list if image is selected
+      // Build media files list
       List<SelectedMediaFile>? mediaFiles;
-      if (_selectedImage != null) {
-        mediaFiles = [
-          SelectedMediaFile(
-            file: _selectedImage!,
-            isVideo: false,
-            fileName: _selectedImage!.path.split('/').last,
-          ),
-        ];
+      if (_selectedMedia.isNotEmpty) {
+        mediaFiles = _selectedMedia
+            .map((m) => SelectedMediaFile(
+                  file: m.file,
+                  isVideo: m.isVideo,
+                  fileName: m.fileName,
+                ))
+            .toList();
       }
 
       // Parse latitude/longitude if provided
@@ -779,12 +1145,28 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         longitude = double.tryParse(_longitudeController.text);
       }
 
+      // Combine date and time
+      DateTime? takenAt;
+      if (_takenAt != null) {
+        if (_takenAtTime != null) {
+          takenAt = DateTime(
+            _takenAt!.year,
+            _takenAt!.month,
+            _takenAt!.day,
+            _takenAtTime!.hour,
+            _takenAtTime!.minute,
+          );
+        } else {
+          takenAt = _takenAt;
+        }
+      }
+
       await ref.read(tripMemoriesProvider(widget.tripId).notifier).uploadMemory(
             mediaFiles: mediaFiles,
             latitude: latitude,
             longitude: longitude,
             caption: hasCaption ? _captionController.text : null,
-            takenAt: _takenAt,
+            takenAt: takenAt,
           );
 
       if (mounted) {
@@ -808,16 +1190,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to upload: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
+        _showError('Failed to upload: $e');
       }
     }
   }
