@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../data/repositories/memory_repository.dart';
 import '../providers/memories_provider.dart';
 
 /// Screen for uploading a new photo memory
@@ -270,33 +271,11 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'Location',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSizes.space8,
-                vertical: AppSizes.space4,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.lemonLight,
-                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-              ),
-              child: Text(
-                'Required',
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.goldenGlow,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Location (Optional)',
+          style: AppTypography.labelLarge.copyWith(
+            color: AppColors.charcoal,
+          ),
         ),
         const SizedBox(height: AppSizes.space8),
         Row(
@@ -345,12 +324,12 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   color: AppColors.charcoal,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  final lat = double.tryParse(value);
-                  if (lat == null || lat < -90 || lat > 90) {
-                    return 'Invalid latitude';
+                  // Optional field - only validate if not empty
+                  if (value != null && value.isNotEmpty) {
+                    final lat = double.tryParse(value);
+                    if (lat == null || lat < -90 || lat > 90) {
+                      return 'Invalid latitude';
+                    }
                   }
                   return null;
                 },
@@ -401,12 +380,12 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   color: AppColors.charcoal,
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  final lng = double.tryParse(value);
-                  if (lng == null || lng < -180 || lng > 180) {
-                    return 'Invalid longitude';
+                  // Optional field - only validate if not empty
+                  if (value != null && value.isNotEmpty) {
+                    final lng = double.tryParse(value);
+                    if (lng == null || lng < -180 || lng > 180) {
+                      return 'Invalid longitude';
+                    }
                   }
                   return null;
                 },
@@ -749,14 +728,21 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
   Future<void> _handleUpload() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImage == null) {
+
+    // Validate: must have either a photo or a caption
+    final hasMedia = _selectedImage != null;
+    final hasCaption = _captionController.text.isNotEmpty;
+
+    if (!hasMedia && !hasCaption) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
             children: [
               Icon(Icons.warning_rounded, color: Colors.white),
               SizedBox(width: AppSizes.space12),
-              Text('Please select a photo'),
+              Expanded(
+                child: Text('Please add a photo or write a caption'),
+              ),
             ],
           ),
           backgroundColor: AppColors.error,
@@ -772,13 +758,32 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     HapticFeedback.mediumImpact();
 
     try {
+      // Build media files list if image is selected
+      List<SelectedMediaFile>? mediaFiles;
+      if (_selectedImage != null) {
+        mediaFiles = [
+          SelectedMediaFile(
+            file: _selectedImage!,
+            isVideo: false,
+            fileName: _selectedImage!.path.split('/').last,
+          ),
+        ];
+      }
+
+      // Parse latitude/longitude if provided
+      double? latitude;
+      double? longitude;
+      if (_latitudeController.text.isNotEmpty &&
+          _longitudeController.text.isNotEmpty) {
+        latitude = double.tryParse(_latitudeController.text);
+        longitude = double.tryParse(_longitudeController.text);
+      }
+
       await ref.read(tripMemoriesProvider(widget.tripId).notifier).uploadMemory(
-            photoFile: _selectedImage!,
-            latitude: double.parse(_latitudeController.text),
-            longitude: double.parse(_longitudeController.text),
-            caption: _captionController.text.isNotEmpty
-                ? _captionController.text
-                : null,
+            mediaFiles: mediaFiles,
+            latitude: latitude,
+            longitude: longitude,
+            caption: hasCaption ? _captionController.text : null,
             takenAt: _takenAt,
           );
 

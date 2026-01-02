@@ -57,10 +57,12 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
 
     if (_showMemories) {
       for (final memory in memoriesState.memories) {
-        final lat = double.tryParse(memory.latitude);
-        final lng = double.tryParse(memory.longitude);
-        if (lat != null && lng != null) {
-          allPoints.add(LatLng(lat, lng));
+        if (memory.latitude != null && memory.longitude != null) {
+          final lat = double.tryParse(memory.latitude!);
+          final lng = double.tryParse(memory.longitude!);
+          if (lat != null && lng != null) {
+            allPoints.add(LatLng(lat, lng));
+          }
         }
       }
     }
@@ -195,23 +197,25 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     // Memory markers
     if (_showMemories) {
       for (final memory in memories) {
-        final lat = double.tryParse(memory.latitude);
-        final lng = double.tryParse(memory.longitude);
-        if (lat != null && lng != null) {
-          markers.add(
-            Marker(
-              point: LatLng(lat, lng),
-              width: 44,
-              height: 44,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _showMemoryDetails(memory);
-                },
-                child: _buildMemoryMarker(memory),
+        if (memory.latitude != null && memory.longitude != null) {
+          final lat = double.tryParse(memory.latitude!);
+          final lng = double.tryParse(memory.longitude!);
+          if (lat != null && lng != null) {
+            markers.add(
+              Marker(
+                point: LatLng(lat, lng),
+                width: 44,
+                height: 44,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _showMemoryDetails(memory);
+                  },
+                  child: _buildMemoryMarker(memory),
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
       }
     }
@@ -241,6 +245,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
   }
 
   Widget _buildMemoryMarker(MemoryModel memory) {
+    final imageUrl = memory.displayUrl;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
@@ -249,26 +255,35 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-        child: CachedNetworkImage(
-          imageUrl: memory.photoUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: AppColors.warmGray,
-            child: const Icon(
-              Icons.photo_rounded,
-              color: AppColors.mutedGray,
-              size: 20,
-            ),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: AppColors.warmGray,
-            child: const Icon(
-              Icons.broken_image_rounded,
-              color: AppColors.mutedGray,
-              size: 20,
-            ),
-          ),
-        ),
+        child: imageUrl != null
+            ? CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: AppColors.warmGray,
+                  child: const Icon(
+                    Icons.photo_rounded,
+                    color: AppColors.mutedGray,
+                    size: 20,
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: AppColors.warmGray,
+                  child: const Icon(
+                    Icons.broken_image_rounded,
+                    color: AppColors.mutedGray,
+                    size: 20,
+                  ),
+                ),
+              )
+            : Container(
+                color: AppColors.lemonLight,
+                child: Icon(
+                  memory.hasVideo ? Icons.videocam_rounded : Icons.notes_rounded,
+                  color: AppColors.goldenGlow,
+                  size: 20,
+                ),
+              ),
       ),
     );
   }
@@ -625,6 +640,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
   }
 
   void _showMemoryDetails(MemoryModel memory) {
+    final imageUrl = memory.displayUrl;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -637,34 +654,101 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Photo
+            // Photo/Video preview
             ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(AppSizes.radiusXl),
               ),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: CachedNetworkImage(
-                  imageUrl: memory.photoUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppColors.warmGray,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.sunnyYellow,
-                        strokeWidth: 2,
+                child: imageUrl != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: AppColors.warmGray,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.sunnyYellow,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: AppColors.warmGray,
+                              child: const Icon(
+                                Icons.broken_image_rounded,
+                                color: AppColors.mutedGray,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                          // Show video indicator if has video
+                          if (memory.hasVideo)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSizes.space12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
+                          // Show media count badge if multiple
+                          if (memory.mediaItems.length > 1)
+                            Positioned(
+                              top: AppSizes.space8,
+                              right: AppSizes.space8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSizes.space8,
+                                  vertical: AppSizes.space4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                                ),
+                                child: Text(
+                                  '${memory.mediaItems.length}',
+                                  style: AppTypography.caption.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : Container(
+                        color: AppColors.lemonLight,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.notes_rounded,
+                                size: 40,
+                                color: AppColors.goldenGlow,
+                              ),
+                              const SizedBox(height: AppSizes.space8),
+                              Text(
+                                'No media',
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.slate,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.warmGray,
-                    child: const Icon(
-                      Icons.broken_image_rounded,
-                      color: AppColors.mutedGray,
-                      size: 40,
-                    ),
-                  ),
-                ),
               ),
             ),
             // Details
@@ -687,23 +771,26 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                     ),
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on_rounded,
-                        size: 16,
-                        color: AppColors.mutedGray,
-                      ),
-                      const SizedBox(width: AppSizes.space4),
-                      Expanded(
-                        child: Text(
-                          '${memory.latitude}, ${memory.longitude}',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.slate,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      if (memory.hasLocation) ...[
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: 16,
+                          color: AppColors.mutedGray,
                         ),
-                      ),
+                        const SizedBox(width: AppSizes.space4),
+                        Expanded(
+                          child: Text(
+                            '${memory.latitude}, ${memory.longitude}',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.slate,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                       if (memory.takenAt != null) ...[
-                        const SizedBox(width: AppSizes.space16),
+                        if (memory.hasLocation)
+                          const SizedBox(width: AppSizes.space16),
                         Icon(
                           Icons.calendar_today_rounded,
                           size: 16,

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/memory_model.dart';
@@ -92,21 +91,21 @@ class TripMemories extends _$TripMemories {
     await _loadMemories();
   }
 
-  /// Upload a new memory with photo
+  /// Upload a new memory with media files
   Future<void> uploadMemory({
-    required File photoFile,
-    required double latitude,
-    required double longitude,
+    List<SelectedMediaFile>? mediaFiles,
+    double? latitude,
+    double? longitude,
     String? caption,
     DateTime? takenAt,
   }) async {
-    AppLogger.action('Uploading memory photo');
+    AppLogger.action('Uploading memory');
     state = state.copyWith(isUploading: true, uploadProgress: 0.0, error: null);
 
     try {
       final newMemory = await _memoryRepository.uploadMemory(
         tripId: tripId,
-        photoFile: photoFile,
+        mediaFiles: mediaFiles,
         latitude: latitude,
         longitude: longitude,
         caption: caption,
