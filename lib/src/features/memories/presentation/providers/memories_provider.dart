@@ -94,6 +94,7 @@ class TripMemories extends _$TripMemories {
   /// Upload a new memory with media files
   Future<void> uploadMemory({
     List<SelectedMediaFile>? mediaFiles,
+    String? location,
     double? latitude,
     double? longitude,
     String? caption,
@@ -106,6 +107,7 @@ class TripMemories extends _$TripMemories {
       final newMemory = await _memoryRepository.uploadMemory(
         tripId: tripId,
         mediaFiles: mediaFiles,
+        location: location,
         latitude: latitude,
         longitude: longitude,
         caption: caption,

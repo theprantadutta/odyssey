@@ -19,6 +19,9 @@ class MemoryModel extends Equatable {
   @JsonKey(name: 'photo_url')
   final String? photoUrl;
 
+  /// Optional human-readable location name (e.g., "Eiffel Tower, Paris")
+  final String? location;
+
   /// Optional latitude coordinate
   final String? latitude;
 
@@ -40,6 +43,7 @@ class MemoryModel extends Equatable {
     required this.tripId,
     this.mediaItems = const [],
     this.photoUrl,
+    this.location,
     this.latitude,
     this.longitude,
     this.caption,
@@ -78,12 +82,16 @@ class MemoryModel extends Equatable {
   /// Get media count
   int get mediaCount => mediaItems.isNotEmpty ? mediaItems.length : (photoUrl != null ? 1 : 0);
 
+  /// Check if this memory has a location name
+  bool get hasLocationName => location != null && location!.isNotEmpty;
+
   @override
   List<Object?> get props => [
         id,
         tripId,
         mediaItems,
         photoUrl,
+        location,
         latitude,
         longitude,
         caption,

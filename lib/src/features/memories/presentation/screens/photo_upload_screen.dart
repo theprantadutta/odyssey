@@ -55,6 +55,7 @@ class PhotoUploadScreen extends ConsumerStatefulWidget {
 class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _captionController = TextEditingController();
+  final _locationController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   final _imagePicker = ImagePicker();
@@ -62,24 +63,25 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   final List<_SelectedMedia> _selectedMedia = [];
   DateTime? _takenAt;
   TimeOfDay? _takenAtTime;
-  bool _showLocationFields = false;
+  bool _showGpsFields = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialLatitude != null) {
       _latitudeController.text = widget.initialLatitude.toString();
-      _showLocationFields = true;
+      _showGpsFields = true;
     }
     if (widget.initialLongitude != null) {
       _longitudeController.text = widget.initialLongitude.toString();
-      _showLocationFields = true;
+      _showGpsFields = true;
     }
   }
 
   @override
   void dispose() {
     _captionController.dispose();
+    _locationController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
     super.dispose();
@@ -110,8 +112,12 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                     _buildCaptionField(),
                     const SizedBox(height: AppSizes.space16),
 
-                    // Location section (collapsible)
-                    _buildLocationSection(),
+                    // Location text field
+                    _buildLocationField(),
+                    const SizedBox(height: AppSizes.space16),
+
+                    // GPS Coordinates section (collapsible)
+                    _buildGpsSection(),
                     const SizedBox(height: AppSizes.space16),
 
                     // Date & Time taken
@@ -399,15 +405,77 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     );
   }
 
-  Widget _buildLocationSection() {
+  Widget _buildLocationField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Location header with toggle
+        Row(
+          children: [
+            Text(
+              'Location',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.charcoal,
+              ),
+            ),
+            const SizedBox(width: AppSizes.space8),
+            Text(
+              '(Optional)',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.mutedGray,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.space8),
+        TextFormField(
+          controller: _locationController,
+          maxLength: 200,
+          decoration: InputDecoration(
+            hintText: 'e.g., Eiffel Tower, Paris',
+            hintStyle: AppTypography.bodyMedium.copyWith(
+              color: AppColors.mutedGray,
+            ),
+            prefixIcon: const Icon(
+              Icons.location_on_rounded,
+              color: AppColors.mutedGray,
+            ),
+            filled: true,
+            fillColor: AppColors.warmGray,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              borderSide: const BorderSide(
+                color: AppColors.sunnyYellow,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.all(AppSizes.space16),
+            counterText: '',
+          ),
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.charcoal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGpsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // GPS header with toggle
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            setState(() => _showLocationFields = !_showLocationFields);
+            setState(() => _showGpsFields = !_showGpsFields);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(
@@ -421,8 +489,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             child: Row(
               children: [
                 Icon(
-                  Icons.location_on_rounded,
-                  color: _showLocationFields
+                  Icons.my_location_rounded,
+                  color: _showGpsFields
                       ? AppColors.goldenGlow
                       : AppColors.mutedGray,
                   size: 20,
@@ -430,9 +498,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 const SizedBox(width: AppSizes.space12),
                 Expanded(
                   child: Text(
-                    'Add Location',
+                    'GPS Coordinates',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: _showLocationFields
+                      color: _showGpsFields
                           ? AppColors.charcoal
                           : AppColors.slate,
                     ),
@@ -446,7 +514,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 ),
                 const SizedBox(width: AppSizes.space8),
                 Icon(
-                  _showLocationFields
+                  _showGpsFields
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
                   color: AppColors.mutedGray,
@@ -456,8 +524,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           ),
         ),
 
-        // Location fields (collapsible)
-        if (_showLocationFields) ...[
+        // GPS fields (collapsible)
+        if (_showGpsFields) ...[
           const SizedBox(height: AppSizes.space12),
           Row(
             children: [
@@ -1163,6 +1231,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
       await ref.read(tripMemoriesProvider(widget.tripId).notifier).uploadMemory(
             mediaFiles: mediaFiles,
+            location: _locationController.text.isNotEmpty ? _locationController.text : null,
             latitude: latitude,
             longitude: longitude,
             caption: hasCaption ? _captionController.text : null,

@@ -52,6 +52,7 @@ class MemoryRepository {
   Future<MemoryModel> uploadMemory({
     required String tripId,
     List<SelectedMediaFile>? mediaFiles,
+    String? location,
     double? latitude,
     double? longitude,
     String? caption,
@@ -61,6 +62,7 @@ class MemoryRepository {
     try {
       final formData = FormData.fromMap({
         'trip_id': tripId,
+        if (location != null && location.isNotEmpty) 'location': location,
         if (latitude != null) 'latitude': latitude.toString(),
         if (longitude != null) 'longitude': longitude.toString(),
         if (caption != null && caption.isNotEmpty) 'caption': caption,
