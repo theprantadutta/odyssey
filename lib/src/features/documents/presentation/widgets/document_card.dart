@@ -124,6 +124,38 @@ class DocumentCard extends StatelessWidget {
                             color: AppColors.slate,
                           ),
                         ),
+                        // File count badge for multiple files
+                        if (document.fileCount > 1) ...[
+                          const SizedBox(width: AppSizes.space8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSizes.space8,
+                              vertical: AppSizes.space4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.lavenderDream.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.attach_file_rounded,
+                                  size: 12,
+                                  color: AppColors.lavenderDream,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${document.fileCount}',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: AppColors.lavenderDream,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     if (document.notes != null && document.notes!.isNotEmpty) ...[
@@ -157,11 +189,13 @@ class DocumentCard extends StatelessWidget {
   }
 
   Widget _buildThumbnail(FileType fileType) {
-    if (fileType == FileType.image) {
+    final primaryUrl = document.primaryUrl;
+
+    if (fileType == FileType.image && primaryUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
         child: CachedNetworkImage(
-          imageUrl: FileUrlHelper.getAuthenticatedUrl(document.fileUrl),
+          imageUrl: FileUrlHelper.getAuthenticatedUrl(primaryUrl),
           width: 56,
           height: 56,
           fit: BoxFit.cover,
