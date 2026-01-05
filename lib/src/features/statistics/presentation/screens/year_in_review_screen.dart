@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_colors.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/statistics_provider.dart';
 import '../../data/models/statistics_model.dart';
 
@@ -10,6 +13,13 @@ class YearInReviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isPremium = ref.watch(isPremiumProvider);
+
+    // Show paywall for non-premium users
+    if (!isPremium) {
+      return _buildPaywallScreen(context);
+    }
+
     final reviewState = ref.watch(yearInReviewProvider);
     final currentYear = DateTime.now().year;
 
@@ -550,6 +560,91 @@ class YearInReviewScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaywallScreen(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Year in Review'),
+      ),
+      body: Center(
+        child: Container(
+          margin: const EdgeInsets.all(AppSizes.space24),
+          padding: const EdgeInsets.all(AppSizes.space24),
+          decoration: BoxDecoration(
+            color: AppColors.snowWhite,
+            borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.charcoal.withValues(alpha: 0.1),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.calendar_month,
+                  color: AppColors.charcoal,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: AppSizes.space16),
+              Text(
+                'Year in Review',
+                style: AppTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: AppSizes.space8),
+              Text(
+                'Relive your travel memories with a beautiful yearly summary. See your trips, destinations, and achievements at a glance!',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.slate,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSizes.space24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => PaywallUtils.showPaywall(
+                    context,
+                    featureName: 'Year in Review',
+                    featureIcon: Icons.calendar_month,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.sunnyYellow,
+                    foregroundColor: AppColors.charcoal,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.space16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                    ),
+                  ),
+                  child: const Text(
+                    'Upgrade to Premium',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

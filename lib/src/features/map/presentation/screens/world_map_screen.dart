@@ -5,7 +5,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/map_provider.dart';
 import '../widgets/trip_marker.dart';
 
@@ -24,6 +27,12 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   @override
   Widget build(BuildContext context) {
     final mapState = ref.watch(mapTripsProvider);
+    final isPremium = ref.watch(isPremiumProvider);
+
+    // Show paywall for non-premium users
+    if (!isPremium) {
+      return _buildPaywallScreen(context);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -324,6 +333,114 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
           Text(
             label,
             style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaywallScreen(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('World Map'),
+      ),
+      body: Stack(
+        children: [
+          // Blurred preview map
+          FlutterMap(
+            options: const MapOptions(
+              initialCenter: LatLng(20.0, 0.0),
+              initialZoom: 2.0,
+              interactionOptions: InteractionOptions(flags: 0), // Disable interaction
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.odyssey.app',
+              ),
+            ],
+          ),
+          // Blur overlay
+          Container(
+            color: AppColors.snowWhite.withValues(alpha: 0.8),
+          ),
+          // Premium prompt
+          Center(
+            child: Container(
+              margin: const EdgeInsets.all(AppSizes.space24),
+              padding: const EdgeInsets.all(AppSizes.space24),
+              decoration: BoxDecoration(
+                color: AppColors.snowWhite,
+                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.charcoal.withValues(alpha: 0.1),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.map,
+                      color: AppColors.charcoal,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space16),
+                  Text(
+                    'World Map',
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space8),
+                  Text(
+                    'See all your trips on an interactive world map. Track the countries and cities you\'ve visited!',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.slate,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSizes.space24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => PaywallUtils.showPaywall(
+                        context,
+                        featureName: 'World Map',
+                        featureIcon: Icons.map,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.sunnyYellow,
+                        foregroundColor: AppColors.charcoal,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSizes.space16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                        ),
+                      ),
+                      child: const Text(
+                        'Upgrade to Premium',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

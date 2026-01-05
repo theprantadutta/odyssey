@@ -6,6 +6,9 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/screens/paywall_screen.dart';
+import '../../../subscription/presentation/widgets/upgrade_banner.dart';
 import '../providers/statistics_provider.dart';
 class StatisticsDashboardScreen extends ConsumerWidget {
   const StatisticsDashboardScreen({super.key});
@@ -13,6 +16,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsState = ref.watch(statisticsProvider);
+    final isPremium = ref.watch(isPremiumProvider);
 
     return Scaffold(
       backgroundColor: AppColors.cloudGray,
@@ -75,6 +79,14 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               ),
               onPressed: () {
                 HapticFeedback.lightImpact();
+                if (!isPremium) {
+                  PaywallUtils.showPaywall(
+                    context,
+                    featureName: 'Year in Review',
+                    featureIcon: Icons.calendar_month,
+                  );
+                  return;
+                }
                 context.push('${AppRoutes.statistics}/year-review');
               },
               tooltip: 'Year in Review',
@@ -111,7 +123,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           : statsState.error != null && statsState.statistics == null
               ? _buildErrorState(context, ref, statsState.error!)
               : statsState.statistics != null
-                  ? _buildContent(context, ref, statsState.statistics!)
+                  ? _buildContent(context, ref, statsState.statistics!, isPremium)
                   : const SizedBox(),
     );
   }
@@ -177,7 +189,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, stats) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, stats, bool isPremium) {
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: AppColors.snowWhite,
@@ -188,6 +200,18 @@ class StatisticsDashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(AppSizes.space16),
         children: [
+          // Upgrade banner for free users
+          if (!isPremium)
+            UpgradeBanner(
+              title: 'Unlock Full Statistics',
+              subtitle: 'Get detailed insights, Year in Review, and more with Premium!',
+              onUpgrade: () => PaywallUtils.showPaywall(
+                context,
+                featureName: 'Full Statistics',
+                featureIcon: Icons.bar_chart,
+              ),
+            ),
+
           // Overview section
           _buildOverviewSection(context, stats),
           const SizedBox(height: AppSizes.space20),
