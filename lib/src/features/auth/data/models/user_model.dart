@@ -65,15 +65,21 @@ class RegisterRequest {
 class AuthResponse extends Equatable {
   @JsonKey(name: 'access_token')
   final String accessToken;
+  @JsonKey(name: 'refresh_token')
+  final String refreshToken;
   @JsonKey(name: 'token_type')
   final String tokenType;
   @JsonKey(name: 'user_id')
   final String userId;
+  @JsonKey(name: 'expires_in')
+  final int expiresIn; // Access token expiry in seconds
 
   const AuthResponse({
     required this.accessToken,
+    required this.refreshToken,
     required this.tokenType,
     required this.userId,
+    required this.expiresIn,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) =>
@@ -82,5 +88,5 @@ class AuthResponse extends Equatable {
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
 
   @override
-  List<Object?> get props => [accessToken, tokenType, userId];
+  List<Object?> get props => [accessToken, refreshToken, tokenType, userId, expiresIn];
 }

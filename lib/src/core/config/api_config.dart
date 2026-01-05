@@ -79,6 +79,8 @@ class ApiConfig {
   static const String login = '$auth/login';
   static const String me = '$auth/me';
   static const String logout = '$auth/logout';
+  static const String refresh = '$auth/refresh';
+  static const String logoutAll = '$auth/logout-all';
 
   // Google Auth endpoints
   static const String googleAuth = '$auth/google';
@@ -102,6 +104,8 @@ class ApiConfig {
 
   // Storage keys
   static const String accessTokenKey = 'access_token';
+  static const String refreshTokenKey = 'refresh_token';
+  static const String accessTokenExpiryKey = 'access_token_expiry';
   static const String userIdKey = 'user_id';
   static const String onboardingCompletedKey = 'onboarding_completed';
 }

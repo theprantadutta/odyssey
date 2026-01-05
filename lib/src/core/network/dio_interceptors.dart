@@ -1,16 +1,41 @@
 import 'package:dio/dio.dart';
 import '../services/logger_service.dart';
 import '../services/storage_service.dart';
+import '../services/token_refresh_service.dart';
 
-/// Interceptor to add JWT token to all requests
-class AuthInterceptor extends Interceptor {
+/// Interceptor to add JWT token to all requests and handle token refresh.
+/// Uses QueuedInterceptor to queue requests during token refresh.
+class AuthInterceptor extends QueuedInterceptor {
   final StorageService _storageService = StorageService();
+  final TokenRefreshService _tokenRefreshService = TokenRefreshService();
+
+  // Track if we've already tried refreshing for a request to avoid infinite loops
+  static const String _retryKey = 'x-retry-after-refresh';
 
   @override
   void onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    // Skip auth for refresh endpoint itself
+    if (options.path.contains('/auth/refresh')) {
+      return handler.next(options);
+    }
+
+    // Check if token is about to expire and proactively refresh
+    final isExpired = await _storageService.isAccessTokenExpired();
+    if (isExpired) {
+      final refreshToken = await _storageService.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        AppLogger.auth('Token expired, attempting proactive refresh...');
+        final refreshed = await _tokenRefreshService.refreshToken();
+        if (!refreshed) {
+          AppLogger.auth('Proactive refresh failed', isError: true);
+          // Don't fail the request yet, let it try and handle 401 in onError
+        }
+      }
+    }
+
     // Get token from secure storage
     final token = await _storageService.getAccessToken();
 
@@ -27,9 +52,63 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // Handle 401 Unauthorized - token expired or invalid
     if (err.response?.statusCode == 401) {
-      AppLogger.auth('Token expired or invalid - clearing credentials', isError: true);
-      // Clear stored credentials
-      await _storageService.clearAll();
+      final requestOptions = err.requestOptions;
+
+      // Skip retry for auth endpoints (except /me)
+      if (requestOptions.path.contains('/auth/') &&
+          !requestOptions.path.contains('/auth/me')) {
+        return handler.next(err);
+      }
+
+      // Check if we've already tried refreshing for this request
+      if (requestOptions.extra[_retryKey] == true) {
+        AppLogger.auth('Already retried after refresh, giving up', isError: true);
+        await _storageService.clearAuthData();
+        return handler.next(err);
+      }
+
+      // Check if we have a refresh token
+      final refreshToken = await _storageService.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        AppLogger.auth('No refresh token available, clearing auth data', isError: true);
+        await _storageService.clearAuthData();
+        return handler.next(err);
+      }
+
+      // Attempt to refresh the token
+      AppLogger.auth('401 received, attempting token refresh...');
+      final refreshed = await _tokenRefreshService.refreshToken();
+
+      if (refreshed) {
+        // Retry the original request with new token
+        AppLogger.auth('Token refreshed, retrying original request');
+        try {
+          final token = await _storageService.getAccessToken();
+          requestOptions.headers['Authorization'] = 'Bearer $token';
+          requestOptions.extra[_retryKey] = true;
+
+          // Create a new Dio instance for the retry to avoid interceptor loops
+          final retryDio = Dio(BaseOptions(
+            baseUrl: requestOptions.baseUrl,
+            connectTimeout: requestOptions.connectTimeout,
+            receiveTimeout: requestOptions.receiveTimeout,
+            sendTimeout: requestOptions.sendTimeout,
+          ));
+
+          final response = await retryDio.fetch(requestOptions);
+          return handler.resolve(response);
+        } catch (retryError) {
+          AppLogger.auth('Retry after refresh failed: $retryError', isError: true);
+          if (retryError is DioException) {
+            return handler.next(retryError);
+          }
+          return handler.next(err);
+        }
+      } else {
+        // Refresh failed, clear auth data
+        AppLogger.auth('Token refresh failed, clearing auth data', isError: true);
+        await _storageService.clearAuthData();
+      }
     }
 
     return handler.next(err);

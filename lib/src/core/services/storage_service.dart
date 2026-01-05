@@ -29,6 +29,42 @@ class StorageService {
     await _storage.delete(key: ApiConfig.accessTokenKey);
   }
 
+  // Refresh Token
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: ApiConfig.refreshTokenKey, value: token);
+  }
+
+  Future<String?> getRefreshToken() async {
+    return await _storage.read(key: ApiConfig.refreshTokenKey);
+  }
+
+  Future<void> deleteRefreshToken() async {
+    await _storage.delete(key: ApiConfig.refreshTokenKey);
+  }
+
+  // Access Token Expiry
+  Future<void> saveAccessTokenExpiry(DateTime expiry) async {
+    await _storage.write(
+      key: ApiConfig.accessTokenExpiryKey,
+      value: expiry.millisecondsSinceEpoch.toString(),
+    );
+  }
+
+  Future<DateTime?> getAccessTokenExpiry() async {
+    final value = await _storage.read(key: ApiConfig.accessTokenExpiryKey);
+    if (value == null) return null;
+    final millis = int.tryParse(value);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  Future<bool> isAccessTokenExpired() async {
+    final expiry = await getAccessTokenExpiry();
+    if (expiry == null) return true;
+    // Consider expired if less than 60 seconds remaining (buffer for network latency)
+    return DateTime.now().isAfter(expiry.subtract(const Duration(seconds: 60)));
+  }
+
   // User ID
   Future<void> saveUserId(String userId) async {
     await _storage.write(key: ApiConfig.userIdKey, value: userId);
@@ -67,7 +103,15 @@ class StorageService {
     return value == 'true';
   }
 
-  // Clear all data (logout)
+  // Clear all auth data (logout) - preserves intro/onboarding state
+  Future<void> clearAuthData() async {
+    await deleteAccessToken();
+    await deleteRefreshToken();
+    await deleteUserId();
+    await _storage.delete(key: ApiConfig.accessTokenExpiryKey);
+  }
+
+  // Clear all data (full reset)
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

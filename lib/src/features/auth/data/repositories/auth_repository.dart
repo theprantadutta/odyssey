@@ -25,6 +25,23 @@ class AuthRepository {
   final StorageService _storageService = StorageService();
   final GoogleSignInService _googleSignInService = GoogleSignInService();
 
+  /// Save all auth tokens and user ID from response
+  Future<void> _saveAuthTokens(AuthResponse response) async {
+    await _storageService.saveAccessToken(response.accessToken);
+    await _storageService.saveUserId(response.userId);
+
+    // Save refresh token if present
+    if (response.refreshToken.isNotEmpty) {
+      await _storageService.saveRefreshToken(response.refreshToken);
+    }
+
+    // Calculate and save token expiry time
+    if (response.expiresIn > 0) {
+      final expiry = DateTime.now().add(Duration(seconds: response.expiresIn));
+      await _storageService.saveAccessTokenExpiry(expiry);
+    }
+  }
+
   /// Register new user
   Future<AuthResponse> register({
     required String email,
@@ -43,10 +60,7 @@ class AuthRepository {
       );
 
       final authResponse = AuthResponse.fromJson(response.data);
-
-      // Save token and user ID
-      await _storageService.saveAccessToken(authResponse.accessToken);
-      await _storageService.saveUserId(authResponse.userId);
+      await _saveAuthTokens(authResponse);
 
       return authResponse;
     } on DioException catch (e) {
@@ -67,10 +81,7 @@ class AuthRepository {
       );
 
       final authResponse = AuthResponse.fromJson(response.data);
-
-      // Save token and user ID
-      await _storageService.saveAccessToken(authResponse.accessToken);
-      await _storageService.saveUserId(authResponse.userId);
+      await _saveAuthTokens(authResponse);
 
       return authResponse;
     } on DioException catch (e) {
@@ -88,21 +99,41 @@ class AuthRepository {
     }
   }
 
-  /// Logout user
+  /// Logout user (revokes current refresh token)
   Future<void> logout() async {
     try {
-      // Call logout endpoint (optional, backend may not require this)
-      try {
-        await _dioClient.post(ApiConfig.logout);
-      } catch (_) {
-        // Ignore logout endpoint errors
+      // Get refresh token to revoke
+      final refreshToken = await _storageService.getRefreshToken();
+
+      // Call logout endpoint to revoke the refresh token
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        try {
+          await _dioClient.post(
+            ApiConfig.logout,
+            data: {'refresh_token': refreshToken},
+          );
+        } catch (_) {
+          // Ignore logout endpoint errors - token may already be invalid
+        }
       }
 
-      // Clear local storage
-      await _storageService.clearAll();
+      // Clear local auth data (preserves intro/onboarding state)
+      await _storageService.clearAuthData();
     } catch (e) {
-      // Always clear storage even if API call fails
-      await _storageService.clearAll();
+      // Always clear auth data even if API call fails
+      await _storageService.clearAuthData();
+      rethrow;
+    }
+  }
+
+  /// Logout from all devices (revokes all refresh tokens)
+  Future<void> logoutAll() async {
+    try {
+      await _dioClient.post(ApiConfig.logoutAll);
+      await _storageService.clearAuthData();
+    } catch (e) {
+      // Always clear local auth data even if API call fails
+      await _storageService.clearAuthData();
       rethrow;
     }
   }
@@ -155,10 +186,7 @@ class AuthRepository {
       );
 
       final authResponse = AuthResponse.fromJson(response.data);
-
-      // Save token and user ID
-      await _storageService.saveAccessToken(authResponse.accessToken);
-      await _storageService.saveUserId(authResponse.userId);
+      await _saveAuthTokens(authResponse);
 
       return authResponse;
     } on DioException catch (e) {
@@ -189,10 +217,7 @@ class AuthRepository {
       );
 
       final authResponse = AuthResponse.fromJson(response.data);
-
-      // Save token and user ID
-      await _storageService.saveAccessToken(authResponse.accessToken);
-      await _storageService.saveUserId(authResponse.userId);
+      await _saveAuthTokens(authResponse);
 
       return authResponse;
     } on DioException catch (e) {
@@ -214,10 +239,7 @@ class AuthRepository {
       );
 
       final authResponse = AuthResponse.fromJson(response.data);
-
-      // Save token and user ID
-      await _storageService.saveAccessToken(authResponse.accessToken);
-      await _storageService.saveUserId(authResponse.userId);
+      await _saveAuthTokens(authResponse);
 
       return authResponse;
     } on DioException catch (e) {

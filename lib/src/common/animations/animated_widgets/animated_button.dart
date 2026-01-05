@@ -129,16 +129,22 @@ class _AnimatedButtonState extends State<AnimatedButton>
                         width: 2,
                       )
                     : null,
-                boxShadow: widget.isOutlined || !_isEnabled
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: bgColor.withValues(alpha: (0.4 * _glowAnimation.value).clamp(0.0, 1.0)),
-                          blurRadius: (20 * _glowAnimation.value).clamp(0.0, 20.0),
-                          offset: Offset(0, (8 * _glowAnimation.value).clamp(0.0, 8.0)),
-                          spreadRadius: 0,
-                        ),
-                      ],
+                // Always provide boxShadow to avoid lerp issues with null
+                // Use transparent/zero values when disabled or outlined
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.isOutlined || !_isEnabled
+                        ? Colors.transparent
+                        : bgColor.withValues(alpha: (0.4 * _glowAnimation.value).clamp(0.0, 1.0)),
+                    blurRadius: widget.isOutlined || !_isEnabled
+                        ? 0.0
+                        : (20 * _glowAnimation.value).clamp(0.0, 20.0),
+                    offset: widget.isOutlined || !_isEnabled
+                        ? Offset.zero
+                        : Offset(0, (8 * _glowAnimation.value).clamp(0.0, 8.0)),
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
               child: _buildContent(fgColor, bgColor),
             ),
