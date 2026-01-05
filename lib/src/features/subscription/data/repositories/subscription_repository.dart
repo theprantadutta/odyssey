@@ -1,4 +1,5 @@
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/services/logger_service.dart';
 import '../models/subscription_model.dart';
 
 /// Repository for subscription API calls
@@ -44,6 +45,50 @@ class SubscriptionRepository {
       queryParameters: {'fileSizeBytes': fileSizeBytes},
     );
     return StorageCheckResult.fromJson(response.data);
+  }
+
+  /// Verify and process a purchase with the backend
+  Future<bool> verifyPurchase({
+    required String productId,
+    required String receiptData,
+    String? signature,
+    required String platform,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        '$_basePath/purchase/verify',
+        data: {
+          'product_id': productId,
+          'receipt_data': receiptData,
+          'signature': signature,
+          'platform': platform,
+        },
+      );
+      return response.data['verified'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.error('Failed to verify purchase: $e');
+      return false;
+    }
+  }
+
+  /// Restore purchases - syncs with backend
+  Future<bool> restorePurchases({
+    required String platform,
+    required List<String> productIds,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        '$_basePath/purchase/restore',
+        data: {
+          'platform': platform,
+          'product_ids': productIds,
+        },
+      );
+      return response.data['restored'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.error('Failed to restore purchases: $e');
+      return false;
+    }
   }
 }
 

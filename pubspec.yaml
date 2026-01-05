@@ -88,6 +88,9 @@ dependencies:
   # Environment Configuration
   flutter_dotenv: ^5.2.1
 
+  # In-App Purchases
+  in_app_purchase: ^3.2.0
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
