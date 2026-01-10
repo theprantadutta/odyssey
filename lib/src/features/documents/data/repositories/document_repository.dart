@@ -180,7 +180,7 @@ class DocumentRepository {
       final formData = FormData.fromMap(formMap);
 
       final response = await _dioClient.multipart(
-        '${ApiConfig.documents}/upload',
+        ApiConfig.documents,
         formData,
         onSendProgress: onProgress,
       );
@@ -215,7 +215,7 @@ class DocumentRepository {
       });
 
       final response = await _dioClient.post(
-        '${ApiConfig.documents}/upload',
+        ApiConfig.documents,
         data: formData,
         options: Options(
           contentType: 'multipart/form-data',
