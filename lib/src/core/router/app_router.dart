@@ -19,6 +19,7 @@ import '../../features/achievements/presentation/screens/achievements_screen.dar
 import '../../features/statistics/presentation/screens/statistics_dashboard_screen.dart';
 import '../../features/statistics/presentation/screens/year_in_review_screen.dart';
 import '../../features/map/presentation/screens/world_map_screen.dart';
+import '../../features/notifications/presentation/screens/notification_history_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Route paths
@@ -39,6 +40,7 @@ class AppRoutes {
   static const String achievements = '/achievements';
   static const String statistics = '/statistics';
   static const String worldMap = '/map';
+  static const String notifications = '/notifications';
 }
 
 /// A simple listenable for router refresh
@@ -200,6 +202,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.worldMap,
         builder: (context, state) => const WorldMapScreen(),
+      ),
+      // Notifications route
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationHistoryScreen(),
       ),
     ],
   );

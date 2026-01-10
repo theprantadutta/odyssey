@@ -11,6 +11,8 @@ import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/animations/animation_constants.dart' as anim;
 import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../notifications/presentation/providers/notification_history_provider.dart';
+import '../../../notifications/presentation/widgets/notification_badge.dart';
 import '../providers/trips_provider.dart';
 import '../../data/models/trip_model.dart';
 import '../widgets/trip_card.dart';
@@ -218,6 +220,48 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               titleSpacing: AppSizes.space16,
               title: _buildHeader(authState),
               actions: [
+                // Notification bell button
+                Container(
+                  margin: const EdgeInsets.only(right: AppSizes.space8),
+                  decoration: BoxDecoration(
+                    color: AppColors.snowWhite,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final unreadCount = ref.watch(unreadNotificationCountProvider);
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.notifications_outlined,
+                              color: AppColors.skyBlue,
+                            ),
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              context.push(AppRoutes.notifications);
+                            },
+                            tooltip: 'Notifications',
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: NotificationBadge(count: unreadCount),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
                 // World Map button
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space8),
@@ -454,7 +498,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         ),
         const SizedBox(height: 2),
         Text(
-          '${_getGreeting()}${firstName != null && firstName.isNotEmpty ? ', $firstName' : ''}',
+          firstName != null && firstName.isNotEmpty ? firstName : '',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.slate,
           ),

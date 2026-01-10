@@ -95,6 +95,13 @@ class ApiConfig {
   static const String deviceRegister = '$devices/register';
   static String deviceUnregister(String token) => '$devices/$token';
 
+  // Notification history endpoints
+  static const String notifications = '/notifications';
+  static const String notificationsUnreadCount = '$notifications/unread-count';
+  static const String notificationsReadAll = '$notifications/read-all';
+  static String notificationMarkRead(String id) => '$notifications/$id/read';
+  static String notificationDelete(String id) => '$notifications/$id';
+
   // Trip endpoints
   static const String defaultTrips = '$trips/default-trips';
 
