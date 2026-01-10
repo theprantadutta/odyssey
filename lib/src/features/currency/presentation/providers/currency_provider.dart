@@ -1,17 +1,17 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:odyssey/src/features/currency/data/models/currency_model.dart';
 import 'package:odyssey/src/features/currency/data/repositories/currency_repository.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'currency_provider.g.dart';
 
 /// Currency repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 CurrencyRepository currencyRepository(Ref ref) {
   return CurrencyRepository();
 }
 
 /// Exchange rates for a base currency
-@riverpod
+@Riverpod(keepAlive: true)
 class ExchangeRates extends _$ExchangeRates {
   @override
   Future<ExchangeRateResponse?> build(String baseCurrency) async {
@@ -33,7 +33,7 @@ class ExchangeRates extends _$ExchangeRates {
 }
 
 /// Supported currencies
-@riverpod
+@Riverpod(keepAlive: true)
 class SupportedCurrencies extends _$SupportedCurrencies {
   @override
   Future<List<CurrencyInfo>> build() async {
@@ -87,7 +87,7 @@ class CurrencyConversionState {
 }
 
 /// Currency converter
-@riverpod
+@Riverpod(keepAlive: true)
 class CurrencyConverter extends _$CurrencyConverter {
   @override
   CurrencyConversionState build() {

@@ -1,5 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../data/models/achievement_model.dart';
 import '../../data/repositories/achievement_repository.dart';
 
@@ -47,15 +47,16 @@ class AchievementsState {
 }
 
 /// Achievement repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 AchievementRepository achievementRepository(Ref ref) {
   return AchievementRepository();
 }
 
 /// Achievements provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Achievements extends _$Achievements {
-  AchievementRepository get _repository => ref.read(achievementRepositoryProvider);
+  AchievementRepository get _repository =>
+      ref.read(achievementRepositoryProvider);
 
   @override
   AchievementsState build() {
@@ -77,10 +78,7 @@ class Achievements extends _$Achievements {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -140,9 +138,10 @@ class LeaderboardState {
 }
 
 /// Leaderboard provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Leaderboard extends _$Leaderboard {
-  AchievementRepository get _repository => ref.read(achievementRepositoryProvider);
+  AchievementRepository get _repository =>
+      ref.read(achievementRepositoryProvider);
 
   @override
   LeaderboardState build() {
@@ -161,10 +160,7 @@ class Leaderboard extends _$Leaderboard {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -174,14 +170,14 @@ class Leaderboard extends _$Leaderboard {
 }
 
 /// All achievements provider
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Achievement>> allAchievements(Ref ref) async {
   final repository = ref.watch(achievementRepositoryProvider);
   return repository.getAllAchievements();
 }
 
 /// Unseen achievements provider
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<UserAchievement>> unseenAchievements(Ref ref) async {
   final repository = ref.watch(achievementRepositoryProvider);
   return repository.getUnseenAchievements();

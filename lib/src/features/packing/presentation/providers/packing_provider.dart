@@ -62,15 +62,16 @@ class PackingState {
 }
 
 /// Packing repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 PackingRepository packingRepository(Ref ref) {
   return PackingRepository();
 }
 
 /// Packing list provider for a specific trip
-@riverpod
+@Riverpod(keepAlive: true)
 class TripPacking extends _$TripPacking {
-  PackingRepository get _packingRepository => ref.read(packingRepositoryProvider);
+  PackingRepository get _packingRepository =>
+      ref.read(packingRepositoryProvider);
 
   @override
   PackingState build(String tripId) {
@@ -86,10 +87,15 @@ class TripPacking extends _$TripPacking {
     try {
       final response = await _packingRepository.getPackingItems(tripId: tripId);
       if (!ref.mounted) return;
-      final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      final progress = await _packingRepository.getPackingProgress(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
-      AppLogger.state('Packing', 'Loaded ${response.items.length} packing items');
+      AppLogger.state(
+        'Packing',
+        'Loaded ${response.items.length} packing items',
+      );
 
       state = state.copyWith(
         items: response.items,
@@ -102,10 +108,7 @@ class TripPacking extends _$TripPacking {
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to load packing items: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -128,7 +131,9 @@ class TripPacking extends _$TripPacking {
       final updatedItems = [...state.items, newItem];
 
       // Reload progress
-      final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      final progress = await _packingRepository.getPackingProgress(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       state = state.copyWith(
@@ -145,11 +150,17 @@ class TripPacking extends _$TripPacking {
   }
 
   /// Update packing item
-  Future<void> updatePackingItem(String id, Map<String, dynamic> updates) async {
+  Future<void> updatePackingItem(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     AppLogger.action('Updating packing item: $id');
 
     try {
-      final updatedItem = await _packingRepository.updatePackingItem(id, updates);
+      final updatedItem = await _packingRepository.updatePackingItem(
+        id,
+        updates,
+      );
       if (!ref.mounted) return;
 
       AppLogger.info('Packing item updated successfully');
@@ -160,13 +171,12 @@ class TripPacking extends _$TripPacking {
       }).toList();
 
       // Reload progress
-      final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      final progress = await _packingRepository.getPackingProgress(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
-      state = state.copyWith(
-        items: updatedItems,
-        progress: progress,
-      );
+      state = state.copyWith(items: updatedItems, progress: progress);
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to update packing item: $e');
@@ -210,15 +220,14 @@ class TripPacking extends _$TripPacking {
       }).toList();
 
       // Reload progress for accurate category breakdown
-      final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      final progress = await _packingRepository.getPackingProgress(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       AppLogger.info('Packed status toggled successfully');
 
-      state = state.copyWith(
-        items: updatedItems,
-        progress: progress,
-      );
+      state = state.copyWith(items: updatedItems, progress: progress);
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to toggle packed status: $e');
@@ -268,8 +277,7 @@ class TripPacking extends _$TripPacking {
       await _packingRepository.deletePackingItem(id);
       if (!ref.mounted) return;
 
-      final updatedItems =
-          state.items.where((item) => item.id != id).toList();
+      final updatedItems = state.items.where((item) => item.id != id).toList();
 
       // Update counts
       final newPackedCount = itemToDelete.isPacked
@@ -280,7 +288,9 @@ class TripPacking extends _$TripPacking {
           : state.unpackedCount - 1;
 
       // Reload progress
-      final progress = await _packingRepository.getPackingProgress(tripId: tripId);
+      final progress = await _packingRepository.getPackingProgress(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       AppLogger.info('Packing item deleted successfully');

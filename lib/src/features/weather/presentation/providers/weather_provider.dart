@@ -5,13 +5,13 @@ import 'package:odyssey/src/features/weather/data/repositories/weather_repositor
 part 'weather_provider.g.dart';
 
 /// Weather repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 WeatherRepository weatherRepository(Ref ref) {
   return WeatherRepository();
 }
 
 /// Current weather for a location
-@riverpod
+@Riverpod(keepAlive: true)
 class CurrentWeather extends _$CurrentWeather {
   @override
   Future<WeatherData?> build(double latitude, double longitude) async {
@@ -37,7 +37,9 @@ class CurrentWeather extends _$CurrentWeather {
     });
   }
 
+  @override
   double get latitude => arg1;
+  @override
   double get longitude => arg2;
 
   double get arg1 => throw UnimplementedError();
@@ -45,7 +47,7 @@ class CurrentWeather extends _$CurrentWeather {
 }
 
 /// Weather forecast for a location
-@riverpod
+@Riverpod(keepAlive: true)
 class WeatherForecast extends _$WeatherForecast {
   @override
   Future<WeatherForecastResponse?> build(
@@ -67,7 +69,7 @@ class WeatherForecast extends _$WeatherForecast {
 }
 
 /// Trip weather with packing suggestions
-@riverpod
+@Riverpod(keepAlive: true)
 class TripWeather extends _$TripWeather {
   @override
   Future<TripWeatherResponse?> build(

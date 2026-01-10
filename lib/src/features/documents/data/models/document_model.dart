@@ -18,7 +18,7 @@ class DocumentModel extends Equatable {
   final String name;
 
   /// Collection of files for this document
-  @JsonKey(name: 'files', defaultValue: [])
+  @JsonKey(name: 'files')
   final List<DocumentFileModel> files;
 
   /// Legacy field for backward compatibility. Use files instead.

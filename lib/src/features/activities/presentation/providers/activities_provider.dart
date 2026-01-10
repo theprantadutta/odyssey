@@ -35,13 +35,13 @@ class ActivitiesState {
 }
 
 /// Activity repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 ActivityRepository activityRepository(Ref ref) {
   return ActivityRepository();
 }
 
 /// Activities list provider for a specific trip
-@riverpod
+@Riverpod(keepAlive: true)
 class TripActivities extends _$TripActivities {
   ActivityRepository get _activityRepository =>
       ref.read(activityRepositoryProvider);
@@ -64,7 +64,9 @@ class TripActivities extends _$TripActivities {
       if (!ref.mounted) return;
 
       AppLogger.state(
-          'Activities', 'Loaded ${response.activities.length} activities');
+        'Activities',
+        'Loaded ${response.activities.length} activities',
+      );
 
       state = state.copyWith(
         activities: response.activities,
@@ -76,10 +78,7 @@ class TripActivities extends _$TripActivities {
       if (!ref.mounted) return;
 
       AppLogger.error('Failed to load activities: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -116,8 +115,10 @@ class TripActivities extends _$TripActivities {
   Future<void> updateActivity(String id, Map<String, dynamic> updates) async {
     AppLogger.action('Updating activity: $id');
     try {
-      final updatedActivity =
-          await _activityRepository.updateActivity(id, updates);
+      final updatedActivity = await _activityRepository.updateActivity(
+        id,
+        updates,
+      );
 
       if (!ref.mounted) return;
 
@@ -140,8 +141,9 @@ class TripActivities extends _$TripActivities {
 
       if (!ref.mounted) return;
 
-      final updatedActivities =
-          state.activities.where((activity) => activity.id != id).toList();
+      final updatedActivities = state.activities
+          .where((activity) => activity.id != id)
+          .toList();
       AppLogger.info('Activity deleted successfully');
       state = state.copyWith(
         activities: updatedActivities,
@@ -165,10 +167,7 @@ class TripActivities extends _$TripActivities {
     // Update sort orders
     final activityOrders = <ActivityOrder>[];
     for (var i = 0; i < activities.length; i++) {
-      activityOrders.add(ActivityOrder(
-        id: activities[i].id,
-        sortOrder: i,
-      ));
+      activityOrders.add(ActivityOrder(id: activities[i].id, sortOrder: i));
     }
 
     // Update state immediately for smooth UI
@@ -202,7 +201,7 @@ class TripActivities extends _$TripActivities {
 }
 
 /// Single activity provider (for detail/edit view)
-@riverpod
+@Riverpod(keepAlive: true)
 class Activity extends _$Activity {
   ActivityRepository get _activityRepository =>
       ref.read(activityRepositoryProvider);

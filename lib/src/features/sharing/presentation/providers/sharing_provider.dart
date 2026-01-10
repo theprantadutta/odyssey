@@ -5,7 +5,7 @@ import 'package:odyssey/src/features/sharing/data/repositories/sharing_repositor
 part 'sharing_provider.g.dart';
 
 /// Repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 SharingRepository sharingRepository(Ref ref) {
   return SharingRepository();
 }
@@ -49,7 +49,7 @@ class TripSharesState {
 }
 
 /// Notifier for trip shares
-@riverpod
+@Riverpod(keepAlive: true)
 class TripShares extends _$TripShares {
   @override
   TripSharesState build(String tripId) {
@@ -67,10 +67,7 @@ class TripShares extends _$TripShares {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -164,7 +161,7 @@ class SharedTripsState {
 }
 
 /// Notifier for trips shared with current user
-@riverpod
+@Riverpod(keepAlive: true)
 class SharedTrips extends _$SharedTrips {
   @override
   SharedTripsState build() {
@@ -183,10 +180,7 @@ class SharedTrips extends _$SharedTrips {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -230,7 +224,7 @@ class InviteState {
 }
 
 /// Notifier for invite operations
-@riverpod
+@Riverpod(keepAlive: true)
 class Invite extends _$Invite {
   @override
   InviteState build(String inviteCode) {
@@ -242,15 +236,9 @@ class Invite extends _$Invite {
     try {
       final repository = ref.read(sharingRepositoryProvider);
       final invite = await repository.getInviteDetails(inviteCode);
-      state = state.copyWith(
-        invite: invite,
-        isLoading: false,
-      );
+      state = state.copyWith(invite: invite, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -264,10 +252,7 @@ class Invite extends _$Invite {
       ref.invalidate(sharedTripsProvider);
       return response;
     } catch (e) {
-      state = state.copyWith(
-        isAccepting: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isAccepting: false, error: e.toString());
       return null;
     }
   }
@@ -280,10 +265,7 @@ class Invite extends _$Invite {
       state = state.copyWith(isDeclining: false);
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isDeclining: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isDeclining: false, error: e.toString());
       return false;
     }
   }

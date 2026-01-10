@@ -49,13 +49,15 @@ class PurchaseState {
       isPurchasing: isPurchasing ?? this.isPurchasing,
       products: products ?? this.products,
       error: clearError ? null : (error ?? this.error),
-      successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
     );
   }
 }
 
 /// Purchase state notifier provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Purchase extends _$Purchase {
   late final PurchaseService _purchaseService;
 

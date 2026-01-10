@@ -12,7 +12,7 @@ class MemoryModel extends Equatable {
   final String tripId;
 
   /// Collection of media items (photos and videos) for this memory
-  @JsonKey(name: 'media_items', defaultValue: [])
+  @JsonKey(name: 'media_items')
   final List<MemoryMediaModel> mediaItems;
 
   /// Legacy field for backward compatibility. Use mediaItems instead.

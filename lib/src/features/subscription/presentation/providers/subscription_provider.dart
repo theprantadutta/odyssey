@@ -46,13 +46,13 @@ class SubscriptionState {
 }
 
 /// Subscription repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 SubscriptionRepository subscriptionRepository(Ref ref) {
   return SubscriptionRepository();
 }
 
 /// Subscription state notifier provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Subscription extends _$Subscription {
   late final SubscriptionRepository _repository;
 
@@ -91,10 +91,7 @@ class Subscription extends _$Subscription {
       AppLogger.info('Subscription data loaded: ${state.status?.tier}');
     } catch (e) {
       AppLogger.error('Failed to load subscription data: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -137,28 +134,28 @@ class Subscription extends _$Subscription {
 }
 
 /// Simple provider to check if user is premium
-@riverpod
+@Riverpod(keepAlive: true)
 bool isPremium(Ref ref) {
   final subscription = ref.watch(subscriptionProvider);
   return subscription.isPremium;
 }
 
 /// Provider for current tier
-@riverpod
+@Riverpod(keepAlive: true)
 SubscriptionTier currentTier(Ref ref) {
   final subscription = ref.watch(subscriptionProvider);
   return subscription.tier;
 }
 
 /// Provider for usage info
-@riverpod
+@Riverpod(keepAlive: true)
 UsageInfo? usageInfo(Ref ref) {
   final subscription = ref.watch(subscriptionProvider);
   return subscription.usage;
 }
 
 /// Provider for pricing info
-@riverpod
+@Riverpod(keepAlive: true)
 PricingInfo? pricingInfo(Ref ref) {
   final subscription = ref.watch(subscriptionProvider);
   return subscription.pricing;

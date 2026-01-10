@@ -6,7 +6,7 @@ import '../../data/repositories/statistics_repository.dart';
 part 'statistics_provider.g.dart';
 
 /// Statistics repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 StatisticsRepository statisticsRepository(Ref ref) {
   return StatisticsRepository();
 }
@@ -17,11 +17,7 @@ class StatisticsState {
   final bool isLoading;
   final String? error;
 
-  const StatisticsState({
-    this.statistics,
-    this.isLoading = false,
-    this.error,
-  });
+  const StatisticsState({this.statistics, this.isLoading = false, this.error});
 
   StatisticsState copyWith({
     OverallStatistics? statistics,
@@ -37,9 +33,10 @@ class StatisticsState {
 }
 
 /// Statistics provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Statistics extends _$Statistics {
-  StatisticsRepository get _repository => ref.read(statisticsRepositoryProvider);
+  StatisticsRepository get _repository =>
+      ref.read(statisticsRepositoryProvider);
 
   @override
   StatisticsState build() {
@@ -52,15 +49,9 @@ class Statistics extends _$Statistics {
 
     try {
       final stats = await _repository.getOverallStatistics();
-      state = state.copyWith(
-        statistics: stats,
-        isLoading: false,
-      );
+      state = state.copyWith(statistics: stats, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -99,9 +90,10 @@ class YearInReviewState {
 }
 
 /// Year in review provider
-@riverpod
+@Riverpod(keepAlive: true)
 class YearInReview extends _$YearInReview {
-  StatisticsRepository get _repository => ref.read(statisticsRepositoryProvider);
+  StatisticsRepository get _repository =>
+      ref.read(statisticsRepositoryProvider);
 
   @override
   YearInReviewState build() {
@@ -114,15 +106,9 @@ class YearInReview extends _$YearInReview {
 
     try {
       final stats = await _repository.getYearInReview(year: state.selectedYear);
-      state = state.copyWith(
-        stats: stats,
-        isLoading: false,
-      );
+      state = state.copyWith(stats: stats, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -170,9 +156,10 @@ class TimelineState {
 }
 
 /// Travel timeline provider
-@riverpod
+@Riverpod(keepAlive: true)
 class TravelTimelineNotifier extends _$TravelTimelineNotifier {
-  StatisticsRepository get _repository => ref.read(statisticsRepositoryProvider);
+  StatisticsRepository get _repository =>
+      ref.read(statisticsRepositoryProvider);
 
   @override
   TimelineState build() {
@@ -192,10 +179,7 @@ class TravelTimelineNotifier extends _$TravelTimelineNotifier {
         hasMore: timeline.items.length < timeline.totalTrips,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -211,13 +195,11 @@ class TravelTimelineNotifier extends _$TravelTimelineNotifier {
       state = state.copyWith(
         items: [...state.items, ...timeline.items],
         isLoading: false,
-        hasMore: state.items.length + timeline.items.length < timeline.totalTrips,
+        hasMore:
+            state.items.length + timeline.items.length < timeline.totalTrips,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 

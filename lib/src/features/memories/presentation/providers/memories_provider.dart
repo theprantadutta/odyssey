@@ -43,13 +43,13 @@ class MemoriesState {
 }
 
 /// Memory repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 MemoryRepository memoryRepository(Ref ref) {
   return MemoryRepository();
 }
 
 /// Memories list provider for a specific trip
-@riverpod
+@Riverpod(keepAlive: true)
 class TripMemories extends _$TripMemories {
   MemoryRepository get _memoryRepository => ref.read(memoryRepositoryProvider);
 
@@ -69,7 +69,9 @@ class TripMemories extends _$TripMemories {
       if (!ref.mounted) return;
 
       AppLogger.state(
-          'Memories', 'Loaded ${response.memories.length} memories');
+        'Memories',
+        'Loaded ${response.memories.length} memories',
+      );
 
       state = state.copyWith(
         memories: response.memories,
@@ -79,10 +81,7 @@ class TripMemories extends _$TripMemories {
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to load memories: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -149,13 +148,11 @@ class TripMemories extends _$TripMemories {
     try {
       await _memoryRepository.deleteMemory(id);
       if (!ref.mounted) return;
-      final updatedMemories =
-          state.memories.where((memory) => memory.id != id).toList();
+      final updatedMemories = state.memories
+          .where((memory) => memory.id != id)
+          .toList();
       AppLogger.info('Memory deleted successfully');
-      state = state.copyWith(
-        memories: updatedMemories,
-        total: state.total - 1,
-      );
+      state = state.copyWith(memories: updatedMemories, total: state.total - 1);
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to delete memory: $e');
@@ -170,7 +167,7 @@ class TripMemories extends _$TripMemories {
 }
 
 /// Single memory provider (for detail/viewer)
-@riverpod
+@Riverpod(keepAlive: true)
 class Memory extends _$Memory {
   MemoryRepository get _memoryRepository => ref.read(memoryRepositoryProvider);
 

@@ -39,13 +39,13 @@ class DocumentsState {
 }
 
 /// Document repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 DocumentRepository documentRepository(Ref ref) {
   return DocumentRepository();
 }
 
 /// Documents list provider for a specific trip
-@riverpod
+@Riverpod(keepAlive: true)
 class TripDocuments extends _$TripDocuments {
   DocumentRepository get _documentRepository =>
       ref.read(documentRepositoryProvider);
@@ -63,10 +63,14 @@ class TripDocuments extends _$TripDocuments {
 
     try {
       final response = await _documentRepository.getDocuments(tripId: tripId);
-      final grouped =
-          await _documentRepository.getDocumentsGrouped(tripId: tripId);
+      final grouped = await _documentRepository.getDocumentsGrouped(
+        tripId: tripId,
+      );
 
-      AppLogger.state('Documents', 'Loaded ${response.documents.length} documents');
+      AppLogger.state(
+        'Documents',
+        'Loaded ${response.documents.length} documents',
+      );
 
       state = state.copyWith(
         documents: response.documents,
@@ -76,10 +80,7 @@ class TripDocuments extends _$TripDocuments {
       );
     } catch (e) {
       AppLogger.error('Failed to load documents: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -123,8 +124,10 @@ class TripDocuments extends _$TripDocuments {
     AppLogger.action('Updating document: $id');
 
     try {
-      final updatedDocument =
-          await _documentRepository.updateDocument(id, updates);
+      final updatedDocument = await _documentRepository.updateDocument(
+        id,
+        updates,
+      );
 
       AppLogger.info('Document updated successfully');
 
@@ -134,8 +137,9 @@ class TripDocuments extends _$TripDocuments {
       }).toList();
 
       // Reload grouped data
-      final grouped =
-          await _documentRepository.getDocumentsGrouped(tripId: tripId);
+      final grouped = await _documentRepository.getDocumentsGrouped(
+        tripId: tripId,
+      );
 
       state = state.copyWith(
         documents: updatedDocuments,
@@ -154,12 +158,14 @@ class TripDocuments extends _$TripDocuments {
     try {
       await _documentRepository.deleteDocument(id);
 
-      final updatedDocuments =
-          state.documents.where((doc) => doc.id != id).toList();
+      final updatedDocuments = state.documents
+          .where((doc) => doc.id != id)
+          .toList();
 
       // Reload grouped data
-      final grouped =
-          await _documentRepository.getDocumentsGrouped(tripId: tripId);
+      final grouped = await _documentRepository.getDocumentsGrouped(
+        tripId: tripId,
+      );
 
       AppLogger.info('Document deleted successfully');
 

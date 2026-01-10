@@ -133,7 +133,7 @@ Feature/
 
 ```dart
 // Provider definition
-@riverpod
+@Riverpod(keepAlive: true)
 class Trips extends _$Trips {
   @override
   TripsState build() {

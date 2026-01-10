@@ -46,15 +46,16 @@ class ExpensesState {
 }
 
 /// Expense repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 ExpenseRepository expenseRepository(Ref ref) {
   return ExpenseRepository();
 }
 
 /// Expenses list provider for a specific trip
-@riverpod
+@Riverpod(keepAlive: true)
 class TripExpenses extends _$TripExpenses {
-  ExpenseRepository get _expenseRepository => ref.read(expenseRepositoryProvider);
+  ExpenseRepository get _expenseRepository =>
+      ref.read(expenseRepositoryProvider);
 
   @override
   ExpensesState build(String tripId) {
@@ -70,11 +71,15 @@ class TripExpenses extends _$TripExpenses {
     try {
       final response = await _expenseRepository.getExpenses(tripId: tripId);
       if (!ref.mounted) return;
-      final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      final summary = await _expenseRepository.getExpenseSummary(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       AppLogger.state(
-          'Expenses', 'Loaded ${response.expenses.length} expenses');
+        'Expenses',
+        'Loaded ${response.expenses.length} expenses',
+      );
 
       state = state.copyWith(
         expenses: response.expenses,
@@ -86,10 +91,7 @@ class TripExpenses extends _$TripExpenses {
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to load expenses: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -112,7 +114,9 @@ class TripExpenses extends _$TripExpenses {
       final updatedExpenses = [newExpense, ...state.expenses];
 
       // Reload summary
-      final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      final summary = await _expenseRepository.getExpenseSummary(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       state = state.copyWith(
@@ -133,7 +137,10 @@ class TripExpenses extends _$TripExpenses {
     AppLogger.action('Updating expense: $id');
 
     try {
-      final updatedExpense = await _expenseRepository.updateExpense(id, updates);
+      final updatedExpense = await _expenseRepository.updateExpense(
+        id,
+        updates,
+      );
       if (!ref.mounted) return;
 
       AppLogger.info('Expense updated successfully');
@@ -144,7 +151,9 @@ class TripExpenses extends _$TripExpenses {
       }).toList();
 
       // Reload summary
-      final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      final summary = await _expenseRepository.getExpenseSummary(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       state = state.copyWith(
@@ -167,11 +176,14 @@ class TripExpenses extends _$TripExpenses {
       await _expenseRepository.deleteExpense(id);
       if (!ref.mounted) return;
 
-      final updatedExpenses =
-          state.expenses.where((expense) => expense.id != id).toList();
+      final updatedExpenses = state.expenses
+          .where((expense) => expense.id != id)
+          .toList();
 
       // Reload summary
-      final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      final summary = await _expenseRepository.getExpenseSummary(
+        tripId: tripId,
+      );
       if (!ref.mounted) return;
 
       AppLogger.info('Expense deleted successfully');

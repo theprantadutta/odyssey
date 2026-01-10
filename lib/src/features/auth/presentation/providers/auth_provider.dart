@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../data/models/user_model.dart';
@@ -56,24 +57,24 @@ class AuthState {
 }
 
 /// Auth repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) {
   return AuthRepository();
 }
 
 /// Auth state notifier provider
-@riverpod
+@Riverpod(keepAlive: true)
 class Auth extends _$Auth {
   late final AuthRepository _authRepository;
 
   @override
   AuthState build() {
     _authRepository = ref.read(authRepositoryProvider);
-    
+
     // Delay auth check until after provider is fully initialized
     // This avoids the "uninitialized provider" error in Riverpod 3
     Future.microtask(() => _checkAuthStatus());
-    
+
     return const AuthState(isLoading: true);
   }
 
@@ -90,8 +91,11 @@ class Auth extends _$Auth {
       if (isAuth) {
         AppLogger.auth('Token found, fetching user data...');
         final user = await _authRepository.getCurrentUser();
-        final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
-        AppLogger.auth('User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding');
+        final hasCompletedOnboarding = await StorageService()
+            .isOnboardingCompleted();
+        AppLogger.auth(
+          'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
+        );
         state = state.copyWith(
           user: user,
           isAuthenticated: true,
@@ -144,26 +148,17 @@ class Auth extends _$Auth {
       );
     } catch (e) {
       AppLogger.auth('Registration failed: $e', isError: true);
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }
 
   /// Login existing user
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     AppLogger.auth('Logging in user: $email');
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _authRepository.login(
-        email: email,
-        password: password,
-      );
+      await _authRepository.login(email: email, password: password);
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
@@ -176,10 +171,7 @@ class Auth extends _$Auth {
       );
     } catch (e) {
       AppLogger.auth('Login failed: $e', isError: true);
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }
@@ -191,16 +183,10 @@ class Auth extends _$Auth {
     try {
       await _authRepository.logout();
       AppLogger.auth('Logout successful');
-      state = const AuthState(
-        isAuthenticated: false,
-        isLoading: false,
-      );
+      state = const AuthState(isAuthenticated: false, isLoading: false);
     } catch (e) {
       AppLogger.auth('Logout failed: $e', isError: true);
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -237,13 +223,15 @@ class Auth extends _$Auth {
       AppLogger.auth('Google Sign-In successful: ${user.email}');
 
       // Check if onboarding was completed
-      final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
+      final hasCompletedOnboarding = await StorageService()
+          .isOnboardingCompleted();
 
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
         isGoogleLoading: false,
-        needsOnboarding: !hasCompletedOnboarding, // Show onboarding if not completed
+        needsOnboarding:
+            !hasCompletedOnboarding, // Show onboarding if not completed
       );
 
       return false;
@@ -258,10 +246,7 @@ class Auth extends _$Auth {
       return true;
     } catch (e) {
       AppLogger.auth('Google Sign-In failed: $e', isError: true);
-      state = state.copyWith(
-        isGoogleLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isGoogleLoading: false, error: e.toString());
       rethrow;
     }
   }
@@ -294,10 +279,7 @@ class Auth extends _$Auth {
       );
     } catch (e) {
       AppLogger.auth('Account linking failed: $e', isError: true);
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }
@@ -322,7 +304,8 @@ class Auth extends _$Auth {
       AppLogger.auth('Auto-link successful: ${user.email}');
 
       // Check if onboarding was completed
-      final hasCompletedOnboarding = await StorageService().isOnboardingCompleted();
+      final hasCompletedOnboarding = await StorageService()
+          .isOnboardingCompleted();
 
       state = state.copyWith(
         user: user,
@@ -334,10 +317,7 @@ class Auth extends _$Auth {
       );
     } catch (e) {
       AppLogger.auth('Auto-link failed: $e', isError: true);
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }

@@ -52,13 +52,13 @@ class TripsState {
 }
 
 /// Trip repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 TripRepository tripRepository(Ref ref) {
   return TripRepository();
 }
 
 /// Trips list provider with search and filter support
-@riverpod
+@Riverpod(keepAlive: true)
 class Trips extends _$Trips {
   TripRepository get _tripRepository => ref.read(tripRepositoryProvider);
 
@@ -73,7 +73,10 @@ class Trips extends _$Trips {
     final filters = state.filters;
     final hasFilters = filters.hasActiveFilters || filters.hasCustomSorting;
 
-    AppLogger.state('Trips', 'Loading trips (page 1)${hasFilters ? ' with filters' : ''}');
+    AppLogger.state(
+      'Trips',
+      'Loading trips (page 1)${hasFilters ? ' with filters' : ''}',
+    );
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -82,7 +85,10 @@ class Trips extends _$Trips {
         filters: hasFilters ? filters : null,
       );
 
-      AppLogger.state('Trips', 'Loaded ${response.trips.length} trips (total: ${response.total})');
+      AppLogger.state(
+        'Trips',
+        'Loaded ${response.trips.length} trips (total: ${response.total})',
+      );
 
       state = state.copyWith(
         trips: response.trips,
@@ -96,10 +102,7 @@ class Trips extends _$Trips {
       _loadAvailableTags();
     } catch (e) {
       AppLogger.error('Failed to load trips: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -136,7 +139,10 @@ class Trips extends _$Trips {
       );
 
       final allTrips = [...state.trips, ...response.trips];
-      AppLogger.state('Trips', 'Loaded ${response.trips.length} more trips (total loaded: ${allTrips.length})');
+      AppLogger.state(
+        'Trips',
+        'Loaded ${response.trips.length} more trips (total loaded: ${allTrips.length})',
+      );
 
       state = state.copyWith(
         trips: allTrips,
@@ -147,10 +153,7 @@ class Trips extends _$Trips {
       );
     } catch (e) {
       AppLogger.error('Failed to load more trips: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -200,7 +203,10 @@ class Trips extends _$Trips {
   }
 
   /// Update sorting
-  Future<void> updateSorting(TripSortField sortBy, TripSortOrder sortOrder) async {
+  Future<void> updateSorting(
+    TripSortField sortBy,
+    TripSortOrder sortOrder,
+  ) async {
     final newFilters = state.filters.copyWith(
       sortBy: sortBy,
       sortOrder: sortOrder,
@@ -257,10 +263,7 @@ class Trips extends _$Trips {
       await _tripRepository.deleteTrip(id);
       final updatedTrips = state.trips.where((trip) => trip.id != id).toList();
       AppLogger.info('Trip deleted successfully');
-      state = state.copyWith(
-        trips: updatedTrips,
-        total: state.total - 1,
-      );
+      state = state.copyWith(trips: updatedTrips, total: state.total - 1);
       // Reload available tags
       _loadAvailableTags();
     } catch (e) {
@@ -276,7 +279,7 @@ class Trips extends _$Trips {
 }
 
 /// Single trip provider (for detail view)
-@riverpod
+@Riverpod(keepAlive: true)
 class Trip extends _$Trip {
   TripRepository get _tripRepository => ref.read(tripRepositoryProvider);
 

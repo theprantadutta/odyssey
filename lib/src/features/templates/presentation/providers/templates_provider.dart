@@ -5,7 +5,7 @@ import 'package:odyssey/src/features/templates/data/repositories/template_reposi
 part 'templates_provider.g.dart';
 
 /// Repository provider
-@riverpod
+@Riverpod(keepAlive: true)
 TemplateRepository templateRepository(Ref ref) {
   return TemplateRepository();
 }
@@ -39,14 +39,15 @@ class MyTemplatesState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
       total: total ?? this.total,
-      selectedCategory:
-          clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+      selectedCategory: clearCategory
+          ? null
+          : (selectedCategory ?? this.selectedCategory),
     );
   }
 }
 
 /// Notifier for user's templates
-@riverpod
+@Riverpod(keepAlive: true)
 class MyTemplates extends _$MyTemplates {
   @override
   MyTemplatesState build() {
@@ -67,10 +68,7 @@ class MyTemplates extends _$MyTemplates {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -88,7 +86,9 @@ class MyTemplates extends _$MyTemplates {
     await _loadTemplates();
   }
 
-  Future<TripTemplateModel?> createTemplate(TemplateCreateRequest request) async {
+  Future<TripTemplateModel?> createTemplate(
+    TemplateCreateRequest request,
+  ) async {
     try {
       final repository = ref.read(templateRepositoryProvider);
       final template = await repository.createTemplate(request);
@@ -103,7 +103,9 @@ class MyTemplates extends _$MyTemplates {
     }
   }
 
-  Future<TripTemplateModel?> createFromTrip(TemplateFromTripRequest request) async {
+  Future<TripTemplateModel?> createFromTrip(
+    TemplateFromTripRequest request,
+  ) async {
     try {
       final repository = ref.read(templateRepositoryProvider);
       final template = await repository.createTemplateFromTrip(request);
@@ -167,15 +169,16 @@ class TemplateGalleryState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
       total: total ?? this.total,
-      selectedCategory:
-          clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+      selectedCategory: clearCategory
+          ? null
+          : (selectedCategory ?? this.selectedCategory),
       searchQuery: clearSearch ? null : (searchQuery ?? this.searchQuery),
     );
   }
 }
 
 /// Notifier for public template gallery
-@riverpod
+@Riverpod(keepAlive: true)
 class TemplateGallery extends _$TemplateGallery {
   @override
   TemplateGalleryState build() {
@@ -197,10 +200,7 @@ class TemplateGallery extends _$TemplateGallery {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -227,7 +227,9 @@ class TemplateGallery extends _$TemplateGallery {
     await _loadTemplates();
   }
 
-  Future<Map<String, dynamic>?> useTemplate(TripFromTemplateRequest request) async {
+  Future<Map<String, dynamic>?> useTemplate(
+    TripFromTemplateRequest request,
+  ) async {
     try {
       final repository = ref.read(templateRepositoryProvider);
       return await repository.useTemplate(request.templateId, request);
@@ -239,7 +241,7 @@ class TemplateGallery extends _$TemplateGallery {
 }
 
 /// Provider for a single template
-@riverpod
+@Riverpod(keepAlive: true)
 class TemplateDetail extends _$TemplateDetail {
   @override
   Future<TripTemplateModel?> build(String templateId) async {

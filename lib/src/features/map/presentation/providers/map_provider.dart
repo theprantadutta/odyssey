@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../../trips/data/models/trip_model.dart';
 import '../../../trips/data/repositories/trip_repository.dart';
 
@@ -51,11 +52,35 @@ class TripLocation {
   static String? _extractDestination(String text) {
     final lowerText = text.toLowerCase();
     final destinations = [
-      'Paris', 'London', 'New York', 'Tokyo', 'Sydney', 'Rome', 'Barcelona',
-      'Bangkok', 'Dubai', 'Singapore', 'Dhaka', "Cox's Bazar", 'Chittagong',
-      'Sylhet', 'Los Angeles', 'Berlin', 'Amsterdam', 'Istanbul', 'Cairo',
-      'Mumbai', 'Delhi', 'Bali', 'Maldives', 'Hong Kong', 'Seoul',
-      'Kuala Lumpur', 'San Francisco', 'Miami', 'Las Vegas',
+      'Paris',
+      'London',
+      'New York',
+      'Tokyo',
+      'Sydney',
+      'Rome',
+      'Barcelona',
+      'Bangkok',
+      'Dubai',
+      'Singapore',
+      'Dhaka',
+      "Cox's Bazar",
+      'Chittagong',
+      'Sylhet',
+      'Los Angeles',
+      'Berlin',
+      'Amsterdam',
+      'Istanbul',
+      'Cairo',
+      'Mumbai',
+      'Delhi',
+      'Bali',
+      'Maldives',
+      'Hong Kong',
+      'Seoul',
+      'Kuala Lumpur',
+      'San Francisco',
+      'Miami',
+      'Las Vegas',
     ];
 
     for (final dest in destinations) {
@@ -162,7 +187,7 @@ class MapState {
 }
 
 /// Map trips provider
-@riverpod
+@Riverpod(keepAlive: true)
 class MapTrips extends _$MapTrips {
   @override
   MapState build() {
@@ -182,15 +207,9 @@ class MapTrips extends _$MapTrips {
           .where((loc) => loc.hasLocation)
           .toList();
 
-      state = state.copyWith(
-        tripLocations: locations,
-        isLoading: false,
-      );
+      state = state.copyWith(tripLocations: locations, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
