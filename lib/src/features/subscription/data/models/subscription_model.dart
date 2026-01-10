@@ -5,21 +5,21 @@ part 'subscription_model.g.dart';
 
 /// Subscription tier enum matching backend
 enum SubscriptionTier {
-  @JsonValue('Free')
+  @JsonValue('free')
   free,
-  @JsonValue('Premium')
+  @JsonValue('premium')
   premium,
 }
 
 /// Subscription plan enum matching backend
 enum SubscriptionPlan {
-  @JsonValue('Free')
+  @JsonValue('free')
   free,
-  @JsonValue('Monthly')
+  @JsonValue('monthly')
   monthly,
-  @JsonValue('Yearly')
+  @JsonValue('yearly')
   yearly,
-  @JsonValue('Lifetime')
+  @JsonValue('lifetime')
   lifetime,
 }
 

@@ -148,7 +148,7 @@ class TripShareRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'email': email,
+      'shared_with_email': email,
       'permission': permission.name,
       if (expiresInHours != null) 'expires_in_hours': expiresInHours,
     };
