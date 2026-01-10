@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:video_thumbnail/video_thumbnail.dart' as vt;
-import 'package:path_provider/path_provider.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -25,13 +23,11 @@ class _SelectedMedia {
   final File file;
   final bool isVideo;
   final String fileName;
-  File? thumbnail;
 
   _SelectedMedia({
     required this.file,
     required this.isVideo,
     required this.fileName,
-    this.thumbnail,
   });
 }
 
@@ -266,22 +262,20 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Image or video thumbnail
+        // Image or video placeholder
         ClipRRect(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           child: media.isVideo
-              ? (media.thumbnail != null
-                  ? Image.file(media.thumbnail!, fit: BoxFit.cover)
-                  : Container(
-                      color: AppColors.charcoal,
-                      child: const Center(
-                        child: Icon(
-                          Icons.videocam_rounded,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                    ))
+              ? Container(
+                  color: AppColors.charcoal,
+                  child: const Center(
+                    child: Icon(
+                      Icons.videocam_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                )
               : Image.file(media.file, fit: BoxFit.cover),
         ),
 
@@ -1029,30 +1023,11 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             return;
           }
 
-          // Generate thumbnail
-          File? thumbnail;
-          try {
-            final tempDir = await getTemporaryDirectory();
-            final thumbnailPath = await vt.VideoThumbnail.thumbnailFile(
-              video: pickedFile.path,
-              thumbnailPath: tempDir.path,
-              imageFormat: vt.ImageFormat.JPEG,
-              maxWidth: 200,
-              quality: 75,
-            );
-            if (thumbnailPath != null) {
-              thumbnail = File(thumbnailPath);
-            }
-          } catch (e) {
-            // Thumbnail generation failed, continue without it
-          }
-
           setState(() {
             _selectedMedia.add(_SelectedMedia(
               file: file,
               isVideo: true,
               fileName: pickedFile.name,
-              thumbnail: thumbnail,
             ));
           });
         }

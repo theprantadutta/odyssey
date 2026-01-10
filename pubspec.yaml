@@ -73,7 +73,6 @@ dependencies:
   # Video Handling
   video_player: ^2.9.2
   chewie: ^1.10.0
-  video_thumbnail: ^0.5.3
 
   # Utilities
   intl: ^0.20.1
