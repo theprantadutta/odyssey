@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../documents/data/models/document_model.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../documents/presentation/screens/document_upload_screen.dart';
+import '../../../documents/presentation/screens/pdf_viewer_screen.dart';
 import '../../../documents/presentation/widgets/document_list_widget.dart';
 
 class TripDocumentsTab extends ConsumerWidget {
@@ -288,7 +290,9 @@ class TripDocumentsTab extends ConsumerWidget {
   Future<void> _openDocument(BuildContext context, DocumentModel document) async {
     HapticFeedback.lightImpact();
 
+    final primaryFile = document.primaryFile;
     final url = document.primaryUrl;
+
     if (url == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -305,8 +309,27 @@ class TripDocumentsTab extends ConsumerWidget {
       return;
     }
 
-    final uri = Uri.parse(url);
+    // Check if it's a PDF - open in PDF viewer
+    if (primaryFile?.isPdf == true) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PdfViewerScreen(
+            url: url,
+            title: document.name,
+          ),
+        ),
+      );
+      return;
+    }
 
+    // Check if it's an image - open in image viewer
+    if (primaryFile?.isImage == true) {
+      _openImageViewer(context, document);
+      return;
+    }
+
+    // For other files, open externally
+    final uri = Uri.parse(url);
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -338,6 +361,21 @@ class TripDocumentsTab extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _openImageViewer(BuildContext context, DocumentModel document) {
+    // Get all image files from the document
+    final imageFiles = document.files.where((f) => f.isImage).toList();
+    if (imageFiles.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _DocumentImageViewer(
+          images: imageFiles.map((f) => f.url).toList(),
+          title: document.name,
+        ),
+      ),
+    );
   }
 
   void _showDeleteDialog(
@@ -428,6 +466,152 @@ class TripDocumentsTab extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Simple image viewer for document images
+class _DocumentImageViewer extends StatefulWidget {
+  final List<String> images;
+  final String title;
+
+  const _DocumentImageViewer({
+    required this.images,
+    required this.title,
+  });
+
+  @override
+  State<_DocumentImageViewer> createState() => _DocumentImageViewerState();
+}
+
+class _DocumentImageViewerState extends State<_DocumentImageViewer> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.charcoal,
+      appBar: AppBar(
+        backgroundColor: AppColors.charcoal,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).pop();
+          },
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+            child: const Icon(
+              Icons.close_rounded,
+              size: 20,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        title: Column(
+          children: [
+            Text(
+              widget.title,
+              style: AppTypography.labelLarge.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (widget.images.length > 1)
+              Text(
+                '${_currentPage + 1} of ${widget.images.length}',
+                style: AppTypography.caption.copyWith(
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+              ),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) {
+          setState(() => _currentPage = index);
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: CachedNetworkImage(
+                imageUrl: widget.images[index],
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.broken_image_rounded,
+                      size: 64,
+                      color: AppColors.mutedGray,
+                    ),
+                    const SizedBox(height: AppSizes.space16),
+                    Text(
+                      'Failed to load image',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: widget.images.length > 1
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.all(AppSizes.space16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    widget.images.length,
+                    (index) => Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: index == _currentPage
+                            ? AppColors.lavenderDream
+                            : Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

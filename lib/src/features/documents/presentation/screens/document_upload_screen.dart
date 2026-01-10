@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart' as fp;
+import 'package:image_picker/image_picker.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -242,7 +243,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         // Add files button
         if (_selectedFiles.length < _maxFilesPerDocument)
           GestureDetector(
-            onTap: _pickFiles,
+            onTap: _showSourceDialog,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSizes.space16),
@@ -642,7 +643,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  Future<void> _pickFiles() async {
+  void _showSourceDialog() {
     HapticFeedback.lightImpact();
 
     final remainingSlots = _maxFilesPerDocument - _selectedFiles.length;
@@ -651,6 +652,204 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       return;
     }
 
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.snowWhite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.space20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add Document',
+                style: AppTypography.headlineSmall.copyWith(
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSizes.space20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      color: AppColors.oceanTeal,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFromCamera();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space12),
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      color: AppColors.skyBlue,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFromGallery();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space12),
+                  Expanded(
+                    child: _buildSourceOption(
+                      icon: Icons.folder_rounded,
+                      label: 'Files',
+                      color: AppColors.lavenderDream,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickFiles();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: AppSizes.space8),
+            Text(
+              label,
+              style: AppTypography.labelMedium.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFromCamera() async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final file = File(image.path);
+        final fileSize = await file.length();
+
+        if (fileSize > _maxFileSizeBytes) {
+          _showError('Photo exceeds 10MB limit');
+          return;
+        }
+
+        final fileName = image.name.isNotEmpty
+            ? image.name
+            : 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        final platformFile = fp.PlatformFile(
+          path: image.path,
+          name: fileName,
+          size: fileSize,
+        );
+
+        setState(() {
+          _selectedFiles.add(platformFile);
+          if (_nameController.text.isEmpty && _selectedFiles.length == 1) {
+            final name = fileName.replaceAll(RegExp(r'\.[^.]+$'), '');
+            _nameController.text = name;
+          }
+        });
+      }
+    } catch (e) {
+      _showError('Error capturing photo: $e');
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final images = await picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (images.isNotEmpty) {
+        final validFiles = <fp.PlatformFile>[];
+
+        for (final image in images) {
+          final file = File(image.path);
+          final fileSize = await file.length();
+
+          if (fileSize > _maxFileSizeBytes) {
+            _showError('Photo "${image.name}" exceeds 10MB limit');
+            continue;
+          }
+
+          if (validFiles.length + _selectedFiles.length >= _maxFilesPerDocument) {
+            _showError('Maximum $_maxFilesPerDocument files allowed');
+            break;
+          }
+
+          final fileName = image.name.isNotEmpty
+              ? image.name
+              : 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+          validFiles.add(fp.PlatformFile(
+            path: image.path,
+            name: fileName,
+            size: fileSize,
+          ));
+        }
+
+        if (validFiles.isNotEmpty) {
+          setState(() {
+            _selectedFiles.addAll(validFiles);
+            if (_nameController.text.isEmpty && _selectedFiles.length == 1) {
+              final name = _selectedFiles.first.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+              _nameController.text = name;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      _showError('Error picking photos: $e');
+    }
+  }
+
+  Future<void> _pickFiles() async {
     try {
       final result = await fp.FilePicker.platform.pickFiles(
         type: fp.FileType.custom,
