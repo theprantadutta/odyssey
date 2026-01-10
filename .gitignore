@@ -43,6 +43,7 @@ app.*.map.json
 *.freezed.dart
 *.mocks.dart
 
+nul
 .env
 .claude/
 
