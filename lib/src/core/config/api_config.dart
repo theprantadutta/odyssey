@@ -90,6 +90,11 @@ class ApiConfig {
   static const String unlinkGoogle = '$auth/unlink-google';
   static const String authProviders = '$auth/providers';
 
+  // Device endpoints (push notifications)
+  static const String devices = '/devices';
+  static const String deviceRegister = '$devices/register';
+  static String deviceUnregister(String token) => '$devices/$token';
+
   // Trip endpoints
   static const String defaultTrips = '$trips/default-trips';
 

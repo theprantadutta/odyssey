@@ -7,6 +7,7 @@ import 'src/common/theme/app_theme.dart';
 import 'src/core/network/dio_client.dart';
 import 'src/core/router/app_router.dart';
 import 'src/core/services/logger_service.dart';
+import 'src/core/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,14 @@ Future<void> main() async {
     AppLogger.info('Firebase initialized successfully');
   } catch (e) {
     AppLogger.error('Failed to initialize Firebase', e);
+  }
+
+  // Initialize notification service (must be after Firebase init)
+  try {
+    await NotificationService().initialize();
+    AppLogger.info('Notification service initialized');
+  } catch (e) {
+    AppLogger.error('Failed to initialize notification service', e);
   }
 
   // Initialize Dio client with interceptors

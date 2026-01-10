@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -103,6 +104,9 @@ class Auth extends _$Auth {
           hasSeenIntro: hasSeenIntro,
           needsOnboarding: !hasCompletedOnboarding,
         );
+
+        // Register device for push notifications
+        _registerDeviceForNotifications();
       } else {
         AppLogger.auth('No valid token found');
         state = state.copyWith(
@@ -146,6 +150,9 @@ class Auth extends _$Auth {
         isLoading: false,
         needsOnboarding: true, // New user needs onboarding
       );
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
     } catch (e) {
       AppLogger.auth('Registration failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -169,6 +176,9 @@ class Auth extends _$Auth {
         isAuthenticated: true,
         isLoading: false,
       );
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
     } catch (e) {
       AppLogger.auth('Login failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -181,6 +191,9 @@ class Auth extends _$Auth {
     AppLogger.auth('Logging out user');
     state = state.copyWith(isLoading: true);
     try {
+      // Unregister device from push notifications
+      await _unregisterDeviceForNotifications();
+
       await _authRepository.logout();
       AppLogger.auth('Logout successful');
       state = const AuthState(isAuthenticated: false, isLoading: false);
@@ -234,6 +247,9 @@ class Auth extends _$Auth {
             !hasCompletedOnboarding, // Show onboarding if not completed
       );
 
+      // Register device for push notifications
+      _registerDeviceForNotifications();
+
       return false;
     } on AccountLinkingRequiredException catch (e) {
       AppLogger.auth('Account linking required: ${e.message}');
@@ -277,6 +293,9 @@ class Auth extends _$Auth {
         needsAccountLinking: false,
         pendingFirebaseToken: null,
       );
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
     } catch (e) {
       AppLogger.auth('Account linking failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -315,6 +334,9 @@ class Auth extends _$Auth {
         pendingFirebaseToken: null,
         needsOnboarding: !hasCompletedOnboarding,
       );
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
     } catch (e) {
       AppLogger.auth('Auto-link failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -335,5 +357,36 @@ class Auth extends _$Auth {
   Future<void> setIntroSeen() async {
     await StorageService().setIntroSeen(true);
     state = state.copyWith(hasSeenIntro: true);
+  }
+
+  /// Register device for push notifications (fire and forget)
+  void _registerDeviceForNotifications() {
+    Future.microtask(() async {
+      try {
+        final notificationsNotifier = ref.read(notificationsProvider.notifier);
+        await notificationsNotifier.initialize();
+        final success = await notificationsNotifier.registerDevice();
+        if (success) {
+          AppLogger.auth('Device registered for push notifications');
+        } else {
+          AppLogger.auth('Failed to register device for push notifications');
+        }
+      } catch (e) {
+        AppLogger.auth('Error registering device for notifications: $e', isError: true);
+      }
+    });
+  }
+
+  /// Unregister device from push notifications
+  Future<void> _unregisterDeviceForNotifications() async {
+    try {
+      final notificationsNotifier = ref.read(notificationsProvider.notifier);
+      final success = await notificationsNotifier.unregisterDevice();
+      if (success) {
+        AppLogger.auth('Device unregistered from push notifications');
+      }
+    } catch (e) {
+      AppLogger.auth('Error unregistering device from notifications: $e', isError: true);
+    }
   }
 }
