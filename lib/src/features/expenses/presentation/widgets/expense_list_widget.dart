@@ -45,7 +45,7 @@ class ExpenseListWidget extends StatelessWidget {
 /// Expense summary widget showing category breakdown
 class ExpenseSummaryWidget extends StatelessWidget {
   final ExpenseSummaryResponse? summary;
-  final String totalAmount;
+  final double totalAmount;
   final String currency;
 
   const ExpenseSummaryWidget({
@@ -192,15 +192,9 @@ class ExpenseSummaryWidget extends StatelessWidget {
     );
   }
 
-  double _calculatePercentage(String categoryAmount, String total) {
-    try {
-      final cat = double.parse(categoryAmount);
-      final tot = double.parse(total);
-      if (tot == 0) return 0;
-      return (cat / tot * 100).clamp(0, 100);
-    } catch (e) {
-      return 0;
-    }
+  double _calculatePercentage(double categoryAmount, double total) {
+    if (total == 0) return 0;
+    return (categoryAmount / total * 100).clamp(0, 100);
   }
 
   Color _getCategoryColor(String category) {
@@ -257,13 +251,8 @@ class ExpenseSummaryWidget extends StatelessWidget {
     }
   }
 
-  String _formatAmount(String amount) {
-    try {
-      final value = double.parse(amount);
-      return value.toStringAsFixed(2);
-    } catch (e) {
-      return amount;
-    }
+  String _formatAmount(double amount) {
+    return amount.toStringAsFixed(2);
   }
 
   String _getCurrencySymbol(String currency) {

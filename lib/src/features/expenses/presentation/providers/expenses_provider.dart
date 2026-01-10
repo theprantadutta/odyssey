@@ -11,7 +11,7 @@ class ExpensesState {
   final bool isLoading;
   final String? error;
   final int total;
-  final String totalAmount;
+  final double totalAmount;
   final ExpenseSummaryResponse? summary;
 
   const ExpensesState({
@@ -19,16 +19,19 @@ class ExpensesState {
     this.isLoading = false,
     this.error,
     this.total = 0,
-    this.totalAmount = '0.00',
+    this.totalAmount = 0.0,
     this.summary,
   });
+
+  /// Get formatted total amount with 2 decimal places
+  String get formattedTotalAmount => totalAmount.toStringAsFixed(2);
 
   ExpensesState copyWith({
     List<ExpenseModel>? expenses,
     bool? isLoading,
     String? error,
     int? total,
-    String? totalAmount,
+    double? totalAmount,
     ExpenseSummaryResponse? summary,
   }) {
     return ExpensesState(

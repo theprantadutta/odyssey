@@ -3,6 +3,14 @@ import 'package:equatable/equatable.dart';
 
 part 'expense_model.g.dart';
 
+/// Converts amount from various types (int, double, String) to double
+double _amountFromJson(dynamic value) {
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
 /// Expense model matching backend schema
 @JsonSerializable()
 class ExpenseModel extends Equatable {
@@ -10,7 +18,8 @@ class ExpenseModel extends Equatable {
   @JsonKey(name: 'trip_id')
   final String tripId;
   final String title;
-  final String amount;
+  @JsonKey(fromJson: _amountFromJson)
+  final double amount;
   final String currency;
   final String category;
   final String date;
@@ -38,6 +47,9 @@ class ExpenseModel extends Equatable {
 
   Map<String, dynamic> toJson() => _$ExpenseModelToJson(this);
 
+  /// Get amount as formatted string with 2 decimal places
+  String get formattedAmount => amount.toStringAsFixed(2);
+
   @override
   List<Object?> get props => [
         id,
@@ -59,7 +71,7 @@ class ExpenseRequest {
   @JsonKey(name: 'trip_id')
   final String tripId;
   final String title;
-  final String amount;
+  final double amount;
   final String currency;
   final String category;
   final String date;
@@ -83,8 +95,8 @@ class ExpenseRequest {
 class ExpensesResponse {
   final List<ExpenseModel> expenses;
   final int total;
-  @JsonKey(name: 'total_amount')
-  final String totalAmount;
+  @JsonKey(name: 'total_amount', fromJson: _amountFromJson)
+  final double totalAmount;
 
   const ExpensesResponse({
     required this.expenses,
@@ -102,8 +114,8 @@ class ExpensesResponse {
 @JsonSerializable()
 class ExpenseSummary {
   final String category;
-  @JsonKey(name: 'total_amount')
-  final String totalAmount;
+  @JsonKey(name: 'total_amount', fromJson: _amountFromJson)
+  final double totalAmount;
   final int count;
   final String currency;
 
@@ -125,8 +137,8 @@ class ExpenseSummary {
 class ExpenseSummaryResponse {
   @JsonKey(name: 'by_category')
   final List<ExpenseSummary> byCategory;
-  @JsonKey(name: 'total_amount')
-  final String totalAmount;
+  @JsonKey(name: 'total_amount', fromJson: _amountFromJson)
+  final double totalAmount;
   final String currency;
 
   const ExpenseSummaryResponse({

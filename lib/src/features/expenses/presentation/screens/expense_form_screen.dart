@@ -59,7 +59,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     super.initState();
     if (_isEditing) {
       _titleController.text = widget.expense!.title;
-      _amountController.text = widget.expense!.amount;
+      _amountController.text = widget.expense!.amount.toStringAsFixed(2);
       _selectedCategory = widget.expense!.category;
       _selectedCurrency = widget.expense!.currency;
       _notesController.text = widget.expense!.notes ?? '';
@@ -501,7 +501,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           widget.expense!.id,
           {
             'title': _titleController.text,
-            'amount': _amountController.text,
+            'amount': double.tryParse(_amountController.text) ?? 0.0,
             'currency': _selectedCurrency,
             'category': _selectedCategory,
             'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
@@ -513,7 +513,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           ExpenseRequest(
             tripId: widget.tripId,
             title: _titleController.text,
-            amount: _amountController.text,
+            amount: double.tryParse(_amountController.text) ?? 0.0,
             currency: _selectedCurrency,
             category: _selectedCategory,
             date: DateFormat('yyyy-MM-dd').format(_selectedDate),

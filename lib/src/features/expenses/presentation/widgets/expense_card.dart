@@ -198,13 +198,8 @@ class ExpenseCard extends StatelessWidget {
     }
   }
 
-  String _formatAmount(String amount) {
-    try {
-      final value = double.parse(amount);
-      return NumberFormat('#,##0.00').format(value);
-    } catch (e) {
-      return amount;
-    }
+  String _formatAmount(double amount) {
+    return NumberFormat('#,##0.00').format(amount);
   }
 
   String _getCurrencySymbol(String currency) {
@@ -272,7 +267,7 @@ class ExpenseCardCompact extends StatelessWidget {
               ),
             ),
             Text(
-              '${_getCurrencySymbol(expense.currency)}${expense.amount}',
+              '${_getCurrencySymbol(expense.currency)}${_formatAmount(expense.amount)}',
               style: AppTypography.labelMedium.copyWith(
                 color: AppColors.charcoal,
                 fontWeight: FontWeight.w600,
@@ -300,6 +295,10 @@ class ExpenseCardCompact extends StatelessWidget {
       default:
         return '📝';
     }
+  }
+
+  String _formatAmount(double amount) {
+    return NumberFormat('#,##0.00').format(amount);
   }
 
   String _getCurrencySymbol(String currency) {
