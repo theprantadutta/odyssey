@@ -6,7 +6,7 @@ import '../models/subscription_model.dart';
 class SubscriptionRepository {
   final DioClient _dioClient = DioClient();
 
-  static const String _basePath = '/api/v1/subscription';
+  static const String _basePath = '/subscription';
 
   /// Get current user's subscription status
   Future<SubscriptionStatus> getStatus() async {
