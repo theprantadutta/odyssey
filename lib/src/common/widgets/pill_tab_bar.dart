@@ -160,7 +160,7 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
                   widget.isSelected
                       ? (widget.item.activeIcon ?? widget.item.icon)
                       : widget.item.icon,
-                  key: ValueKey(widget.isSelected),
+                  key: ValueKey('${widget.item.label}_${widget.isSelected}'),
                   size: 18,
                   color: widget.isSelected
                       ? AppColors.snowWhite
