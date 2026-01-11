@@ -52,8 +52,8 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   void _initializeWithActivity(ActivityModel activity) {
     _titleController.text = activity.title;
     _descriptionController.text = activity.description ?? '';
-    _latitudeController.text = activity.latitude ?? '';
-    _longitudeController.text = activity.longitude ?? '';
+    _latitudeController.text = activity.latitude?.toString() ?? '';
+    _longitudeController.text = activity.longitude?.toString() ?? '';
 
     final scheduledDateTime = DateTime.tryParse(activity.scheduledTime);
     if (scheduledDateTime != null) {
@@ -188,10 +188,10 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         category: _category.name,
         latitude: _latitudeController.text.trim().isEmpty
             ? null
-            : _latitudeController.text.trim(),
+            : double.tryParse(_latitudeController.text.trim()),
         longitude: _longitudeController.text.trim().isEmpty
             ? null
-            : _longitudeController.text.trim(),
+            : double.tryParse(_longitudeController.text.trim()),
       );
 
       if (widget.activity == null) {

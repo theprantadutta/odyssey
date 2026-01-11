@@ -46,11 +46,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     if (_showActivities) {
       for (final activity in activitiesState.activities) {
         if (activity.latitude != null && activity.longitude != null) {
-          final lat = double.tryParse(activity.latitude!);
-          final lng = double.tryParse(activity.longitude!);
-          if (lat != null && lng != null) {
-            allPoints.add(LatLng(lat, lng));
-          }
+          allPoints.add(LatLng(activity.latitude!, activity.longitude!));
         }
       }
     }
@@ -172,24 +168,20 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     if (_showActivities) {
       for (final activity in activities) {
         if (activity.latitude != null && activity.longitude != null) {
-          final lat = double.tryParse(activity.latitude!);
-          final lng = double.tryParse(activity.longitude!);
-          if (lat != null && lng != null) {
-            markers.add(
-              Marker(
-                point: LatLng(lat, lng),
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _showActivityDetails(activity);
-                  },
-                  child: _buildActivityMarker(activity),
-                ),
+          markers.add(
+            Marker(
+              point: LatLng(activity.latitude!, activity.longitude!),
+              width: 40,
+              height: 40,
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _showActivityDetails(activity);
+                },
+                child: _buildActivityMarker(activity),
               ),
-            );
-          }
+            ),
+          );
         }
       }
     }
