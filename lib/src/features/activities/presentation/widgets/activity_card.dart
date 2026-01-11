@@ -12,6 +12,7 @@ class ActivityCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final bool showDragHandle;
+  final int? dragIndex; // Index for ReorderableDragStartListener
 
   const ActivityCard({
     super.key,
@@ -19,6 +20,7 @@ class ActivityCard extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.showDragHandle = true,
+    this.dragIndex,
   });
 
   @override
@@ -130,20 +132,31 @@ class ActivityCard extends StatelessWidget {
                 ),
               ),
               // Actions and drag handle
-              SizedBox(
-                width: 48,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (showDragHandle)
-                      Icon(
-                        Icons.drag_indicator_rounded,
-                        color: AppColors.mutedGray,
-                        size: AppSizes.iconMd,
-                      ),
-                  ],
-                ),
-              ),
+              if (showDragHandle && dragIndex != null)
+                ReorderableDragStartListener(
+                  index: dragIndex!,
+                  child: Container(
+                    width: 48,
+                    height: AppSizes.activityCardHeight,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      color: AppColors.mutedGray,
+                      size: AppSizes.iconMd,
+                    ),
+                  ),
+                )
+              else if (showDragHandle)
+                SizedBox(
+                  width: 48,
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    color: AppColors.mutedGray,
+                    size: AppSizes.iconMd,
+                  ),
+                )
+              else
+                const SizedBox(width: 16),
             ],
           ),
         ),

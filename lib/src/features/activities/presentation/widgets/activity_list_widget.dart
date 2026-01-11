@@ -71,15 +71,13 @@ class ActivityListWidget extends StatelessWidget {
       itemBuilder: (context, index) {
         final activity = activities[index];
 
-        return ReorderableDragStartListener(
+        return ActivityCard(
           key: ValueKey(activity.id),
-          index: index,
-          child: ActivityCard(
-            activity: activity,
-            onTap: () => onActivityTap?.call(activity),
-            onDelete: () => onActivityDelete?.call(activity),
-            showDragHandle: true,
-          ),
+          activity: activity,
+          onTap: () => onActivityTap?.call(activity),
+          onDelete: () => onActivityDelete?.call(activity),
+          showDragHandle: true,
+          dragIndex: index, // Pass index for drag handle only
         );
       },
     );
