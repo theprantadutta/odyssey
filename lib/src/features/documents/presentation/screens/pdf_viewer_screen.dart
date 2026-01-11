@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
@@ -7,6 +6,7 @@ import 'package:dio/dio.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 /// Screen for viewing PDF documents
 class PdfViewerScreen extends StatefulWidget {
@@ -56,9 +56,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       final fileName = 'pdf_${DateTime.now().millisecondsSinceEpoch}.pdf';
       final filePath = '${tempDir.path}/$fileName';
 
+      // Use authenticated URL for FileRunner files
+      final authenticatedUrl = FileUrlHelper.getAuthenticatedUrl(widget.url);
+
       final dio = Dio();
       await dio.download(
-        widget.url,
+        authenticatedUrl,
         filePath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
