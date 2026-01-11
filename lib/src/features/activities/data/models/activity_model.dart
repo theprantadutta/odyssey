@@ -14,8 +14,8 @@ class ActivityModel extends Equatable {
   @JsonKey(name: 'scheduled_time')
   final String scheduledTime;
   final String category;
-  final String? latitude;
-  final String? longitude;
+  final double? latitude;
+  final double? longitude;
   @JsonKey(name: 'sort_order')
   final int sortOrder;
   @JsonKey(name: 'created_at')
@@ -68,8 +68,8 @@ class ActivityRequest {
   @JsonKey(name: 'scheduled_time')
   final String scheduledTime;
   final String category;
-  final String? latitude;
-  final String? longitude;
+  final double? latitude;
+  final double? longitude;
 
   const ActivityRequest({
     required this.tripId,

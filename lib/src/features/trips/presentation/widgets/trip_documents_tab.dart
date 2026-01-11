@@ -293,12 +293,13 @@ class TripDocumentsTab extends ConsumerWidget {
     final primaryFile = document.primaryFile;
     final url = document.primaryUrl;
 
-    if (url == null) {
+    // Check for both null and empty strings
+    if (url == null || url.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('No file available for this document'),
-            backgroundColor: AppColors.error,
+            content: const Text('No file available for this document. Upload a file to view it.'),
+            backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
