@@ -7,6 +7,7 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/location_picker_button.dart';
 import '../../data/models/activity_model.dart';
 import '../providers/activities_provider.dart';
 
@@ -56,8 +57,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
     final scheduledDateTime = DateTime.tryParse(activity.scheduledTime);
     if (scheduledDateTime != null) {
-      _scheduledDate = scheduledDateTime;
-      _scheduledTime = TimeOfDay.fromDateTime(scheduledDateTime);
+      final localDateTime = scheduledDateTime.toLocal();
+      _scheduledDate = localDateTime;
+      _scheduledTime = TimeOfDay.fromDateTime(localDateTime);
     }
 
     _category = ActivityCategory.values.firstWhere(
@@ -182,7 +184,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        scheduledTime: scheduledDateTime.toIso8601String(),
+        scheduledTime: scheduledDateTime.toUtc().toIso8601String(),
         category: _category.name,
         latitude: _latitudeController.text.trim().isEmpty
             ? null
@@ -224,7 +226,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
           'description': _descriptionController.text.trim().isEmpty
               ? null
               : _descriptionController.text.trim(),
-          'scheduled_time': scheduledDateTime.toIso8601String(),
+          'scheduled_time': scheduledDateTime.toUtc().toIso8601String(),
           'category': _category.name,
           'latitude': _latitudeController.text.trim().isEmpty
               ? null
@@ -410,6 +412,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSizes.space12),
+                  LocationPickerButton(
+                    latitudeController: _latitudeController,
+                    longitudeController: _longitudeController,
+                    isEnabled: !_isLoading,
                   ),
                 ],
               ),

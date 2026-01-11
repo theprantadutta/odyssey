@@ -60,6 +60,9 @@ dependencies:
   latlong2: ^0.9.1
   flutter_map_marker_cluster: ^8.2.2
 
+  # Location/GPS
+  geolocator: ^13.0.2
+
   # Animations
   flutter_animate: ^4.5.0
 

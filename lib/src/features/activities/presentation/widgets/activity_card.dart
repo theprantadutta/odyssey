@@ -104,7 +104,7 @@ class ActivityCard extends StatelessWidget {
                           Text(
                             scheduledTime != null
                                 ? DateFormat('MMM d, h:mm a')
-                                    .format(scheduledTime)
+                                    .format(scheduledTime.toLocal())
                                 : 'No time set',
                             style: AppTypography.bodySmall.copyWith(
                               color: AppColors.slate,
@@ -237,7 +237,7 @@ class ActivityCardCompact extends StatelessWidget {
                   if (scheduledTime != null) ...[
                     const SizedBox(height: AppSizes.space4),
                     Text(
-                      DateFormat('h:mm a').format(scheduledTime),
+                      DateFormat('h:mm a').format(scheduledTime.toLocal()),
                       style: AppTypography.caption.copyWith(
                         color: AppColors.slate,
                       ),

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/location_picker_button.dart';
 import '../../data/repositories/memory_repository.dart';
 import '../providers/memories_provider.dart';
 
@@ -633,6 +634,11 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSizes.space12),
+          LocationPickerButton(
+            latitudeController: _latitudeController,
+            longitudeController: _longitudeController,
           ),
         ],
       ],

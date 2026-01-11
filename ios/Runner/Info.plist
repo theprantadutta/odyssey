@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Odyssey needs your location to automatically fill in GPS coordinates for your activities and memories.</string>
 </dict>
 </plist>

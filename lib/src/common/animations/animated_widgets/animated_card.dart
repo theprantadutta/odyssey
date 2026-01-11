@@ -113,8 +113,8 @@ class _AnimatedCardState extends State<AnimatedCard>
                     ? [
                         BoxShadow(
                           color: AppColors.softShadow,
-                          blurRadius: 24 * _elevationAnimation.value,
-                          offset: Offset(0, 8 * _elevationAnimation.value),
+                          blurRadius: (24 * _elevationAnimation.value).clamp(0.0, 24.0),
+                          offset: Offset(0, (8 * _elevationAnimation.value).clamp(0.0, 8.0)),
                           spreadRadius: 0,
                         ),
                       ]
@@ -263,8 +263,8 @@ class _FloatingCardState extends State<FloatingCard>
               boxShadow: [
                 BoxShadow(
                   color: AppColors.softShadow,
-                  blurRadius: 24 + (_floatAnimation.value * 2),
-                  offset: Offset(0, 8 + _floatAnimation.value),
+                  blurRadius: (24 + (_floatAnimation.value * 2)).clamp(0.0, 32.0),
+                  offset: Offset(0, (8 + _floatAnimation.value).clamp(0.0, 12.0)),
                 ),
               ],
             ),
