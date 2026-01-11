@@ -23,10 +23,10 @@ class MemoryModel extends Equatable {
   final String? location;
 
   /// Optional latitude coordinate
-  final String? latitude;
+  final double? latitude;
 
   /// Optional longitude coordinate
-  final String? longitude;
+  final double? longitude;
 
   /// Optional caption or notes
   final String? caption;
@@ -63,11 +63,7 @@ class MemoryModel extends Equatable {
   bool get hasVideo => mediaItems.any((m) => m.isVideo);
 
   /// Check if this memory has location data
-  bool get hasLocation =>
-      latitude != null &&
-      longitude != null &&
-      latitude!.isNotEmpty &&
-      longitude!.isNotEmpty;
+  bool get hasLocation => latitude != null && longitude != null;
 
   /// Get the primary media item (first in list or legacy photoUrl)
   MemoryMediaModel? get primaryMedia =>
