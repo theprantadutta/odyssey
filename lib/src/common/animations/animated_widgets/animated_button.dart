@@ -115,7 +115,8 @@ class _AnimatedButtonState extends State<AnimatedButton>
             scale: _scaleAnimation.value,
             child: AnimatedContainer(
               duration: AppAnimations.fast,
-              curve: AppAnimations.buttonPress,
+              // Use non-overshooting curve for decoration lerp to avoid negative shadow values
+              curve: Curves.easeOutCubic,
               width: widget.width,
               height: widget.height,
               decoration: BoxDecoration(

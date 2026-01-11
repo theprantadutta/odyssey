@@ -106,9 +106,10 @@ class ApiConfig {
   static const String defaultTrips = '$trips/default-trips';
 
   // Timeouts
+  // Increased receive timeout to accommodate seeding demo images on first user setup
   static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
-  static const Duration sendTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(minutes: 2);
+  static const Duration sendTimeout = Duration(seconds: 60);
 
   // Headers
   static const String contentTypeJson = 'application/json';
