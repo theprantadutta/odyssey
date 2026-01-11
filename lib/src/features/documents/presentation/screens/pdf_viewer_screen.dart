@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:dio/dio.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -51,28 +50,36 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         _downloadProgress = 0.0;
       });
 
-      // Download PDF to temporary file
-      final tempDir = await getTemporaryDirectory();
-      final fileName = 'pdf_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final filePath = '${tempDir.path}/$fileName';
-
       // Use authenticated URL for FileRunner files
       final authenticatedUrl = FileUrlHelper.getAuthenticatedUrl(widget.url);
 
-      final dio = Dio();
-      await dio.download(
+      // Use cache manager to download and cache PDF
+      final cacheManager = DefaultCacheManager();
+      final fileStream = cacheManager.getFileStream(
         authenticatedUrl,
-        filePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            setState(() {
-              _downloadProgress = received / total;
-            });
-          }
-        },
+        withProgress: true,
       );
 
-      // Load PDF document
+      String? filePath;
+
+      await for (final result in fileStream) {
+        if (result is DownloadProgress) {
+          if (mounted) {
+            setState(() {
+              _downloadProgress = result.progress ?? 0.0;
+            });
+          }
+        } else if (result is FileInfo) {
+          filePath = result.file.path;
+          break;
+        }
+      }
+
+      if (filePath == null) {
+        throw Exception('Failed to download PDF');
+      }
+
+      // Load PDF document from cached file
       final document = await PdfDocument.openFile(filePath);
       _totalPages = document.pagesCount;
 
