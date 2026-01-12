@@ -9,6 +9,7 @@ part 'expenses_provider.g.dart';
 class ExpensesState {
   final List<ExpenseModel> expenses;
   final bool isLoading;
+  final bool isRefreshing;
   final String? error;
   final int total;
   final double totalAmount;
@@ -17,6 +18,7 @@ class ExpensesState {
   const ExpensesState({
     this.expenses = const [],
     this.isLoading = false,
+    this.isRefreshing = false,
     this.error,
     this.total = 0,
     this.totalAmount = 0.0,
@@ -29,6 +31,7 @@ class ExpensesState {
   ExpensesState copyWith({
     List<ExpenseModel>? expenses,
     bool? isLoading,
+    bool? isRefreshing,
     String? error,
     int? total,
     double? totalAmount,
@@ -37,6 +40,7 @@ class ExpensesState {
     return ExpensesState(
       expenses: expenses ?? this.expenses,
       isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
       error: error,
       total: total ?? this.total,
       totalAmount: totalAmount ?? this.totalAmount,
@@ -198,6 +202,36 @@ class TripExpenses extends _$TripExpenses {
       if (!ref.mounted) return;
       AppLogger.error('Failed to delete expense: $e');
       rethrow;
+    }
+  }
+
+  /// Refresh expense conversions to latest exchange rates
+  Future<void> refreshConversions() async {
+    AppLogger.action('Refreshing expense conversions for trip: $tripId');
+    state = state.copyWith(isRefreshing: true);
+
+    try {
+      await _expenseRepository.refreshConversions(tripId: tripId);
+      if (!ref.mounted) return;
+
+      AppLogger.info('Expense conversions refreshed successfully');
+
+      // Reload expenses and summary with updated conversions
+      final response = await _expenseRepository.getExpenses(tripId: tripId);
+      if (!ref.mounted) return;
+      final summary = await _expenseRepository.getExpenseSummary(tripId: tripId);
+      if (!ref.mounted) return;
+
+      state = state.copyWith(
+        expenses: response.expenses,
+        summary: summary,
+        totalAmount: summary.convertedTotalAmount,
+        isRefreshing: false,
+      );
+    } catch (e) {
+      if (!ref.mounted) return;
+      AppLogger.error('Failed to refresh conversions: $e');
+      state = state.copyWith(isRefreshing: false, error: e.toString());
     }
   }
 

@@ -95,6 +95,22 @@ class ExpenseRepository {
     }
   }
 
+  /// Refresh expense conversions to latest exchange rates
+  Future<RefreshConversionsResponse> refreshConversions({
+    required String tripId,
+  }) async {
+    try {
+      final response = await _dioClient.post(
+        '${ApiConfig.expenses}/refresh-conversions',
+        queryParameters: {'trip_id': tripId},
+      );
+
+      return RefreshConversionsResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   /// Handle Dio errors
   String _handleError(DioException error) {
     if (error.response?.data != null && error.response!.data is Map) {

@@ -6,6 +6,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/animations/animation_constants.dart';
+import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/trip_model.dart';
 
 /// Playful trip card with new vibrant design
@@ -319,7 +320,7 @@ class _TripCardState extends State<TripCard>
     if (widget.trip.coverImageUrl != null &&
         widget.trip.coverImageUrl!.isNotEmpty) {
       return CachedNetworkImage(
-        imageUrl: widget.trip.coverImageUrl!,
+        imageUrl: FileUrlHelper.getAuthenticatedUrl(widget.trip.coverImageUrl!),
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: AppColors.softCream,

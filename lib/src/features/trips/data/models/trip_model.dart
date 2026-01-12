@@ -3,6 +3,15 @@ import 'package:equatable/equatable.dart';
 
 part 'trip_model.g.dart';
 
+/// Converts budget from various types to double
+double? _budgetFromJson(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value.toDouble();
+  if (value is double) return value;
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 /// Trip model matching backend schema
 @JsonSerializable()
 class TripModel extends Equatable {
@@ -19,6 +28,10 @@ class TripModel extends Equatable {
   final String endDate;
   final String status;
   final List<String>? tags;
+  @JsonKey(fromJson: _budgetFromJson)
+  final double? budget;
+  @JsonKey(name: 'display_currency')
+  final String displayCurrency;
   @JsonKey(name: 'created_at')
   final String createdAt;
   @JsonKey(name: 'updated_at')
@@ -34,6 +47,8 @@ class TripModel extends Equatable {
     required this.endDate,
     required this.status,
     this.tags,
+    this.budget,
+    this.displayCurrency = 'USD',
     required this.createdAt,
     required this.updatedAt,
   });
@@ -54,6 +69,8 @@ class TripModel extends Equatable {
         endDate,
         status,
         tags,
+        budget,
+        displayCurrency,
         createdAt,
         updatedAt,
       ];
@@ -72,6 +89,9 @@ class TripRequest {
   final String endDate;
   final String status;
   final List<String>? tags;
+  final double? budget;
+  @JsonKey(name: 'display_currency')
+  final String? displayCurrency;
 
   const TripRequest({
     required this.title,
@@ -81,6 +101,8 @@ class TripRequest {
     required this.endDate,
     required this.status,
     this.tags,
+    this.budget,
+    this.displayCurrency,
   });
 
   Map<String, dynamic> toJson() => _$TripRequestToJson(this);

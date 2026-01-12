@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../common/constants/currencies.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -45,14 +46,6 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     ('other', 'Other', '📝'),
   ];
 
-  static const _currencies = [
-    ('USD', 'US Dollar', '\$'),
-    ('EUR', 'Euro', '€'),
-    ('GBP', 'British Pound', '£'),
-    ('JPY', 'Japanese Yen', '¥'),
-    ('BDT', 'Bangladeshi Taka', '৳'),
-    ('INR', 'Indian Rupee', '₹'),
-  ];
 
   @override
   void initState() {
@@ -175,11 +168,11 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                       horizontal: AppSizes.space12,
                     ),
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    items: _currencies.map((c) {
+                    items: commonCurrencies.map((c) {
                       return DropdownMenuItem(
-                        value: c.$1,
+                        value: c.code,
                         child: Text(
-                          '${c.$3} ${c.$1}',
+                          '${c.symbol} ${c.code}',
                           style: AppTypography.bodyMedium.copyWith(
                             color: AppColors.charcoal,
                           ),

@@ -33,6 +33,10 @@ class ApiConfig {
   static const String sharing = '/share';
   static const String templates = '/templates';
   static const String seed = '/seed';
+  static const String files = '/files';
+
+  // File upload endpoints
+  static const String fileUpload = '$files/upload';
 
   // Sharing endpoints
   static const String sharedWithMe = '$trips/shared-with-me';

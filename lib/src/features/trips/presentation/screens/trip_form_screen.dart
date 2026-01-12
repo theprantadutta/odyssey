@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../common/constants/currencies.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
+import '../../../../common/widgets/cover_image_picker.dart';
 import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
+import '../../../../core/services/file_upload_service.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 
@@ -27,14 +30,19 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _coverImageUrlController = TextEditingController();
   final _tagController = TextEditingController();
+  final _budgetController = TextEditingController();
+  final _fileUploadService = FileUploadService();
 
   DateTime? _startDate;
   DateTime? _endDate;
   TripStatus _status = TripStatus.planned;
   List<String> _tags = [];
   bool _isLoading = false;
+  CoverImageResult _coverImageResult = CoverImageResult.empty;
+  double _uploadProgress = 0.0;
+  bool _isUploading = false;
+  String _displayCurrency = 'USD';
 
   @override
   void initState() {
@@ -47,7 +55,9 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   void _initializeWithTrip(TripModel trip) {
     _titleController.text = trip.title;
     _descriptionController.text = trip.description ?? '';
-    _coverImageUrlController.text = trip.coverImageUrl ?? '';
+    if (trip.coverImageUrl != null && trip.coverImageUrl!.isNotEmpty) {
+      _coverImageResult = CoverImageResult.fromUrl(trip.coverImageUrl!);
+    }
     _startDate = DateTime.parse(trip.startDate);
     _endDate = DateTime.parse(trip.endDate);
     _status = TripStatus.values.firstWhere(
@@ -55,14 +65,18 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       orElse: () => TripStatus.planned,
     );
     _tags = trip.tags ?? [];
+    if (trip.budget != null) {
+      _budgetController.text = trip.budget!.toStringAsFixed(2);
+    }
+    _displayCurrency = trip.displayCurrency;
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _coverImageUrlController.dispose();
     _tagController.dispose();
+    _budgetController.dispose();
     super.dispose();
   }
 
@@ -155,18 +169,51 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     });
 
     try {
+      // Handle cover image upload if needed
+      String? coverImageUrl = _coverImageResult.url;
+
+      if (_coverImageResult.needsUpload) {
+        setState(() {
+          _isUploading = true;
+          _uploadProgress = 0.0;
+        });
+
+        try {
+          final uploadResult = await _fileUploadService.uploadCoverImage(
+            file: _coverImageResult.localFile!,
+            onProgress: (sent, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadProgress = sent / total;
+                });
+              }
+            },
+          );
+          coverImageUrl = uploadResult.url;
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isUploading = false;
+            });
+          }
+        }
+      }
+
+      final budgetText = _budgetController.text.trim();
+      final budget = budgetText.isEmpty ? null : double.tryParse(budgetText);
+
       final request = TripRequest(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        coverImageUrl: _coverImageUrlController.text.trim().isEmpty
-            ? null
-            : _coverImageUrlController.text.trim(),
+        coverImageUrl: coverImageUrl,
         startDate: DateFormat('yyyy-MM-dd').format(_startDate!),
         endDate: DateFormat('yyyy-MM-dd').format(_endDate!),
         status: _status.name,
         tags: _tags.isEmpty ? null : _tags,
+        budget: budget,
+        displayCurrency: _displayCurrency,
       );
 
       if (widget.trip == null) {
@@ -299,13 +346,36 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 title: 'Cover Image',
                 icon: Icons.image_rounded,
                 children: [
-                  _buildTextField(
-                    controller: _coverImageUrlController,
-                    label: 'Image URL (Optional)',
-                    hint: 'https://images.unsplash.com/...',
-                    icon: Icons.link_rounded,
-                    validator: Validators.url,
+                  CoverImagePicker(
+                    initialUrl: widget.trip?.coverImageUrl,
+                    enabled: !_isLoading,
+                    onChanged: (result) {
+                      setState(() {
+                        _coverImageResult = result;
+                      });
+                    },
                   ),
+                  if (_isUploading) ...[
+                    const SizedBox(height: AppSizes.space12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                      child: LinearProgressIndicator(
+                        value: _uploadProgress,
+                        backgroundColor: AppColors.warmGray,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.sunnyYellow),
+                        minHeight: 6,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.space8),
+                    Text(
+                      'Uploading... ${(_uploadProgress * 100).toInt()}%',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.slate,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: AppSizes.space16),
@@ -398,16 +468,107 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                   ],
                 ],
               ),
+              const SizedBox(height: AppSizes.space16),
+
+              // Budget Card
+              _buildCard(
+                title: 'Budget (Optional)',
+                icon: Icons.account_balance_wallet_rounded,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Currency Dropdown
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.warmGray,
+                          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _displayCurrency,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSizes.space12,
+                            ),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                            items: commonCurrencies.map((c) {
+                              return DropdownMenuItem(
+                                value: c.code,
+                                child: Text(
+                                  '${c.symbol} ${c.code}',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.charcoal,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: _isLoading
+                                ? null
+                                : (value) {
+                                    if (value != null) {
+                                      setState(() => _displayCurrency = value);
+                                    }
+                                  },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.space12),
+                      // Budget Amount
+                      Expanded(
+                        child: TextFormField(
+                          controller: _budgetController,
+                          enabled: !_isLoading,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: AppColors.charcoal,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '0.00',
+                            hintStyle: AppTypography.bodyLarge.copyWith(
+                              color: AppColors.mutedGray,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.warmGray,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                              borderSide: const BorderSide(
+                                color: AppColors.sunnyYellow,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.space8),
+                  Text(
+                    'Set a budget to track your expenses. All expenses will be converted to this currency.',
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.slate,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSizes.space32),
 
               // Submit Button
               AnimatedButton(
-                text: widget.trip == null ? 'Create Trip' : 'Update Trip',
+                text: _isUploading
+                    ? 'Uploading Image...'
+                    : (widget.trip == null ? 'Create Trip' : 'Update Trip'),
                 onPressed: _isLoading ? null : _handleSubmit,
                 isLoading: _isLoading,
-                icon: widget.trip == null
-                    ? Icons.add_rounded
-                    : Icons.save_rounded,
+                icon: _isUploading
+                    ? Icons.cloud_upload_rounded
+                    : (widget.trip == null
+                        ? Icons.add_rounded
+                        : Icons.save_rounded),
                 height: AppSizes.buttonHeightLg,
               ),
               const SizedBox(height: AppSizes.space24),
@@ -551,14 +712,17 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                   color: date != null ? AppColors.sunnyYellow : AppColors.slate,
                 ),
                 const SizedBox(width: AppSizes.space8),
-                Text(
-                  date == null
-                      ? 'Select'
-                      : DateFormat('MMM dd, yyyy').format(date),
-                  style: AppTypography.bodyMedium.copyWith(
-                    color:
-                        date != null ? AppColors.charcoal : AppColors.mutedGray,
-                    fontWeight: date != null ? FontWeight.w500 : FontWeight.w400,
+                Flexible(
+                  child: Text(
+                    date == null
+                        ? 'Select'
+                        : DateFormat('MMM dd, yyyy').format(date),
+                    style: AppTypography.bodyMedium.copyWith(
+                      color:
+                          date != null ? AppColors.charcoal : AppColors.mutedGray,
+                      fontWeight: date != null ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

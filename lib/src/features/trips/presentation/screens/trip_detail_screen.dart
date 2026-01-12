@@ -8,6 +8,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/pill_tab_bar.dart';
+import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 import '../widgets/trip_overview_tab.dart';
@@ -514,7 +515,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     if (trip.coverImageUrl != null &&
         trip.coverImageUrl!.isNotEmpty) {
       return CachedNetworkImage(
-        imageUrl: trip.coverImageUrl!,
+        imageUrl: FileUrlHelper.getAuthenticatedUrl(trip.coverImageUrl!),
         fit: BoxFit.cover,
         placeholder: (context, url) => _buildPlaceholderCover(),
         errorWidget: (context, url, error) => _buildPlaceholderCover(),
