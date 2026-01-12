@@ -6,8 +6,10 @@ import '../../../../common/constants/currencies.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/app_text_field.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/cover_image_picker.dart';
+import '../../../../common/widgets/form_section_card.dart';
 import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
 import '../../../../core/services/file_upload_service.dart';
@@ -317,24 +319,26 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Basic Info Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Basic Info',
                 icon: Icons.info_outline_rounded,
                 children: [
-                  _buildTextField(
+                  AppTextField(
                     controller: _titleController,
                     label: 'Trip Title',
                     hint: 'e.g., Paris Adventure',
-                    icon: Icons.title_rounded,
+                    prefixIcon: Icons.title_rounded,
+                    enabled: !_isLoading,
                     validator: (value) =>
                         Validators.required(value, fieldName: 'Title'),
                   ),
                   const SizedBox(height: AppSizes.space16),
-                  _buildTextField(
+                  AppTextField(
                     controller: _descriptionController,
                     label: 'Description (Optional)',
                     hint: 'Tell us about your trip...',
-                    icon: Icons.description_rounded,
+                    prefixIcon: Icons.description_rounded,
+                    enabled: !_isLoading,
                     maxLines: 3,
                   ),
                 ],
@@ -342,7 +346,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Cover Image Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Cover Image',
                 icon: Icons.image_rounded,
                 children: [
@@ -381,7 +385,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Dates Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Trip Dates',
                 icon: Icons.calendar_today_rounded,
                 children: [
@@ -409,7 +413,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Status Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Trip Status',
                 icon: Icons.flag_rounded,
                 children: [
@@ -419,18 +423,19 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Tags Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Tags',
                 icon: Icons.label_rounded,
                 children: [
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(
+                        child: AppTextField(
                           controller: _tagController,
                           label: 'Add a tag',
                           hint: 'adventure, family, beach...',
-                          icon: Icons.tag_rounded,
+                          prefixIcon: Icons.tag_rounded,
+                          enabled: !_isLoading,
                           onSubmitted: (_) => _addTag(),
                         ),
                       ),
@@ -471,7 +476,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Budget Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Budget (Optional)',
                 icon: Icons.account_balance_wallet_rounded,
                 children: [
@@ -481,8 +486,12 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                       // Currency Dropdown
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.warmGray,
+                          color: AppColors.snowWhite,
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                          border: Border.all(
+                            color: AppColors.mutedGray.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
@@ -529,10 +538,20 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                               color: AppColors.mutedGray,
                             ),
                             filled: true,
-                            fillColor: AppColors.warmGray,
+                            fillColor: AppColors.snowWhite,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                              borderSide: BorderSide.none,
+                              borderSide: BorderSide(
+                                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                              borderSide: BorderSide(
+                                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -579,104 +598,6 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space20),
-      decoration: BoxDecoration(
-        color: AppColors.snowWhite,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.lemonLight,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                ),
-                child: Icon(icon, color: AppColors.sunnyYellow, size: 20),
-              ),
-              const SizedBox(width: AppSizes.space12),
-              Text(
-                title,
-                style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.charcoal,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.space16),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    String? Function(String?)? validator,
-    int maxLines = 1,
-    void Function(String)? onSubmitted,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      enabled: !_isLoading,
-      onFieldSubmitted: onSubmitted,
-      style: AppTypography.bodyLarge.copyWith(
-        color: AppColors.charcoal,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
-        ),
-        hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.mutedGray,
-        ),
-        prefixIcon: Icon(icon, color: AppColors.slate),
-        filled: true,
-        fillColor: AppColors.warmGray,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.sunnyYellow,
-            width: 2,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
-        ),
-      ),
-      validator: validator,
-    );
-  }
-
   Widget _buildDateButton({
     required String label,
     required DateTime? date,
@@ -687,11 +608,13 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: AppColors.snowWhite,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
-            color: date != null ? AppColors.sunnyYellow : Colors.transparent,
-            width: 2,
+            color: date != null
+                ? AppColors.sunnyYellow
+                : AppColors.mutedGray.withValues(alpha: 0.3),
+            width: date != null ? 2 : 1.5,
           ),
         ),
         child: Column(
@@ -777,11 +700,13 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 horizontal: AppSizes.space8,
               ),
               decoration: BoxDecoration(
-                color: isSelected ? bgColor : AppColors.warmGray,
+                color: isSelected ? bgColor : AppColors.snowWhite,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
-                  color: isSelected ? textColor : Colors.transparent,
-                  width: 2,
+                  color: isSelected
+                      ? textColor
+                      : AppColors.mutedGray.withValues(alpha: 0.3),
+                  width: isSelected ? 2 : 1.5,
                 ),
               ),
               child: Column(

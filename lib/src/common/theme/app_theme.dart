@@ -77,7 +77,7 @@ class AppTheme {
       // Input Decoration Theme - Rounded and friendly
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.warmGray,
+        fillColor: AppColors.snowWhite,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSizes.space20,
           vertical: AppSizes.space16,

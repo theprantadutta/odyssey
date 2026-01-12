@@ -6,6 +6,7 @@ import '../../../../common/constants/currencies.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/form_section_card.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expenses_provider.dart';
 
@@ -135,112 +136,113 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildAmountSection() {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space20),
-      decoration: BoxDecoration(
-        color: AppColors.snowWhite,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Amount',
-            style: AppTypography.labelLarge.copyWith(
-              color: AppColors.charcoal,
-            ),
-          ),
-          const SizedBox(height: AppSizes.space12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Currency dropdown
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.warmGray,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCurrency,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSizes.space12,
-                    ),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    items: commonCurrencies.map((c) {
-                      return DropdownMenuItem(
-                        value: c.code,
-                        child: Text(
-                          '${c.symbol} ${c.code}',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.charcoal,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedCurrency = value);
-                      }
-                    },
-                  ),
+    return FormSectionCard(
+      title: 'Amount',
+      icon: Icons.attach_money_rounded,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Currency dropdown
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.snowWhite,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(
+                  color: AppColors.mutedGray.withValues(alpha: 0.3),
+                  width: 1.5,
                 ),
               ),
-              const SizedBox(width: AppSizes.space12),
-              // Amount input
-              Expanded(
-                child: TextFormField(
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: AppTypography.headlineLarge.copyWith(
-                    color: AppColors.charcoal,
-                    fontWeight: FontWeight.w700,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCurrency,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.space12,
                   ),
-                  decoration: InputDecoration(
-                    hintText: '0.00',
-                    hintStyle: AppTypography.headlineLarge.copyWith(
-                      color: AppColors.mutedGray,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.warmGray,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.all(AppSizes.space16),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  items: commonCurrencies.map((c) {
+                    return DropdownMenuItem(
+                      value: c.code,
+                      child: Text(
+                        '${c.symbol} ${c.code}',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.charcoal,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedCurrency = value);
                     }
-                    final amount = double.tryParse(value);
-                    if (amount == null || amount <= 0) {
-                      return 'Invalid amount';
-                    }
-                    return null;
                   },
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+            const SizedBox(width: AppSizes.space12),
+            // Amount input
+            Expanded(
+              child: TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: AppTypography.headlineLarge.copyWith(
+                  color: AppColors.charcoal,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: InputDecoration(
+                  hintText: '0.00',
+                  hintStyle: AppTypography.headlineLarge.copyWith(
+                    color: AppColors.mutedGray,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.snowWhite,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: BorderSide(
+                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: BorderSide(
+                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: const BorderSide(
+                      color: AppColors.sunnyYellow,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.all(AppSizes.space16),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Required';
+                  }
+                  final amount = double.tryParse(value);
+                  if (amount == null || amount <= 0) {
+                    return 'Invalid amount';
+                  }
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildTitleField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormSectionCard(
+      title: 'Title',
+      icon: Icons.title_rounded,
       children: [
-        Text(
-          'Title',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
         TextFormField(
           controller: _titleController,
           decoration: InputDecoration(
@@ -252,11 +254,17 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             fillColor: AppColors.snowWhite,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -289,16 +297,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildCategorySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormSectionCard(
+      title: 'Category',
+      icon: Icons.category_rounded,
       children: [
-        Text(
-          'Category',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space12),
         Wrap(
           spacing: AppSizes.space8,
           runSpacing: AppSizes.space8,
@@ -318,8 +320,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                   color: isSelected ? AppColors.sunnyYellow : AppColors.snowWhite,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   border: Border.all(
-                    color: isSelected ? AppColors.goldenGlow : AppColors.warmGray,
-                    width: 2,
+                    color: isSelected
+                        ? AppColors.goldenGlow
+                        : AppColors.mutedGray.withValues(alpha: 0.3),
+                    width: isSelected ? 2 : 1.5,
                   ),
                 ),
                 child: Row(
@@ -344,16 +348,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildDateField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormSectionCard(
+      title: 'Date',
+      icon: Icons.calendar_today_rounded,
       children: [
-        Text(
-          'Date',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
         GestureDetector(
           onTap: _selectDate,
           child: Container(
@@ -361,6 +359,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             decoration: BoxDecoration(
               color: AppColors.snowWhite,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              border: Border.all(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             child: Row(
               children: [
@@ -385,16 +387,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildNotesField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return FormSectionCard(
+      title: 'Notes (Optional)',
+      icon: Icons.notes_rounded,
       children: [
-        Text(
-          'Notes (Optional)',
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
-          ),
-        ),
-        const SizedBox(height: AppSizes.space8),
         TextFormField(
           controller: _notesController,
           maxLines: 3,
@@ -407,7 +403,24 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             fillColor: AppColors.snowWhite,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              borderSide: const BorderSide(
+                color: AppColors.sunnyYellow,
+                width: 2,
+              ),
             ),
             contentPadding: const EdgeInsets.all(AppSizes.space16),
           ),

@@ -101,8 +101,12 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.warmGray,
+            color: AppColors.snowWhite,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            border: Border.all(
+              color: AppColors.mutedGray.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
           ),
           child: const Icon(
             Icons.arrow_back_ios_new_rounded,
@@ -142,14 +146,20 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
             hintText: 'e.g., T-shirts, Toothbrush, Charger...',
             hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: AppColors.snowWhite,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -157,7 +167,7 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: const BorderSide(color: AppColors.error),
+              borderSide: const BorderSide(color: AppColors.error, width: 2),
             ),
             contentPadding: const EdgeInsets.all(AppSizes.space16),
           ),
@@ -203,13 +213,13 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? _getCategoryColor(category)
-                      : AppColors.warmGray,
+                      : AppColors.snowWhite,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   border: Border.all(
                     color: isSelected
                         ? _getCategoryColor(category)
-                        : Colors.transparent,
-                    width: 2,
+                        : AppColors.mutedGray.withValues(alpha: 0.3),
+                    width: isSelected ? 2 : 1.5,
                   ),
                 ),
                 child: Row(
@@ -265,8 +275,12 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.warmGray,
+                  color: AppColors.snowWhite,
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  border: Border.all(
+                    color: AppColors.mutedGray.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
                 ),
                 child: const Icon(
                   Icons.remove_rounded,
@@ -290,10 +304,24 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 ),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: AppColors.warmGray,
+                  fillColor: AppColors.snowWhite,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(
+                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: BorderSide(
+                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.oceanTeal, width: 2),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.space12,
@@ -365,14 +393,20 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
             hintText: 'Add any notes or reminders...',
             hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: AppColors.snowWhite,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(
+                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),

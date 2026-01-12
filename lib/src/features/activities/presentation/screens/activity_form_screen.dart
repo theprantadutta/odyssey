@@ -7,6 +7,8 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/app_text_field.dart';
+import '../../../../common/widgets/form_section_card.dart';
 import '../../../../common/widgets/location_picker_button.dart';
 import '../../data/models/activity_model.dart';
 import '../providers/activities_provider.dart';
@@ -309,24 +311,26 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Basic Info Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Activity Info',
                 icon: Icons.info_outline_rounded,
                 children: [
-                  _buildTextField(
+                  AppTextField(
                     controller: _titleController,
                     label: 'Activity Title',
                     hint: 'e.g., Visit Eiffel Tower',
-                    icon: Icons.title_rounded,
+                    prefixIcon: Icons.title_rounded,
+                    enabled: !_isLoading,
                     validator: (value) =>
                         Validators.required(value, fieldName: 'Title'),
                   ),
                   const SizedBox(height: AppSizes.space16),
-                  _buildTextField(
+                  AppTextField(
                     controller: _descriptionController,
                     label: 'Description (Optional)',
                     hint: 'Add notes or details...',
-                    icon: Icons.description_rounded,
+                    prefixIcon: Icons.description_rounded,
+                    enabled: !_isLoading,
                     maxLines: 3,
                   ),
                 ],
@@ -334,7 +338,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Category Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Category',
                 icon: Icons.category_rounded,
                 children: [
@@ -344,7 +348,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Schedule Card
-              _buildCard(
+              FormSectionCard(
                 title: 'Schedule',
                 icon: Icons.schedule_rounded,
                 children: [
@@ -380,18 +384,19 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               const SizedBox(height: AppSizes.space16),
 
               // Location Card (Optional)
-              _buildCard(
+              FormSectionCard(
                 title: 'Location (Optional)',
                 icon: Icons.location_on_rounded,
                 children: [
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(
+                        child: AppTextField(
                           controller: _latitudeController,
                           label: 'Latitude',
                           hint: 'e.g., 48.8584',
-                          icon: Icons.explore_rounded,
+                          prefixIcon: Icons.explore_rounded,
+                          enabled: !_isLoading,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                             signed: true,
@@ -400,11 +405,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                       ),
                       const SizedBox(width: AppSizes.space16),
                       Expanded(
-                        child: _buildTextField(
+                        child: AppTextField(
                           controller: _longitudeController,
                           label: 'Longitude',
                           hint: 'e.g., 2.2945',
-                          icon: Icons.explore_rounded,
+                          prefixIcon: Icons.explore_rounded,
+                          enabled: !_isLoading,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                             signed: true,
@@ -441,104 +447,6 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space20),
-      decoration: BoxDecoration(
-        color: AppColors.snowWhite,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.lemonLight,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                ),
-                child: Icon(icon, color: AppColors.sunnyYellow, size: 20),
-              ),
-              const SizedBox(width: AppSizes.space12),
-              Text(
-                title,
-                style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.charcoal,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.space16),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    String? Function(String?)? validator,
-    int maxLines = 1,
-    TextInputType? keyboardType,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      enabled: !_isLoading,
-      keyboardType: keyboardType,
-      style: AppTypography.bodyLarge.copyWith(
-        color: AppColors.charcoal,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
-        ),
-        hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.mutedGray,
-        ),
-        prefixIcon: Icon(icon, color: AppColors.slate),
-        filled: true,
-        fillColor: AppColors.warmGray,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.sunnyYellow,
-            width: 2,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
-        ),
-      ),
-      validator: validator,
-    );
-  }
-
   Widget _buildDateButton({
     required String label,
     required String value,
@@ -551,11 +459,13 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: AppColors.snowWhite,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
-            color: isSelected ? AppColors.sunnyYellow : Colors.transparent,
-            width: 2,
+            color: isSelected
+                ? AppColors.sunnyYellow
+                : AppColors.mutedGray.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1.5,
           ),
         ),
         child: Column(
@@ -616,11 +526,13 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               horizontal: AppSizes.space16,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.15) : AppColors.warmGray,
+              color: isSelected ? color.withValues(alpha: 0.15) : AppColors.snowWhite,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               border: Border.all(
-                color: isSelected ? color : Colors.transparent,
-                width: 2,
+                color: isSelected
+                    ? color
+                    : AppColors.mutedGray.withValues(alpha: 0.3),
+                width: isSelected ? 2 : 1.5,
               ),
             ),
             child: Row(

@@ -5,6 +5,7 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/glass_container.dart';
 import '../../../../common/widgets/custom_button.dart';
+import '../../../../common/widgets/section_divider.dart';
 import '../../data/models/trip_model.dart';
 
 class TripOverviewTab extends StatelessWidget {
@@ -59,7 +60,11 @@ class TripOverviewTab extends StatelessWidget {
 
           // Trip Stats
           _buildStatsRow(),
-          const SizedBox(height: AppSizes.space24),
+
+          // Divider after stats
+          const SectionDivider(
+            padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
+          ),
 
           // Description Section
           if (trip.description != null && trip.description!.isNotEmpty) ...[
@@ -79,7 +84,9 @@ class TripOverviewTab extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: AppSizes.space24),
+            const SectionDivider(
+              padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
+            ),
           ],
 
           // Tags Section
@@ -101,7 +108,9 @@ class TripOverviewTab extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const SizedBox(height: AppSizes.space24),
+            const SectionDivider(
+              padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
+            ),
           ],
 
           // Dates Section
