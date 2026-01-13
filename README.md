@@ -11,16 +11,48 @@ A beautiful, cinematic travel journal mobile app built with Flutter. Plan trips,
 
 - **Authentication** - Secure JWT-based login and registration
 - **Trip Management** - Create, edit, and delete trips with cover images
-- **Trip Details** - View trip overview, activities, and memories in a tabbed interface
-- **Onboarding** - Optional demo trips for new users to explore the app
-- **Beautiful UI** - Cinematic dark theme with gold accents and glassmorphism effects
+- **Activities** - Plan and track activities with scheduling, categories, and location mapping
+- **Memories** - Capture photos with location data, view on interactive map
+- **Packing Lists** - Organize items by category with quantity tracking
+- **Budget Tracking** - Multi-currency expense tracking with automatic conversion
+- **Documents** - Store and manage travel documents (PDFs, tickets, reservations)
+- **Achievements** - Gamification system with badges, points, and leaderboard
+- **Statistics** - Visual insights into your travel patterns and history
+- **Beautiful UI** - Sunny warm theme with yellow accents and soft shadows
 - **Offline Support** - Secure local storage for authentication tokens
 
 ## Screenshots
 
-| Login | Dashboard | Trip Details |
-|-------|-----------|--------------|
-| Gradient background with elegant form | Trip cards with status badges | Tabbed interface with hero animations |
+### Home & Dashboard
+<p align="center">
+  <img src="screenshots/home_screen.jpg" width="300" alt="Home Screen">
+</p>
+
+### Trip Details
+<p align="center">
+  <img src="screenshots/trip_detail_screen.jpg" width="300" alt="Trip Overview">
+  <img src="screenshots/trip_detail_activities.jpg" width="300" alt="Activities">
+</p>
+
+<p align="center">
+  <img src="screenshots/trip_detail_memories.jpg" width="300" alt="Memories">
+  <img src="screenshots/trip_detail_map.jpg" width="300" alt="Map View">
+</p>
+
+<p align="center">
+  <img src="screenshots/trip_detail_packing.jpg" width="300" alt="Packing List">
+  <img src="screenshots/trip_detail_budget.jpg" width="300" alt="Budget Tracking">
+</p>
+
+<p align="center">
+  <img src="screenshots/trip_detail_documents.jpg" width="300" alt="Documents">
+  <img src="screenshots/trip_detail_achivements.jpg" width="300" alt="Achievements">
+</p>
+
+### Statistics
+<p align="center">
+  <img src="screenshots/statistics_screen.jpg" width="300" alt="Statistics">
+</p>
 
 ## Tech Stack
 
@@ -177,13 +209,15 @@ redirect: (context, state) {
 ## Design System
 
 ### Colors
-- **Primary**: Midnight Blue (`#0A1E2F`)
-- **Accent**: Sunset Gold (`#D4AF37`)
-- **Surface**: Frosted White with glass effects
+- **Primary**: Sunny Yellow (`#F5B800`)
+- **Accent**: Golden Glow (`#D9A404`)
+- **Background**: Cloud Gray (`#F8F9FA`)
+- **Surface**: Snow White (`#FFFFFF`)
+- **Text**: Charcoal (`#1E293B`)
 
 ### Typography
-- **Headlines**: Playfair Display (serif)
-- **Body**: DM Sans (sans-serif)
+- **Headlines**: Nunito (rounded, friendly)
+- **Body**: Inter (clean, readable)
 
 ### Components
 - `CustomButton` - Primary and outlined variants
