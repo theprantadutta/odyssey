@@ -23,35 +23,38 @@ A beautiful, cinematic travel journal mobile app built with Flutter. Plan trips,
 
 ## Screenshots
 
-### Home & Dashboard
+### 1. Home & Dashboard
 <p align="center">
-  <img src="screenshots/home_screen.jpg" width="300" alt="Home Screen">
+  <img src="screenshots/01_home_screen.jpg" width="300" alt="Home Screen">
 </p>
 
-### Trip Details
+### 2-3. Trip Details
 <p align="center">
-  <img src="screenshots/trip_detail_screen.jpg" width="300" alt="Trip Overview">
-  <img src="screenshots/trip_detail_activities.jpg" width="300" alt="Activities">
+  <img src="screenshots/02_trip_detail_overview.jpg" width="300" alt="Trip Overview">
+  <img src="screenshots/03_trip_detail_activities.jpg" width="300" alt="Activities">
 </p>
 
+### 4-5. Memories & Map
 <p align="center">
-  <img src="screenshots/trip_detail_memories.jpg" width="300" alt="Memories">
-  <img src="screenshots/trip_detail_map.jpg" width="300" alt="Map View">
+  <img src="screenshots/04_trip_detail_memories.jpg" width="300" alt="Memories">
+  <img src="screenshots/05_trip_detail_map.jpg" width="300" alt="Map View">
 </p>
 
+### 6-7. Packing & Budget
 <p align="center">
-  <img src="screenshots/trip_detail_packing.jpg" width="300" alt="Packing List">
-  <img src="screenshots/trip_detail_budget.jpg" width="300" alt="Budget Tracking">
+  <img src="screenshots/06_trip_detail_packing.jpg" width="300" alt="Packing List">
+  <img src="screenshots/07_trip_detail_budget.jpg" width="300" alt="Budget Tracking">
 </p>
 
+### 8-9. Documents & Achievements
 <p align="center">
-  <img src="screenshots/trip_detail_documents.jpg" width="300" alt="Documents">
-  <img src="screenshots/trip_detail_achivements.jpg" width="300" alt="Achievements">
+  <img src="screenshots/08_trip_detail_documents.jpg" width="300" alt="Documents">
+  <img src="screenshots/09_trip_detail_achievements.jpg" width="300" alt="Achievements">
 </p>
 
-### Statistics
+### 10. Statistics
 <p align="center">
-  <img src="screenshots/statistics_screen.jpg" width="300" alt="Statistics">
+  <img src="screenshots/10_statistics.jpg" width="300" alt="Statistics">
 </p>
 
 ## Tech Stack
