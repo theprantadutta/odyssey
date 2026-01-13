@@ -2,23 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../common/animations/animation_constants.dart' as anim;
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/shimmer_loading.dart';
-import '../../../../common/widgets/empty_state.dart';
 import '../../../../common/widgets/custom_button.dart';
-import '../../../../common/animations/animation_constants.dart' as anim;
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+import '../../../../common/widgets/empty_state.dart';
+import '../../../../common/widgets/shimmer_loading.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/widgets/notification_badge.dart';
-import '../providers/trips_provider.dart';
 import '../../data/models/trip_model.dart';
+import '../providers/trips_provider.dart';
 import '../widgets/trip_card.dart';
 import '../widgets/trip_search_filter.dart';
 import 'trip_form_screen.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 
 class TripsDashboardScreen extends ConsumerStatefulWidget {
   const TripsDashboardScreen({super.key});
@@ -73,19 +74,18 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   void _handleEditTrip(String tripId) {
     HapticFeedback.lightImpact();
-    final trip = ref.read(tripsProvider).trips.firstWhere(
-          (t) => t.id == tripId,
-        );
+    final trip = ref
+        .read(tripsProvider)
+        .trips
+        .firstWhere((t) => t.id == tripId);
 
     Navigator.of(context)
         .push(
-      MaterialPageRoute(
-        builder: (context) => TripFormScreen(trip: trip),
-      ),
-    )
+          MaterialPageRoute(builder: (context) => TripFormScreen(trip: trip)),
+        )
         .then((_) {
-      ref.read(tripsProvider.notifier).refresh();
-    });
+          ref.read(tripsProvider.notifier).refresh();
+        });
   }
 
   void _handleSearch(String? query) {
@@ -124,25 +124,19 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         ),
         content: Text(
           'Are you sure you want to delete "$title"?',
-          style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
-          ),
+          style: AppTypography.bodyMedium.copyWith(color: AppColors.slate),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
-              ),
+              style: AppTypography.labelLarge.copyWith(color: AppColors.slate),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.coralBurst,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
             child: Text(
               'Delete',
               style: AppTypography.labelLarge.copyWith(
@@ -236,7 +230,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                   ),
                   child: Consumer(
                     builder: (context, ref, _) {
-                      final unreadCount = ref.watch(unreadNotificationCountProvider);
+                      final unreadCount = ref.watch(
+                        unreadNotificationCountProvider,
+                      );
                       return Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -336,8 +332,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         value: 'templates',
                         child: Row(
                           children: [
-                            Icon(Icons.bookmarks_outlined,
-                                color: AppColors.lavenderDream, size: 20),
+                            Icon(
+                              Icons.bookmarks_outlined,
+                              color: AppColors.lavenderDream,
+                              size: 20,
+                            ),
                             const SizedBox(width: AppSizes.space12),
                             const Text('Templates'),
                           ],
@@ -347,8 +346,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         value: 'shared',
                         child: Row(
                           children: [
-                            Icon(Icons.people_outline_rounded,
-                                color: AppColors.oceanTeal, size: 20),
+                            Icon(
+                              Icons.people_outline_rounded,
+                              color: AppColors.oceanTeal,
+                              size: 20,
+                            ),
                             const SizedBox(width: AppSizes.space12),
                             const Text('Shared Trips'),
                           ],
@@ -358,8 +360,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         value: 'achievements',
                         child: Row(
                           children: [
-                            Icon(Icons.emoji_events_outlined,
-                                color: AppColors.sunnyYellow, size: 20),
+                            Icon(
+                              Icons.emoji_events_outlined,
+                              color: AppColors.sunnyYellow,
+                              size: 20,
+                            ),
                             const SizedBox(width: AppSizes.space12),
                             const Text('Achievements'),
                           ],
@@ -369,8 +374,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         value: 'statistics',
                         child: Row(
                           children: [
-                            Icon(Icons.bar_chart_outlined,
-                                color: AppColors.mintGreen, size: 20),
+                            Icon(
+                              Icons.bar_chart_outlined,
+                              color: AppColors.mintGreen,
+                              size: 20,
+                            ),
                             const SizedBox(width: AppSizes.space12),
                             const Text('Statistics'),
                           ],
@@ -381,8 +389,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         value: 'logout',
                         child: Row(
                           children: [
-                            Icon(Icons.logout_rounded,
-                                color: AppColors.error, size: 20),
+                            Icon(
+                              Icons.logout_rounded,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
                             const SizedBox(width: AppSizes.space12),
                             const Text('Logout'),
                           ],
@@ -422,9 +433,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               ),
             ),
 
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AppSizes.space8),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space8)),
 
             // Content
             if (tripsState.isLoading && tripsState.trips.isEmpty)
@@ -441,16 +450,12 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.all(AppSizes.space24),
-                  child: Center(
-                    child: BouncingDotsLoader(),
-                  ),
+                  child: Center(child: BouncingDotsLoader()),
                 ),
               ),
 
             // Bottom spacing
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AppSizes.space80),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space80)),
           ],
         ),
       ),
@@ -465,7 +470,8 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   Widget _buildHeader(AuthState authState) {
     final displayName = authState.user?.displayName;
     // Use displayName if available, otherwise fall back to extracting from email
-    final firstName = displayName ?? _getFirstNameFromEmail(authState.user?.email);
+    final firstName =
+        displayName ?? _getFirstNameFromEmail(authState.user?.email);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,10 +504,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         ),
         const SizedBox(height: 2),
         Text(
-          firstName != null && firstName.isNotEmpty ? firstName : '',
-          style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
-          ),
+          // firstName != null && firstName.isNotEmpty ? firstName : '',
+          'Welcome, ${firstName != null && firstName.isNotEmpty ? firstName : ''}',
+          style: AppTypography.bodyMedium.copyWith(color: AppColors.slate),
           overflow: TextOverflow.ellipsis,
         ),
       ],
@@ -536,10 +541,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   Widget _buildErrorState(String error) {
     return SliverFillRemaining(
-      child: ErrorState(
-        message: error,
-        onRetry: _handleRefresh,
-      ),
+      child: ErrorState(message: error, onRetry: _handleRefresh),
     );
   }
 
@@ -559,10 +561,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                   duration: anim.AppAnimations.medium,
                   curve: anim.AppAnimations.bounce,
                   builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: child,
-                    );
+                    return Transform.scale(scale: value, child: child);
                   },
                   child: Container(
                     padding: const EdgeInsets.all(AppSizes.space24),
@@ -612,9 +611,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     }
 
     return SliverFillRemaining(
-      child: NoTripsState(
-        onCreateTrip: _handleCreateTrip,
-      ),
+      child: NoTripsState(onCreateTrip: _handleCreateTrip),
     );
   }
 
@@ -625,19 +622,16 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         bottom: AppSizes.space16,
       ),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final trip = state.trips[index];
-            return TripCard(
-              trip: trip,
-              staggerIndex: index,
-              onTap: () => _handleTripTap(trip),
-              onEdit: () => _handleEditTrip(trip.id),
-              onDelete: () => _handleDeleteTrip(trip.id, trip.title),
-            );
-          },
-          childCount: state.trips.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final trip = state.trips[index];
+          return TripCard(
+            trip: trip,
+            staggerIndex: index,
+            onTap: () => _handleTripTap(trip),
+            onEdit: () => _handleEditTrip(trip.id),
+            onDelete: () => _handleDeleteTrip(trip.id, trip.title),
+          );
+        }, childCount: state.trips.length),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -47,10 +48,7 @@ class HomeScreen extends ConsumerWidget {
                   size: 24,
                 ),
                 const SizedBox(width: AppSizes.space8),
-                Text(
-                  'Odyssey',
-                  style: AppTypography.headlineMedium,
-                ),
+                Text('Odyssey', style: AppTypography.headlineMedium),
               ],
             ),
             Text(
@@ -76,10 +74,7 @@ class HomeScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.frostedWhite,
-              Colors.white,
-            ],
+            colors: [AppColors.frostedWhite, Colors.white],
           ),
         ),
         child: Center(
