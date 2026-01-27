@@ -47,34 +47,49 @@ class AppRoutes {
   static const String subscription = '/subscription';
 }
 
-/// A simple listenable for router refresh
-class RouterRefreshNotifier extends ChangeNotifier {
-  void refresh() => notifyListeners();
+/// Listenable that notifies GoRouter when auth state changes
+/// This triggers redirect re-evaluation without rebuilding the entire router
+class AuthChangeNotifier extends ChangeNotifier {
+  AuthChangeNotifier(this._ref) {
+    _subscription = _ref.listen(authProvider, (previous, next) {
+      // Only notify if relevant auth fields changed
+      if (previous?.isAuthenticated != next.isAuthenticated ||
+          previous?.isLoading != next.isLoading ||
+          previous?.hasSeenIntro != next.hasSeenIntro ||
+          previous?.needsOnboarding != next.needsOnboarding) {
+        notifyListeners();
+      }
+    });
+  }
+
+  final Ref _ref;
+  ProviderSubscription<AuthState>? _subscription;
+
+  @override
+  void dispose() {
+    _subscription?.close();
+    super.dispose();
+  }
 }
 
-/// Global refresh notifier
-final _routerRefreshNotifier = RouterRefreshNotifier();
-
-/// GoRouter provider
+/// GoRouter provider - creates router once, uses refreshListenable for auth changes
 final routerProvider = Provider<GoRouter>((ref) {
-  // Use selective watching to only rebuild when relevant auth fields change
-  // This prevents excessive rebuilds during auth state transitions
-  final isAuthenticated =
-      ref.watch(authProvider.select((s) => s.isAuthenticated));
-  final isLoading = ref.watch(authProvider.select((s) => s.isLoading));
-  final hasSeenIntro = ref.watch(authProvider.select((s) => s.hasSeenIntro));
-  final needsOnboarding =
-      ref.watch(authProvider.select((s) => s.needsOnboarding));
-
-  // Note: No need for Future.microtask refresh - the provider rebuilds
-  // automatically when any of the watched fields change, creating a new
-  // GoRouter with updated redirect logic.
+  // Create a notifier that listens to auth changes and triggers router refresh
+  final authNotifier = AuthChangeNotifier(ref);
+  ref.onDispose(() => authNotifier.dispose());
 
   return GoRouter(
     debugLogDiagnostics: true,
     initialLocation: AppRoutes.splash,
-    refreshListenable: _routerRefreshNotifier,
+    refreshListenable: authNotifier,
     redirect: (context, state) {
+      // Read current auth state (don't watch - we use refreshListenable instead)
+      final authState = ref.read(authProvider);
+      final isAuthenticated = authState.isAuthenticated;
+      final isLoading = authState.isLoading;
+      final hasSeenIntro = authState.hasSeenIntro;
+      final needsOnboarding = authState.needsOnboarding;
+
       final currentLocation = state.matchedLocation;
       final isOnSplash = currentLocation == AppRoutes.splash;
       final isOnIntro = currentLocation == AppRoutes.intro;
