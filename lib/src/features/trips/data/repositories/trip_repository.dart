@@ -94,10 +94,16 @@ class TripRepository {
   }
 
   /// Create default trips for new user (called during onboarding)
-  Future<void> createDefaultTrips() async {
+  /// Returns true if trips were created, false if user already has trips
+  Future<bool> createDefaultTrips() async {
     try {
       await _dioClient.post(ApiConfig.defaultTrips);
+      return true; // Trips created successfully
     } on DioException catch (e) {
+      // 409 means user already has trips - this is expected, not an error
+      if (e.response?.statusCode == 409) {
+        return false;
+      }
       throw _handleError(e);
     }
   }

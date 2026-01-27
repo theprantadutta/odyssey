@@ -71,16 +71,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       if (!_keepClean) {
         AppLogger.action('User chose to add demo trips');
         final tripRepository = TripRepository();
-        try {
-          await tripRepository.createDefaultTrips();
+        final created = await tripRepository.createDefaultTrips();
+        if (created) {
           AppLogger.info('Demo trips created successfully');
-        } catch (e) {
-          // If user already has trips (409 error), that's fine - just continue
-          if (e.toString().contains('already has trips') || e.toString().contains('409')) {
-            AppLogger.info('User already has trips, skipping demo trip creation');
-          } else {
-            rethrow;
-          }
+        } else {
+          AppLogger.info('User already has trips, skipping demo trip creation');
         }
       } else {
         AppLogger.action('User chose to start fresh (no demo trips)');
