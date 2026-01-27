@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../services/auth_event_service.dart';
 import '../services/logger_service.dart';
 import '../services/storage_service.dart';
 import '../services/token_refresh_service.dart';
@@ -64,6 +65,7 @@ class AuthInterceptor extends QueuedInterceptor {
       if (requestOptions.extra[_retryKey] == true) {
         AppLogger.auth('Already retried after refresh, giving up', isError: true);
         await _storageService.clearAuthData();
+        AuthEventService().emit(AuthEvent.sessionExpired);
         return handler.next(err);
       }
 
@@ -72,6 +74,7 @@ class AuthInterceptor extends QueuedInterceptor {
       if (refreshToken == null || refreshToken.isEmpty) {
         AppLogger.auth('No refresh token available, clearing auth data', isError: true);
         await _storageService.clearAuthData();
+        AuthEventService().emit(AuthEvent.sessionExpired);
         return handler.next(err);
       }
 
@@ -108,6 +111,7 @@ class AuthInterceptor extends QueuedInterceptor {
         // Refresh failed, clear auth data
         AppLogger.auth('Token refresh failed, clearing auth data', isError: true);
         await _storageService.clearAuthData();
+        AuthEventService().emit(AuthEvent.tokenRefreshFailed);
       }
     }
 
@@ -190,7 +194,9 @@ class ErrorInterceptor extends Interceptor {
         return 'Connection timeout. Please check your internet connection.';
 
       case DioExceptionType.badResponse:
-        return _handleStatusCode(error.response?.statusCode);
+        // Prefer backend error message over generic status code message
+        return _extractBackendError(error) ??
+            _handleStatusCode(error.response?.statusCode);
 
       case DioExceptionType.cancel:
         return 'Request cancelled';
@@ -225,5 +231,15 @@ class ErrorInterceptor extends Interceptor {
       default:
         return 'Error occurred (Status: $statusCode)';
     }
+  }
+
+  /// Extract error message from backend response.
+  /// Backend typically returns {"detail": "message"} or {"error": "message"}.
+  String? _extractBackendError(DioException error) {
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      return data['detail']?.toString() ?? data['error']?.toString();
+    }
+    return null;
   }
 }

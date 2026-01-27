@@ -53,21 +53,24 @@ final _routerRefreshNotifier = RouterRefreshNotifier();
 
 /// GoRouter provider
 final routerProvider = Provider<GoRouter>((ref) {
-  // Watch auth state - triggers rebuild when auth changes
-  final authState = ref.watch(authProvider);
+  // Use selective watching to only rebuild when relevant auth fields change
+  // This prevents excessive rebuilds during auth state transitions
+  final isAuthenticated =
+      ref.watch(authProvider.select((s) => s.isAuthenticated));
+  final isLoading = ref.watch(authProvider.select((s) => s.isLoading));
+  final hasSeenIntro = ref.watch(authProvider.select((s) => s.hasSeenIntro));
+  final needsOnboarding =
+      ref.watch(authProvider.select((s) => s.needsOnboarding));
 
-  // Schedule router refresh after this build
-  Future.microtask(() => _routerRefreshNotifier.refresh());
+  // Note: No need for Future.microtask refresh - the provider rebuilds
+  // automatically when any of the watched fields change, creating a new
+  // GoRouter with updated redirect logic.
 
   return GoRouter(
     debugLogDiagnostics: true,
     initialLocation: AppRoutes.splash,
     refreshListenable: _routerRefreshNotifier,
     redirect: (context, state) {
-      final isAuthenticated = authState.isAuthenticated;
-      final isLoading = authState.isLoading;
-      final hasSeenIntro = authState.hasSeenIntro;
-      final needsOnboarding = authState.needsOnboarding;
       final currentLocation = state.matchedLocation;
       final isOnSplash = currentLocation == AppRoutes.splash;
       final isOnIntro = currentLocation == AppRoutes.intro;

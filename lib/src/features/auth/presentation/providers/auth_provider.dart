@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
@@ -67,16 +70,43 @@ AuthRepository authRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 class Auth extends _$Auth {
   late final AuthRepository _authRepository;
+  StreamSubscription<AuthEvent>? _authEventSubscription;
 
   @override
   AuthState build() {
     _authRepository = ref.read(authRepositoryProvider);
+
+    // Listen for forced logout events from interceptors
+    _authEventSubscription?.cancel();
+    _authEventSubscription = AuthEventService().events.listen(_handleAuthEvent);
+
+    // Cancel subscription when provider is disposed
+    ref.onDispose(() {
+      _authEventSubscription?.cancel();
+    });
 
     // Delay auth check until after provider is fully initialized
     // This avoids the "uninitialized provider" error in Riverpod 3
     Future.microtask(() => _checkAuthStatus());
 
     return const AuthState(isLoading: true);
+  }
+
+  /// Handle auth events from interceptors (e.g., session expired)
+  void _handleAuthEvent(AuthEvent event) {
+    AppLogger.auth('Auth event received: $event');
+    if (event == AuthEvent.sessionExpired ||
+        event == AuthEvent.tokenRefreshFailed) {
+      // Only update if currently authenticated to avoid redundant updates
+      if (state.isAuthenticated) {
+        state = state.copyWith(
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          error: 'Your session has expired. Please log in again.',
+        );
+      }
+    }
   }
 
   /// Check if user is already authenticated on app start
