@@ -56,6 +56,7 @@ class PillTabBar extends StatelessWidget {
               padding: const EdgeInsets.only(right: AppSizes.space8),
               child: _PillTab(
                 item: tabs[index],
+                index: index,
                 isSelected: isSelected,
                 selectedColor: selectedColor,
                 unselectedColor: unselectedColor,
@@ -74,6 +75,7 @@ class PillTabBar extends StatelessWidget {
 
 class _PillTab extends StatefulWidget {
   final PillTabItem item;
+  final int index;
   final bool isSelected;
   final Color? selectedColor;
   final Color? unselectedColor;
@@ -81,6 +83,7 @@ class _PillTab extends StatefulWidget {
 
   const _PillTab({
     required this.item,
+    required this.index,
     required this.isSelected,
     this.selectedColor,
     this.unselectedColor,
@@ -160,7 +163,7 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
                   widget.isSelected
                       ? (widget.item.activeIcon ?? widget.item.icon)
                       : widget.item.icon,
-                  key: ValueKey('${widget.item.label}_${widget.isSelected}'),
+                  key: ValueKey('${widget.index}_${widget.isSelected}'),
                   size: 18,
                   color: widget.isSelected
                       ? AppColors.snowWhite
