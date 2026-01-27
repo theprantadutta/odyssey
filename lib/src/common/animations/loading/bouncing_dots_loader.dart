@@ -395,42 +395,44 @@ class LoadingOverlay extends StatelessWidget {
                               child: child,
                             );
                           },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 32),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 28,
-                              vertical: 20,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? colorScheme.surface
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (isDark
-                                          ? Colors.black
-                                          : AppColors.sunnyYellow)
-                                      .withValues(alpha: 0.15),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 8),
-                                  spreadRadius: 4,
-                                ),
-                                BoxShadow(
-                                  color: (isDark
-                                          ? AppColors.sunnyYellow
-                                          : AppColors.goldenGlow)
-                                      .withValues(alpha: 0.1),
-                                  blurRadius: 48,
-                                  offset: const Offset(0, 16),
-                                ),
-                              ],
-                              border: Border.all(
-                                color: AppColors.sunnyYellow
-                                    .withValues(alpha: isDark ? 0.3 : 0.2),
-                                width: 1.5,
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 32),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 20,
                               ),
-                            ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? colorScheme.surface
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isDark
+                                            ? Colors.black
+                                            : AppColors.sunnyYellow)
+                                        .withValues(alpha: 0.15),
+                                    blurRadius: 32,
+                                    offset: const Offset(0, 8),
+                                    spreadRadius: 4,
+                                  ),
+                                  BoxShadow(
+                                    color: (isDark
+                                            ? AppColors.sunnyYellow
+                                            : AppColors.goldenGlow)
+                                        .withValues(alpha: 0.1),
+                                    blurRadius: 48,
+                                    offset: const Offset(0, 16),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: AppColors.sunnyYellow
+                                      .withValues(alpha: isDark ? 0.3 : 0.2),
+                                  width: 1.5,
+                                ),
+                              ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -499,6 +501,7 @@ class LoadingOverlay extends StatelessWidget {
                               ],
                             ),
                           ),
+                        ),
                         ),
                       ),
                     ),
