@@ -65,7 +65,8 @@ class Trips extends _$Trips {
   @override
   TripsState build() {
     Future.microtask(() => _loadTrips());
-    return const TripsState();
+    // Start with isLoading: true to show loader immediately
+    return const TripsState(isLoading: true);
   }
 
   /// Load trips (first page) with current filters
