@@ -83,8 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isOnOnboarding = currentLocation == AppRoutes.onboarding;
       final isOnAuthScreen = isOnLogin || isOnRegister;
 
-      // Show splash while checking auth (but NOT if already on auth/intro screens)
-      if (isLoading && !isOnSplash && !isOnAuthScreen && !isOnIntro) {
+      // Show splash only during initial auth check (isLoading + not yet authenticated)
+      // Don't redirect to splash during logout (isLoading + still authenticated)
+      if (isLoading && !isAuthenticated && !isOnSplash && !isOnAuthScreen && !isOnIntro) {
         return AppRoutes.splash;
       }
 
