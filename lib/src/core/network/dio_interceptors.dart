@@ -159,12 +159,18 @@ class LoggingInterceptor extends Interceptor {
     final url = err.requestOptions.uri.toString();
     _requestTimestamps.remove(url);
 
-    AppLogger.networkError(
-      url: url,
-      message: err.message ?? 'Unknown error',
-      statusCode: err.response?.statusCode,
-      error: err.response?.data,
-    );
+    // Skip logging 409 on default-trips endpoint - it's expected when user already has trips
+    final isExpected409 = err.response?.statusCode == 409 &&
+        url.contains('/trips/default-trips');
+
+    if (!isExpected409) {
+      AppLogger.networkError(
+        url: url,
+        message: err.message ?? 'Unknown error',
+        statusCode: err.response?.statusCode,
+        error: err.response?.data,
+      );
+    }
     return super.onError(err, handler);
   }
 }
