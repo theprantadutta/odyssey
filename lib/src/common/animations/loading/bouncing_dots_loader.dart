@@ -1,6 +1,8 @@
 import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_typography.dart';
 import '../animation_constants.dart';
 
 /// Playful bouncing dots loader inspired by Duolingo
@@ -333,13 +335,14 @@ class _SpinningLoaderState extends State<SpinningLoader>
   }
 }
 
-/// Full-screen loading overlay with optional message
+/// Full-screen loading overlay with blur backdrop and expressive modal
 class LoadingOverlay extends StatelessWidget {
   final Widget child;
   final bool isLoading;
   final String? message;
   final Color? backgroundColor;
   final Widget? loadingWidget;
+  final double blurAmount;
 
   const LoadingOverlay({
     super.key,
@@ -348,44 +351,150 @@ class LoadingOverlay extends StatelessWidget {
     this.message,
     this.backgroundColor,
     this.loadingWidget,
+    this.blurAmount = 8.0,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final colorScheme = theme.colorScheme;
 
     return Stack(
       children: [
         child,
         AnimatedSwitcher(
-          duration: AppAnimations.fast,
+          duration: AppAnimations.normal,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
           child: isLoading
               ? Positioned.fill(
                   key: const ValueKey('loading_overlay'),
-                  child: Container(
-                    color: backgroundColor ??
-                        (isDark
-                            ? Colors.black.withValues(alpha: 0.7)
-                            : Colors.white.withValues(alpha: 0.85)),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          loadingWidget ?? const OrbitalLoader(size: 72),
-                          if (message != null) ...[
-                            const SizedBox(height: 24),
-                            Text(
-                              message!,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.9)
-                                    : Colors.black87,
-                                fontWeight: FontWeight.w500,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: blurAmount,
+                      sigmaY: blurAmount,
+                    ),
+                    child: Container(
+                      color: backgroundColor ??
+                          (isDark
+                              ? Colors.black.withValues(alpha: 0.6)
+                              : Colors.white.withValues(alpha: 0.7)),
+                      child: Center(
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.8, end: 1.0),
+                          duration: AppAnimations.normal,
+                          curve: Curves.easeOutBack,
+                          builder: (context, scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 48),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 36,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? colorScheme.surface
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: (isDark
+                                          ? Colors.black
+                                          : AppColors.sunnyYellow)
+                                      .withValues(alpha: 0.15),
+                                  blurRadius: 32,
+                                  offset: const Offset(0, 8),
+                                  spreadRadius: 4,
+                                ),
+                                BoxShadow(
+                                  color: (isDark
+                                          ? AppColors.sunnyYellow
+                                          : AppColors.goldenGlow)
+                                      .withValues(alpha: 0.1),
+                                  blurRadius: 48,
+                                  offset: const Offset(0, 16),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: AppColors.sunnyYellow
+                                    .withValues(alpha: isDark ? 0.3 : 0.2),
+                                width: 1.5,
                               ),
                             ),
-                          ],
-                        ],
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Decorative top accent
+                                Container(
+                                  width: 48,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppColors.sunnyYellow,
+                                        AppColors.goldenGlow,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                // Loader with glow effect
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        AppColors.sunnyYellow
+                                            .withValues(alpha: 0.15),
+                                        Colors.transparent,
+                                      ],
+                                      radius: 1.2,
+                                    ),
+                                  ),
+                                  child:
+                                      loadingWidget ?? const OrbitalLoader(size: 64),
+                                ),
+                                if (message != null) ...[
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    message!,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.9)
+                                          : colorScheme.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Subtle hint text
+                                  Text(
+                                    'Please wait...',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.5)
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
