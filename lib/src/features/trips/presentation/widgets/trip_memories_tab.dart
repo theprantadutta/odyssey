@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -114,24 +115,20 @@ class TripMemoriesTab extends ConsumerWidget {
   }
 
   Widget _buildLoadingState(ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSizes.space16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: AppSizes.space8,
-          mainAxisSpacing: AppSizes.space8,
-          childAspectRatio: 1.0,
-        ),
-        itemCount: 9,
-        itemBuilder: (context, index) => Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const OrbitalLoader(size: 64),
+          const SizedBox(height: 20),
+          Text(
+            'Loading memories...',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

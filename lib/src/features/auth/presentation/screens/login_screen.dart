@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -221,172 +222,177 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isAuthLoading = authState.isLoading || authState.isGoogleLoading;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSizes.space24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Logo Section
-                    _buildLogoSection(),
-                    const SizedBox(height: AppSizes.space32),
+      body: LoadingOverlay(
+        isLoading: isAuthLoading,
+        message: 'Signing in...',
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSizes.space24),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo Section
+                      _buildLogoSection(),
+                      const SizedBox(height: AppSizes.space32),
 
-                    // Form Card
-                    Container(
-                      padding: const EdgeInsets.all(AppSizes.space24),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-                        boxShadow: AppSizes.softShadow,
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Welcome Back!',
-                              style: AppTypography.headlineMedium.copyWith(
-                                color: colorScheme.onSurface,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: AppSizes.space8),
-                            Text(
-                              'Sign in to continue your journey',
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: AppSizes.space24),
-
-                            // Email Field
-                            _buildTextField(
-                              controller: _emailController,
-                              focusNode: _emailFocusNode,
-                              label: 'Email',
-                              hint: 'your@email.com',
-                              icon: Icons.email_outlined,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: Validators.email,
-                              enabled: !authState.isLoading,
-                              textInputAction: TextInputAction.next,
-                              onSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                            ),
-                            const SizedBox(height: AppSizes.space16),
-
-                            // Password Field
-                            _buildTextField(
-                              controller: _passwordController,
-                              focusNode: _passwordFocusNode,
-                              label: 'Password',
-                              hint: '••••••••',
-                              icon: Icons.lock_outline,
-                              obscureText: _obscurePassword,
-                              validator: Validators.password,
-                              enabled: !authState.isLoading,
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _handleLogin(),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                  color: AppColors.slate,
+                      // Form Card
+                      Container(
+                        padding: const EdgeInsets.all(AppSizes.space24),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+                          boxShadow: AppSizes.softShadow,
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Welcome Back!',
+                                style: AppTypography.headlineMedium.copyWith(
+                                  color: colorScheme.onSurface,
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            const SizedBox(height: AppSizes.space24),
-
-                            // Login Button
-                            AnimatedButton(
-                              text: 'Sign In',
-                              onPressed: (authState.isLoading || authState.isGoogleLoading)
-                                  ? null
-                                  : _handleLogin,
-                              isLoading: authState.isLoading,
-                              icon: Icons.arrow_forward_rounded,
-                              height: AppSizes.buttonHeightLg,
-                            ),
-                            const SizedBox(height: AppSizes.space16),
-
-                            // Divider
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    height: 1,
-                                    color: theme.hintColor,
-                                  ),
+                              const SizedBox(height: AppSizes.space8),
+                              Text(
+                                'Sign in to continue your journey',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSizes.space16,
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: AppSizes.space24),
+
+                              // Email Field
+                              _buildTextField(
+                                controller: _emailController,
+                                focusNode: _emailFocusNode,
+                                label: 'Email',
+                                hint: 'your@email.com',
+                                icon: Icons.email_outlined,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: Validators.email,
+                                enabled: !authState.isLoading,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                              ),
+                              const SizedBox(height: AppSizes.space16),
+
+                              // Password Field
+                              _buildTextField(
+                                controller: _passwordController,
+                                focusNode: _passwordFocusNode,
+                                label: 'Password',
+                                hint: '••••••••',
+                                icon: Icons.lock_outline,
+                                obscureText: _obscurePassword,
+                                validator: Validators.password,
+                                enabled: !authState.isLoading,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _handleLogin(),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    color: AppColors.slate,
                                   ),
-                                  child: Text(
-                                    'or',
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: AppSizes.space24),
+
+                              // Login Button
+                              AnimatedButton(
+                                text: 'Sign In',
+                                onPressed: (authState.isLoading || authState.isGoogleLoading)
+                                    ? null
+                                    : _handleLogin,
+                                isLoading: authState.isLoading,
+                                icon: Icons.arrow_forward_rounded,
+                                height: AppSizes.buttonHeightLg,
+                              ),
+                              const SizedBox(height: AppSizes.space16),
+
+                              // Divider
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 1,
+                                      color: theme.hintColor,
                                     ),
                                   ),
-                                ),
-                                Expanded(
-                                  child: Container(
-                                    height: 1,
-                                    color: theme.hintColor,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSizes.space16,
+                                    ),
+                                    child: Text(
+                                      'or',
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSizes.space16),
-
-                            // Google Sign-In Button
-                            _buildGoogleSignInButton(authState),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.space24),
-
-                    // Register Link
-                    Center(
-                      child: GestureDetector(
-                        onTap: authState.isLoading ? null : widget.onRegisterTap,
-                        child: RichText(
-                          text: TextSpan(
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            children: [
-                              const TextSpan(text: "Don't have an account? "),
-                              TextSpan(
-                                text: 'Sign Up',
-                                style: AppTypography.labelLarge.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                  Expanded(
+                                    child: Container(
+                                      height: 1,
+                                      color: theme.hintColor,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: AppSizes.space16),
+
+                              // Google Sign-In Button
+                              _buildGoogleSignInButton(authState),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSizes.space24),
+
+                      // Register Link
+                      Center(
+                        child: GestureDetector(
+                          onTap: authState.isLoading ? null : widget.onRegisterTap,
+                          child: RichText(
+                            text: TextSpan(
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              children: [
+                                const TextSpan(text: "Don't have an account? "),
+                                TextSpan(
+                                  text: 'Sign Up',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

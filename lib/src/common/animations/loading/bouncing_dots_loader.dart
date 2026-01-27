@@ -333,39 +333,65 @@ class _SpinningLoaderState extends State<SpinningLoader>
   }
 }
 
-/// Full-screen loading overlay
+/// Full-screen loading overlay with optional message
 class LoadingOverlay extends StatelessWidget {
-  final Widget? child;
+  final Widget child;
   final bool isLoading;
+  final String? message;
   final Color? backgroundColor;
   final Widget? loadingWidget;
 
   const LoadingOverlay({
     super.key,
-    this.child,
+    required this.child,
     this.isLoading = false,
+    this.message,
     this.backgroundColor,
     this.loadingWidget,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Stack(
       children: [
-        if (child != null) child!,
-        if (isLoading)
-          Positioned.fill(
-            child: AnimatedOpacity(
-              opacity: isLoading ? 1.0 : 0.0,
-              duration: AppAnimations.fast,
-              child: Container(
-                color: backgroundColor ?? Colors.white.withValues(alpha: 0.8),
-                child: Center(
-                  child: loadingWidget ?? const BouncingDotsLoader(),
-                ),
-              ),
-            ),
-          ),
+        child,
+        AnimatedSwitcher(
+          duration: AppAnimations.fast,
+          child: isLoading
+              ? Positioned.fill(
+                  key: const ValueKey('loading_overlay'),
+                  child: Container(
+                    color: backgroundColor ??
+                        (isDark
+                            ? Colors.black.withValues(alpha: 0.7)
+                            : Colors.white.withValues(alpha: 0.85)),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          loadingWidget ?? const OrbitalLoader(size: 72),
+                          if (message != null) ...[
+                            const SizedBox(height: 24),
+                            Text(
+                              message!,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.9)
+                                    : Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(key: ValueKey('empty')),
+        ),
       ],
     );
   }

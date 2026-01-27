@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -140,20 +141,20 @@ class TripActivitiesTab extends ConsumerWidget {
   }
 
   Widget _buildLoadingState(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSizes.space16),
+    return Center(
       child: Column(
-        children: List.generate(
-          3,
-          (index) => Container(
-            margin: const EdgeInsets.only(bottom: AppSizes.space16),
-            height: AppSizes.activityCardHeight,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const OrbitalLoader(size: 64),
+          const SizedBox(height: 20),
+          Text(
+            'Loading activities...',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ),
+        ],
       ),
     );
   }

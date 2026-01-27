@@ -20,6 +20,8 @@ import '../../features/statistics/presentation/screens/statistics_dashboard_scre
 import '../../features/statistics/presentation/screens/year_in_review_screen.dart';
 import '../../features/map/presentation/screens/world_map_screen.dart';
 import '../../features/notifications/presentation/screens/notification_history_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/subscription/presentation/screens/subscription_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 /// Route paths
@@ -41,6 +43,8 @@ class AppRoutes {
   static const String statistics = '/statistics';
   static const String worldMap = '/map';
   static const String notifications = '/notifications';
+  static const String settings = '/settings';
+  static const String subscription = '/subscription';
 }
 
 /// A simple listenable for router refresh
@@ -97,7 +101,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Redirect to home if authenticated and onboarding complete
-      if (isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro)) {
+      // Don't redirect during loading (e.g., logout in progress)
+      if (!isLoading && isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro)) {
         AppLogger.navigation('Redirecting to home (authenticated)');
         return AppRoutes.home;
       }
@@ -210,6 +215,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationHistoryScreen(),
+      ),
+      // Settings route
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      // Subscription route
+      GoRoute(
+        path: AppRoutes.subscription,
+        builder: (context, state) => const SubscriptionScreen(),
       ),
     ],
   );

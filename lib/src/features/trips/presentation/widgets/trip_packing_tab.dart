@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -153,45 +154,17 @@ class TripPackingTab extends ConsumerWidget {
   }
 
   Widget _buildLoadingState(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSizes.space16),
+    return Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Progress skeleton
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-            ),
-          ),
-          const SizedBox(height: AppSizes.space20),
-          // Category skeletons
-          ...List.generate(
-            3,
-            (index) => Column(
-              children: [
-                Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space12),
-                ...List.generate(
-                  2,
-                  (i) => Container(
-                    margin: const EdgeInsets.only(bottom: AppSizes.space8),
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space12),
-              ],
+          const OrbitalLoader(size: 64),
+          const SizedBox(height: 20),
+          Text(
+            'Loading packing list...',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

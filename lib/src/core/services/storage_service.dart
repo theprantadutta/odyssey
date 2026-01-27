@@ -119,4 +119,16 @@ class StorageService {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
   }
+
+  // Theme Mode
+  static const String _themeModeKey = 'theme_mode_dark';
+
+  Future<void> setThemeMode(bool isDark) async {
+    await _storage.write(key: _themeModeKey, value: isDark.toString());
+  }
+
+  Future<bool> getThemeMode() async {
+    final value = await _storage.read(key: _themeModeKey);
+    return value == 'true';
+  }
 }

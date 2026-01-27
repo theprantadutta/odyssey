@@ -10,7 +10,6 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/empty_state.dart';
-import '../../../../common/widgets/shimmer_loading.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
@@ -198,9 +197,12 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: RefreshIndicator(
+    return LoadingOverlay(
+      isLoading: authState.isLoading,
+      message: 'Signing out...',
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: colorScheme.primary,
         backgroundColor: colorScheme.surface,
@@ -485,8 +487,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         label: 'New Trip',
         onPressed: _handleCreateTrip,
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeader(AuthState authState) {
     final displayName = authState.user?.displayName;
@@ -543,12 +546,21 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   }
 
   Widget _buildLoadingState() {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => const TripCardSkeleton(),
-          childCount: 3,
+    return SliverFillRemaining(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const OrbitalLoader(size: 72),
+            const SizedBox(height: 24),
+            Text(
+              'Loading trips...',
+              style: AppTypography.bodyLarge.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

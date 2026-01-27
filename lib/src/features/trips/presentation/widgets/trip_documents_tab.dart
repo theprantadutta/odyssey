@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -162,29 +163,17 @@ class TripDocumentsTab extends ConsumerWidget {
   }
 
   Widget _buildLoadingState(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSizes.space16),
+    return Center(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Summary skeleton
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-            ),
-          ),
-          const SizedBox(height: AppSizes.space20),
-          // Document card skeletons
-          ...List.generate(
-            4,
-            (index) => Container(
-              margin: const EdgeInsets.only(bottom: AppSizes.space12),
-              height: 80,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
+          const OrbitalLoader(size: 64),
+          const SizedBox(height: 20),
+          Text(
+            'Loading documents...',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
