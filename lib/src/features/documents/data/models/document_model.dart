@@ -85,7 +85,7 @@ class DocumentModel extends Equatable {
 }
 
 /// Create document request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class DocumentRequest {
   @JsonKey(name: 'trip_id')
   final String tripId;

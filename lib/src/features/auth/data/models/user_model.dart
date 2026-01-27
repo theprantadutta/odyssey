@@ -30,7 +30,7 @@ class UserModel extends Equatable {
 }
 
 /// Login request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class AuthRequest {
   final String email;
   final String password;
@@ -44,7 +44,7 @@ class AuthRequest {
 }
 
 /// Register request (with optional name)
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class RegisterRequest {
   final String email;
   final String password;

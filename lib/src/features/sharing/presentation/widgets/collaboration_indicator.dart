@@ -234,7 +234,7 @@ class CollaboratorList extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: sharesState.shares.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (_, _) => const Divider(),
       itemBuilder: (context, index) {
         final share = sharesState.shares[index];
         return CollaboratorTile(

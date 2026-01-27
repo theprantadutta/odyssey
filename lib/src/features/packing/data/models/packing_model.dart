@@ -82,7 +82,7 @@ class PackingItemModel extends Equatable {
 }
 
 /// Create packing item request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class PackingItemRequest {
   @JsonKey(name: 'trip_id')
   final String tripId;
@@ -176,7 +176,7 @@ class PackingProgressResponse {
 }
 
 /// Item reorder request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class ItemOrderData {
   final String id;
   @JsonKey(name: 'sort_order')

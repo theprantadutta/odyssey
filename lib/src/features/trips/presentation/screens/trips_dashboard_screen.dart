@@ -520,13 +520,6 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     return namePart[0].toUpperCase() + namePart.substring(1);
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   Widget _buildLoadingState() {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),

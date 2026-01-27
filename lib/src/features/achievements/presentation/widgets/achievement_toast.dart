@@ -88,7 +88,7 @@ class _AchievementToastState extends State<AchievementToast>
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   boxShadow: [
                     BoxShadow(
-                      color: tierColors[0].withOpacity(0.4),
+                      color: tierColors[0].withValues(alpha: 0.4),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -101,7 +101,7 @@ class _AchievementToastState extends State<AchievementToast>
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -129,7 +129,7 @@ class _AchievementToastState extends State<AchievementToast>
                               Text(
                                 'Achievement Unlocked!',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -149,7 +149,7 @@ class _AchievementToastState extends State<AchievementToast>
                           Text(
                             '+${widget.achievement.points} points',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -161,7 +161,7 @@ class _AchievementToastState extends State<AchievementToast>
                     IconButton(
                       icon: Icon(
                         Icons.close,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         size: 20,
                       ),
                       onPressed: () async {

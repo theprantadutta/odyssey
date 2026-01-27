@@ -14,16 +14,13 @@ class LocationResult {
   });
 
   const LocationResult.success({
-    required double latitude,
-    required double longitude,
-  })  : latitude = latitude,
-        longitude = longitude,
-        error = null;
+    required this.latitude,
+    required this.longitude,
+  }) : error = null;
 
-  const LocationResult.failure(LocationError error)
+  const LocationResult.failure(this.error)
       : latitude = null,
-        longitude = null,
-        error = error;
+        longitude = null;
 
   bool get isSuccess => latitude != null && longitude != null && error == null;
 }

@@ -82,7 +82,7 @@ class NotificationService {
     );
 
     await _localNotifications.initialize(
-      initSettings,
+      settings: initSettings,
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
 
@@ -183,7 +183,13 @@ class NotificationService {
     // Encode data as payload
     final payload = data != null ? _encodePayload(data) : null;
 
-    await _localNotifications.show(id, title, body, details, payload: payload);
+    await _localNotifications.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
+      payload: payload,
+    );
   }
 
   /// Handle notification tap from FCM

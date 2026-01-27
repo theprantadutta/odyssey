@@ -59,7 +59,7 @@ class ActivityModel extends Equatable {
 }
 
 /// Create/Update activity request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class ActivityRequest {
   @JsonKey(name: 'trip_id')
   final String tripId;
@@ -102,7 +102,7 @@ class ActivitiesResponse {
 }
 
 /// Reorder activities request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class ReorderRequest {
   @JsonKey(name: 'activity_orders')
   final List<ActivityOrder> activityOrders;

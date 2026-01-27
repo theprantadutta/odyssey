@@ -95,7 +95,7 @@ class ExpenseModel extends Equatable {
 }
 
 /// Create/Update expense request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class ExpenseRequest {
   @JsonKey(name: 'trip_id')
   final String tripId;

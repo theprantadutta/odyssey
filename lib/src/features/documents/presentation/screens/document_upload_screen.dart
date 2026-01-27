@@ -234,7 +234,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _selectedFiles.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSizes.space8),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSizes.space8),
             itemBuilder: (context, index) => _buildFileItem(_selectedFiles[index], index),
           ),
           const SizedBox(height: AppSizes.space12),

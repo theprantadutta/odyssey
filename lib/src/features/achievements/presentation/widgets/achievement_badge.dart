@@ -43,7 +43,7 @@ class AchievementBadge extends StatelessWidget {
                         : Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                   ),
             ),
           ),
@@ -71,7 +71,7 @@ class AchievementBadge extends StatelessWidget {
         boxShadow: isEarned
             ? [
                 BoxShadow(
-                  color: tierColors[0].withOpacity(0.4),
+                  color: tierColors[0].withValues(alpha: 0.4),
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -141,7 +141,7 @@ class AchievementBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w500,
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -235,7 +235,7 @@ class AchievementCard extends StatelessWidget {
                                           : Theme.of(context)
                                               .colorScheme
                                               .onSurface
-                                              .withOpacity(0.6),
+                                              .withValues(alpha: 0.6),
                                     ),
                           ),
                         ),
@@ -249,7 +249,7 @@ class AchievementCard extends StatelessWidget {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.7),
+                                .withValues(alpha: 0.7),
                           ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -281,7 +281,7 @@ class AchievementCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: tierColors[0].withOpacity(isEarned ? 1.0 : 0.3),
+        color: tierColors[0].withValues(alpha: isEarned ? 1.0 : 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -301,8 +301,8 @@ class AchievementCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               color: isEarned
-                  ? Colors.white.withOpacity(0.8)
-                  : tierColors[0].withOpacity(0.8),
+                  ? Colors.white.withValues(alpha: 0.8)
+                  : tierColors[0].withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -324,7 +324,7 @@ class AchievementCard extends StatelessWidget {
               'Progress',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
             ),
             Text(

@@ -77,7 +77,7 @@ class TripModel extends Equatable {
 }
 
 /// Create/Update trip request
-@JsonSerializable()
+@JsonSerializable(createFactory: false)
 class TripRequest {
   final String title;
   final String? description;

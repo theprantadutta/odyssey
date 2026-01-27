@@ -277,7 +277,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             Image.file(
               _selectedFile!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+              errorBuilder: (_, _, _) => _buildPlaceholder(),
             )
           else if (_urlController.text.trim().isNotEmpty &&
               _mode == CoverImageMode.url)
@@ -285,8 +285,8 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             CachedNetworkImage(
               imageUrl: FileUrlHelper.getAuthenticatedUrl(_urlController.text.trim()),
               fit: BoxFit.cover,
-              placeholder: (_, __) => _buildLoadingPlaceholder(),
-              errorWidget: (_, __, ___) => _buildErrorPlaceholder(),
+              placeholder: (_, _) => _buildLoadingPlaceholder(),
+              errorWidget: (_, _, _) => _buildErrorPlaceholder(),
             )
           else
             // Placeholder

@@ -473,9 +473,9 @@ class _PhotoPageState extends State<_PhotoPage>
       // Zoom in to point
       final position = details.localPosition;
       final zoomed = Matrix4.identity()
-        ..translate(-position.dx, -position.dy)
-        ..scale(2.5)
-        ..translate(position.dx, position.dy);
+        ..translateByDouble(-position.dx, -position.dy, 0, 0)
+        ..scaleByDouble(2.5, 2.5, 1.0, 1.0)
+        ..translateByDouble(position.dx, position.dy, 0, 0);
 
       _animation = Matrix4Tween(
         begin: _transformationController.value,
