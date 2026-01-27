@@ -120,6 +120,9 @@ class ActivityListGrouped extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (activities.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -166,7 +169,7 @@ class ActivityListGrouped extends StatelessWidget {
                   Expanded(
                     child: Container(
                       height: 1,
-                      color: AppColors.warmGray,
+                      color: colorScheme.surfaceContainerHighest,
                     ),
                   ),
                 ],
@@ -255,6 +258,9 @@ class NoActivitiesState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -281,7 +287,7 @@ class NoActivitiesState extends StatelessWidget {
             Text(
               'No Activities Yet',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -290,7 +296,7 @@ class NoActivitiesState extends StatelessWidget {
             Text(
               'Plan your trip by adding activities like places to visit, restaurants to try, or transportation.',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

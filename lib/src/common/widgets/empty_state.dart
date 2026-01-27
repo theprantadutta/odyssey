@@ -71,7 +71,7 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -81,7 +81,7 @@ class EmptyState extends StatelessWidget {
             Text(
               message,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -220,7 +220,7 @@ class ErrorState extends StatelessWidget {
             Text(
               title,
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -230,7 +230,7 @@ class ErrorState extends StatelessWidget {
             Text(
               message,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

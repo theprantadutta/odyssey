@@ -20,12 +20,14 @@ class TripPackingTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final packingState = ref.watch(tripPackingProvider(tripId));
 
     return Stack(
       children: [
         // Main content
-        _buildContent(context, ref, packingState),
+        _buildContent(context, ref, packingState, theme, colorScheme),
         // FAB
         Positioned(
           right: AppSizes.space16,
@@ -40,15 +42,17 @@ class TripPackingTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     PackingState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
   ) {
     // Loading state
     if (state.isLoading && state.items.isEmpty) {
-      return _buildLoadingState();
+      return _buildLoadingState(colorScheme);
     }
 
     // Error state
     if (state.error != null && state.items.isEmpty) {
-      return _buildErrorState(context, ref, state.error!);
+      return _buildErrorState(context, ref, state.error!, colorScheme);
     }
 
     // Empty state
@@ -86,7 +90,7 @@ class TripPackingTab extends ConsumerWidget {
                   Text(
                     'Items',
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   if (state.items.isNotEmpty)
@@ -148,7 +152,7 @@ class TripPackingTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(ColorScheme colorScheme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: Column(
@@ -157,7 +161,7 @@ class TripPackingTab extends ConsumerWidget {
           Container(
             height: 160,
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusXl),
             ),
           ),
@@ -170,7 +174,7 @@ class TripPackingTab extends ConsumerWidget {
                 Container(
                   height: 60,
                   decoration: BoxDecoration(
-                    color: AppColors.warmGray,
+                    color: colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
                 ),
@@ -181,7 +185,7 @@ class TripPackingTab extends ConsumerWidget {
                     margin: const EdgeInsets.only(bottom: AppSizes.space8),
                     height: 56,
                     decoration: BoxDecoration(
-                      color: AppColors.warmGray.withValues(alpha: 0.5),
+                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                   ),
@@ -195,7 +199,7 @@ class TripPackingTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -219,7 +223,7 @@ class TripPackingTab extends ConsumerWidget {
             Text(
               'Failed to load packing list',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -227,7 +231,7 @@ class TripPackingTab extends ConsumerWidget {
             Text(
               error,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -310,24 +314,26 @@ class TripPackingTab extends ConsumerWidget {
     WidgetRef ref,
     PackingItemModel item,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Item',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${item.name}"?',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -339,7 +345,7 @@ class TripPackingTab extends ConsumerWidget {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -397,10 +403,11 @@ class TripPackingTab extends ConsumerWidget {
   }
 
   void _showQuickAddSheet(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppSizes.radiusXl),
@@ -442,6 +449,8 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Padding(
       padding: EdgeInsets.only(
         left: AppSizes.space20,
@@ -459,7 +468,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.warmGray,
+                color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSizes.radiusFull),
               ),
             ),
@@ -469,7 +478,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
           Text(
             'Quick Add Item',
             style: AppTypography.titleMedium.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -496,7 +505,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.oceanTeal
-                            : AppColors.warmGray,
+                            : colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                       ),
                       child: Row(
@@ -509,7 +518,7 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
                             style: AppTypography.labelSmall.copyWith(
                               color: isSelected
                                   ? Colors.white
-                                  : AppColors.charcoal,
+                                  : colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -531,15 +540,15 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
                   textCapitalization: TextCapitalization.sentences,
                   autofocus: true,
                   style: AppTypography.bodyLarge.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Item name...',
                     hintStyle: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     filled: true,
-                    fillColor: AppColors.warmGray,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                       borderSide: BorderSide.none,

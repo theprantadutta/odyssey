@@ -48,10 +48,12 @@ class FormSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: padding ?? const EdgeInsets.all(AppSizes.space20),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         boxShadow: AppSizes.softShadow,
       ),
@@ -59,7 +61,7 @@ class FormSectionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showHeader) ...[
-            _buildHeader(),
+            _buildHeader(context),
             const SizedBox(height: AppSizes.space16),
           ],
           ...children,
@@ -68,7 +70,9 @@ class FormSectionCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         Container(
@@ -88,7 +92,7 @@ class FormSectionCard extends StatelessWidget {
           child: Text(
             title,
             style: AppTypography.titleMedium.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),

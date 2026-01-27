@@ -22,6 +22,8 @@ class NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -56,12 +58,12 @@ class NotificationItem extends StatelessWidget {
           padding: const EdgeInsets.all(AppSizes.space16),
           decoration: BoxDecoration(
             color: notification.isRead
-                ? AppColors.snowWhite
+                ? colorScheme.surface
                 : AppColors.skyBlue.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: Border.all(
               color: notification.isRead
-                  ? AppColors.cloudGray
+                  ? theme.scaffoldBackgroundColor
                   : AppColors.skyBlue.withValues(alpha: 0.2),
               width: 1,
             ),
@@ -84,7 +86,7 @@ class NotificationItem extends StatelessWidget {
                           child: Text(
                             notification.title,
                             style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.charcoal,
+                              color: colorScheme.onSurface,
                               fontWeight: notification.isRead
                                   ? FontWeight.w500
                                   : FontWeight.w600,
@@ -111,7 +113,7 @@ class NotificationItem extends StatelessWidget {
                     Text(
                       notification.body,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -125,14 +127,14 @@ class NotificationItem extends StatelessWidget {
                           Icon(
                             Icons.flight_takeoff_rounded,
                             size: 14,
-                            color: AppColors.slate.withValues(alpha: 0.7),
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               notification.relatedTripTitle!,
                               style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.slate.withValues(alpha: 0.7),
+                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -143,14 +145,14 @@ class NotificationItem extends StatelessWidget {
                           Icon(
                             Icons.person_outline_rounded,
                             size: 14,
-                            color: AppColors.slate.withValues(alpha: 0.7),
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               notification.relatedUserName!,
                               style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.slate.withValues(alpha: 0.7),
+                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -163,7 +165,7 @@ class NotificationItem extends StatelessWidget {
                         Text(
                           _formatTimeAgo(notification.createdAt),
                           style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.slate.withValues(alpha: 0.6),
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                           ),
                         ),
                       ],

@@ -37,6 +37,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final activitiesState = ref.watch(tripActivitiesProvider(widget.tripId));
     final memoriesState = ref.watch(tripMemoriesProvider(widget.tripId));
 
@@ -109,7 +111,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                       child: Text(
                         '${markers.length}',
                         style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -128,6 +130,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
           child: _buildFilterToggles(
             activitiesState.activities.length,
             memoriesState.memories.length,
+            theme,
+            colorScheme,
           ),
         ),
 
@@ -135,21 +139,21 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
         Positioned(
           bottom: AppSizes.space16,
           left: AppSizes.space16,
-          child: _buildLegend(),
+          child: _buildLegend(colorScheme),
         ),
 
         // Zoom controls
         Positioned(
           bottom: AppSizes.space16,
           right: AppSizes.space16,
-          child: _buildZoomControls(),
+          child: _buildZoomControls(colorScheme),
         ),
 
         // Empty state overlay
         if (allPoints.isEmpty &&
             !activitiesState.isLoading &&
             !memoriesState.isLoading)
-          _buildEmptyOverlay(),
+          _buildEmptyOverlay(colorScheme),
       ],
     );
   }
@@ -230,6 +234,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
 
   Widget _buildMemoryMarker(MemoryModel memory) {
     final imageUrl = memory.displayUrl;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Container(
       decoration: BoxDecoration(
@@ -244,18 +250,18 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
-                  color: AppColors.warmGray,
-                  child: const Icon(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Icon(
                     Icons.photo_rounded,
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                     size: 20,
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
-                  color: AppColors.warmGray,
-                  child: const Icon(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Icon(
                     Icons.broken_image_rounded,
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                     size: 20,
                   ),
                 ),
@@ -272,10 +278,10 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     );
   }
 
-  Widget _buildFilterToggles(int activityCount, int memoryCount) {
+  Widget _buildFilterToggles(int activityCount, int memoryCount, ThemeData theme, ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         boxShadow: AppSizes.softShadow,
       ),
@@ -286,6 +292,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
             count: activityCount,
             isEnabled: _showActivities,
             color: AppColors.oceanTeal,
+            theme: theme,
+            colorScheme: colorScheme,
             onTap: () {
               HapticFeedback.lightImpact();
               setState(() => _showActivities = !_showActivities);
@@ -297,6 +305,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
             count: memoryCount,
             isEnabled: _showMemories,
             color: AppColors.sunnyYellow,
+            theme: theme,
+            colorScheme: colorScheme,
             onTap: () {
               HapticFeedback.lightImpact();
               setState(() => _showMemories = !_showMemories);
@@ -312,6 +322,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     required int count,
     required bool isEnabled,
     required Color color,
+    required ThemeData theme,
+    required ColorScheme colorScheme,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -328,10 +340,10 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               width: 16,
               height: 16,
               decoration: BoxDecoration(
-                color: isEnabled ? color : AppColors.warmGray,
+                color: isEnabled ? color : colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: isEnabled ? color : AppColors.mutedGray,
+                  color: isEnabled ? color : theme.hintColor,
                   width: 2,
                 ),
               ),
@@ -347,7 +359,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
             Text(
               '$label ($count)',
               style: AppTypography.caption.copyWith(
-                color: isEnabled ? AppColors.charcoal : AppColors.mutedGray,
+                color: isEnabled ? colorScheme.onSurface : theme.hintColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -357,11 +369,11 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space12),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite.withValues(alpha: 0.95),
+        color: colorScheme.surface.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         boxShadow: AppSizes.softShadow,
       ),
@@ -373,24 +385,28 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
             color: AppColors.coralBurst,
             icon: Icons.restaurant_rounded,
             label: 'Food',
+            colorScheme: colorScheme,
           ),
           const SizedBox(height: AppSizes.space4),
           _buildLegendItem(
             color: AppColors.skyBlue,
             icon: Icons.flight_rounded,
             label: 'Travel',
+            colorScheme: colorScheme,
           ),
           const SizedBox(height: AppSizes.space4),
           _buildLegendItem(
             color: AppColors.lavenderDream,
             icon: Icons.hotel_rounded,
             label: 'Stay',
+            colorScheme: colorScheme,
           ),
           const SizedBox(height: AppSizes.space4),
           _buildLegendItem(
             color: AppColors.oceanTeal,
             icon: Icons.explore_rounded,
             label: 'Explore',
+            colorScheme: colorScheme,
           ),
         ],
       ),
@@ -401,6 +417,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     required Color color,
     required IconData icon,
     required String label,
+    required ColorScheme colorScheme,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -420,17 +437,17 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
         Text(
           label,
           style: AppTypography.caption.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildZoomControls() {
+  Widget _buildZoomControls(ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         boxShadow: AppSizes.softShadow,
       ),
@@ -446,7 +463,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               );
             },
             icon: const Icon(Icons.add_rounded),
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             iconSize: 24,
           ),
           const Divider(height: 1),
@@ -460,7 +477,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               );
             },
             icon: const Icon(Icons.remove_rounded),
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             iconSize: 24,
           ),
         ],
@@ -468,7 +485,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     );
   }
 
-  Widget _buildEmptyOverlay() {
+  Widget _buildEmptyOverlay(ColorScheme colorScheme) {
     return Container(
       color: Colors.black.withValues(alpha: 0.3),
       child: Center(
@@ -476,7 +493,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
           margin: const EdgeInsets.all(AppSizes.space32),
           padding: const EdgeInsets.all(AppSizes.space24),
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusXl),
             boxShadow: AppSizes.softShadow,
           ),
@@ -499,7 +516,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               Text(
                 'No Locations Yet',
                 style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -507,7 +524,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               Text(
                 'Add activities or memories with location data to see them on the map.',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -519,6 +536,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
   }
 
   void _showActivityDetails(ActivityModel activity) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -526,7 +545,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
         margin: const EdgeInsets.all(AppSizes.space16),
         padding: const EdgeInsets.all(AppSizes.space20),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         child: Column(
@@ -556,7 +575,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                       Text(
                         activity.title,
                         style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       Text(
@@ -577,7 +596,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
               Text(
                 activity.description!,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -590,27 +609,27 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                 Icon(
                   Icons.access_time_rounded,
                   size: 16,
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                 ),
                 const SizedBox(width: AppSizes.space4),
                 Text(
                   activity.scheduledTime,
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(width: AppSizes.space16),
                 Icon(
                   Icons.location_on_rounded,
                   size: 16,
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                 ),
                 const SizedBox(width: AppSizes.space4),
                 Expanded(
                   child: Text(
                     '${activity.latitude ?? 'N/A'}, ${activity.longitude ?? 'N/A'}',
                     style: AppTypography.caption.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -625,6 +644,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
 
   void _showMemoryDetails(MemoryModel memory) {
     final imageUrl = memory.displayUrl;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     showModalBottomSheet(
       context: context,
@@ -632,7 +653,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
       builder: (context) => Container(
         margin: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         child: Column(
@@ -653,7 +674,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(
-                              color: AppColors.warmGray,
+                              color: colorScheme.surfaceContainerHighest,
                               child: const Center(
                                 child: CircularProgressIndicator(
                                   color: AppColors.sunnyYellow,
@@ -662,10 +683,10 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                               ),
                             ),
                             errorWidget: (context, url, error) => Container(
-                              color: AppColors.warmGray,
-                              child: const Icon(
+                              color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
                                 Icons.broken_image_rounded,
-                                color: AppColors.mutedGray,
+                                color: theme.hintColor,
                                 size: 40,
                               ),
                             ),
@@ -726,7 +747,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                               Text(
                                 'No media',
                                 style: AppTypography.caption.copyWith(
-                                  color: AppColors.slate,
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -747,7 +768,7 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                       child: Text(
                         memory.caption!,
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -759,14 +780,14 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                         Icon(
                           Icons.location_on_rounded,
                           size: 16,
-                          color: AppColors.mutedGray,
+                          color: theme.hintColor,
                         ),
                         const SizedBox(width: AppSizes.space4),
                         Expanded(
                           child: Text(
                             '${memory.latitude}, ${memory.longitude}',
                             style: AppTypography.caption.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -778,13 +799,13 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                         Icon(
                           Icons.calendar_today_rounded,
                           size: 16,
-                          color: AppColors.mutedGray,
+                          color: theme.hintColor,
                         ),
                         const SizedBox(width: AppSizes.space4),
                         Text(
                           memory.takenAt!.split('T').first,
                           style: AppTypography.caption.copyWith(
-                            color: AppColors.slate,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],

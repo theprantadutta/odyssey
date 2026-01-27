@@ -65,15 +65,17 @@ class UpgradeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.all(AppSizes.space16),
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        gradient: _getGradient(),
+        gradient: _getGradient(colorScheme),
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         boxShadow: [
           BoxShadow(
-            color: _getShadowColor(),
+            color: _getShadowColor(colorScheme),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -81,7 +83,7 @@ class UpgradeBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _buildIcon(),
+          _buildIcon(colorScheme),
           const SizedBox(width: AppSizes.space12),
           Expanded(
             child: Column(
@@ -90,7 +92,7 @@ class UpgradeBanner extends StatelessWidget {
                 Text(
                   title ?? 'Upgrade to Premium',
                   style: AppTypography.titleSmall.copyWith(
-                    color: _getTextColor(),
+                    color: _getTextColor(colorScheme),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -99,7 +101,7 @@ class UpgradeBanner extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: AppTypography.bodySmall.copyWith(
-                      color: _getTextColor().withValues(alpha: 0.8),
+                      color: _getTextColor(colorScheme).withValues(alpha: 0.8),
                     ),
                   ),
                 ],
@@ -114,7 +116,7 @@ class UpgradeBanner extends StatelessWidget {
                   onPressed: onDismiss,
                   icon: Icon(
                     Icons.close,
-                    color: _getTextColor().withValues(alpha: 0.6),
+                    color: _getTextColor(colorScheme).withValues(alpha: 0.6),
                     size: 20,
                   ),
                   constraints: const BoxConstraints(),
@@ -123,8 +125,8 @@ class UpgradeBanner extends StatelessWidget {
               TextButton(
                 onPressed: onUpgrade,
                 style: TextButton.styleFrom(
-                  backgroundColor: _getButtonColor(),
-                  foregroundColor: _getButtonTextColor(),
+                  backgroundColor: _getButtonColor(colorScheme),
+                  foregroundColor: _getButtonTextColor(colorScheme),
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.space12,
                     vertical: AppSizes.space8,
@@ -145,7 +147,7 @@ class UpgradeBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon() {
+  Widget _buildIcon(ColorScheme colorScheme) {
     IconData iconData;
     switch (style) {
       case UpgradeBannerStyle.standard:
@@ -162,18 +164,18 @@ class UpgradeBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space8),
       decoration: BoxDecoration(
-        color: _getIconBackgroundColor(),
+        color: _getIconBackgroundColor(colorScheme),
         shape: BoxShape.circle,
       ),
       child: Icon(
         iconData,
-        color: _getIconColor(),
+        color: _getIconColor(colorScheme),
         size: 24,
       ),
     );
   }
 
-  LinearGradient _getGradient() {
+  LinearGradient _getGradient(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
         return const LinearGradient(
@@ -188,62 +190,62 @@ class UpgradeBanner extends StatelessWidget {
           end: Alignment.bottomRight,
         );
       case UpgradeBannerStyle.locked:
-        return const LinearGradient(
-          colors: [Color(0xFFE8E8E8), Color(0xFFF5F5F5)],
+        return LinearGradient(
+          colors: [colorScheme.surfaceContainerHighest, colorScheme.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
     }
   }
 
-  Color _getShadowColor() {
+  Color _getShadowColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
         return AppColors.sunnyYellow.withValues(alpha: 0.3);
       case UpgradeBannerStyle.warning:
         return AppColors.warning.withValues(alpha: 0.2);
       case UpgradeBannerStyle.locked:
-        return AppColors.charcoal.withValues(alpha: 0.1);
+        return colorScheme.onSurface.withValues(alpha: 0.1);
     }
   }
 
-  Color _getTextColor() {
+  Color _getTextColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
       case UpgradeBannerStyle.warning:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
       case UpgradeBannerStyle.locked:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
     }
   }
 
-  Color _getIconBackgroundColor() {
+  Color _getIconBackgroundColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
-        return AppColors.charcoal.withValues(alpha: 0.1);
+        return colorScheme.onSurface.withValues(alpha: 0.1);
       case UpgradeBannerStyle.warning:
         return AppColors.warning.withValues(alpha: 0.2);
       case UpgradeBannerStyle.locked:
-        return AppColors.slate.withValues(alpha: 0.2);
+        return colorScheme.onSurfaceVariant.withValues(alpha: 0.2);
     }
   }
 
-  Color _getIconColor() {
+  Color _getIconColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
       case UpgradeBannerStyle.warning:
         return AppColors.warning;
       case UpgradeBannerStyle.locked:
-        return AppColors.slate;
+        return colorScheme.onSurfaceVariant;
     }
   }
 
-  Color _getButtonColor() {
+  Color _getButtonColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
       case UpgradeBannerStyle.warning:
         return AppColors.warning;
       case UpgradeBannerStyle.locked:
@@ -251,14 +253,14 @@ class UpgradeBanner extends StatelessWidget {
     }
   }
 
-  Color _getButtonTextColor() {
+  Color _getButtonTextColor(ColorScheme colorScheme) {
     switch (style) {
       case UpgradeBannerStyle.standard:
         return AppColors.pureWhite;
       case UpgradeBannerStyle.warning:
         return AppColors.pureWhite;
       case UpgradeBannerStyle.locked:
-        return AppColors.charcoal;
+        return colorScheme.onSurface;
     }
   }
 }
@@ -282,6 +284,8 @@ class UpgradeInlinePrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSizes.space12,
@@ -296,7 +300,7 @@ class UpgradeInlinePrompt extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.workspace_premium,
             color: AppColors.sunnyYellow,
             size: 18,
@@ -306,7 +310,7 @@ class UpgradeInlinePrompt extends StatelessWidget {
             child: Text(
               message,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
           ),

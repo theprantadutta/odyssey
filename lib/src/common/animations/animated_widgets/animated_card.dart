@@ -107,7 +107,7 @@ class _AnimatedCardState extends State<AnimatedCard>
             child: Container(
               margin: widget.margin,
               decoration: BoxDecoration(
-                color: widget.backgroundColor ?? AppColors.snowWhite,
+                color: widget.backgroundColor ?? Theme.of(context).colorScheme.surface,
                 borderRadius: borderRadius,
                 boxShadow: widget.enableShadow
                     ? [
@@ -257,7 +257,7 @@ class _FloatingCardState extends State<FloatingCard>
           child: Container(
             padding: widget.padding,
             decoration: BoxDecoration(
-              color: widget.backgroundColor ?? AppColors.snowWhite,
+              color: widget.backgroundColor ?? Theme.of(context).colorScheme.surface,
               borderRadius:
                   widget.borderRadius ?? BorderRadius.circular(AppSizes.radiusLg),
               boxShadow: [

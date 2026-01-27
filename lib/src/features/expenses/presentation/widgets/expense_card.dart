@@ -21,6 +21,8 @@ class ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final color = _getCategoryColor(expense.category);
 
     return GestureDetector(
@@ -36,7 +38,7 @@ class ExpenseCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: AppSizes.space12),
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           boxShadow: AppSizes.softShadow,
         ),
@@ -66,7 +68,7 @@ class ExpenseCard extends StatelessWidget {
                   Text(
                     expense.title,
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -95,13 +97,13 @@ class ExpenseCard extends StatelessWidget {
                       Icon(
                         Icons.calendar_today_rounded,
                         size: 12,
-                        color: AppColors.mutedGray,
+                        color: theme.hintColor,
                       ),
                       const SizedBox(width: AppSizes.space4),
                       Text(
                         _formatDate(expense.date),
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.mutedGray,
+                          color: theme.hintColor,
                         ),
                       ),
                     ],
@@ -116,7 +118,7 @@ class ExpenseCard extends StatelessWidget {
                 Text(
                   '${_getCurrencySymbol(expense.currency)}${_formatAmount(expense.amount)}',
                   style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -124,7 +126,7 @@ class ExpenseCard extends StatelessWidget {
                 Text(
                   expense.currency,
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                   ),
                 ),
               ],
@@ -235,6 +237,9 @@ class ExpenseCardCompact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -246,7 +251,7 @@ class ExpenseCardCompact extends StatelessWidget {
           vertical: AppSizes.space8,
         ),
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         ),
         child: Row(
@@ -260,7 +265,7 @@ class ExpenseCardCompact extends StatelessWidget {
               child: Text(
                 expense.title,
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -269,7 +274,7 @@ class ExpenseCardCompact extends StatelessWidget {
             Text(
               '${_getCurrencySymbol(expense.currency)}${_formatAmount(expense.amount)}',
               style: AppTypography.labelMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),

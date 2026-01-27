@@ -28,6 +28,7 @@ class UsageIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final barColor = color ?? (isWarning ? AppColors.error : AppColors.oceanTeal);
 
     return Column(
@@ -39,7 +40,7 @@ class UsageIndicator extends StatelessWidget {
             Text(
               label,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             Row(
@@ -47,13 +48,13 @@ class UsageIndicator extends StatelessWidget {
                 Text(
                   isUnlimited ? '$used' : '$used / $limit',
                   style: AppTypography.bodySmall.copyWith(
-                    color: isAtLimit ? AppColors.error : AppColors.charcoal,
+                    color: isAtLimit ? AppColors.error : colorScheme.onSurface,
                     fontWeight: isWarning ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
                 if (isUnlimited) ...[
                   const SizedBox(width: AppSizes.space4),
-                  Icon(
+                  const Icon(
                     Icons.all_inclusive,
                     size: 14,
                     color: AppColors.sunnyYellow,
@@ -69,7 +70,7 @@ class UsageIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSizes.radiusSm),
             child: LinearProgressIndicator(
               value: percentage / 100,
-              backgroundColor: AppColors.warmGray,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(barColor),
               minHeight: 6,
             ),
@@ -110,6 +111,8 @@ class StorageUsageIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final barColor = isCritical
         ? AppColors.error
         : isWarning
@@ -121,7 +124,7 @@ class StorageUsageIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: isWarning
             ? barColor.withValues(alpha: 0.1)
-            : AppColors.cloudGray,
+            : theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         border: isWarning
             ? Border.all(color: barColor.withValues(alpha: 0.3))
@@ -141,7 +144,7 @@ class StorageUsageIndicator extends StatelessWidget {
               Text(
                 'Storage',
                 style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -149,7 +152,7 @@ class StorageUsageIndicator extends StatelessWidget {
               Text(
                 '${_formatBytes(usedBytes)} / ${_formatBytes(limitBytes)}',
                 style: AppTypography.bodySmall.copyWith(
-                  color: isWarning ? barColor : AppColors.slate,
+                  color: isWarning ? barColor : colorScheme.onSurfaceVariant,
                   fontWeight: isWarning ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
@@ -160,7 +163,7 @@ class StorageUsageIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSizes.radiusSm),
             child: LinearProgressIndicator(
               value: percentage / 100,
-              backgroundColor: AppColors.warmGray,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(barColor),
               minHeight: 8,
             ),
@@ -234,6 +237,7 @@ class CircularUsageIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final indicatorColor = color ?? (isWarning ? AppColors.error : AppColors.oceanTeal);
 
     return SizedBox(
@@ -247,7 +251,7 @@ class CircularUsageIndicator extends StatelessWidget {
             height: size,
             child: CircularProgressIndicator(
               value: percentage / 100,
-              backgroundColor: AppColors.warmGray,
+              backgroundColor: colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation(indicatorColor),
               strokeWidth: strokeWidth,
               strokeCap: StrokeCap.round,
@@ -266,7 +270,7 @@ class CircularUsageIndicator extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelSmall.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -295,17 +299,20 @@ class UsageLimitBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final backgroundColor = isAtLimit
         ? AppColors.error.withValues(alpha: 0.1)
         : isNearLimit
             ? AppColors.warning.withValues(alpha: 0.1)
-            : AppColors.cloudGray;
+            : theme.scaffoldBackgroundColor;
 
     final textColor = isAtLimit
         ? AppColors.error
         : isNearLimit
             ? AppColors.warning
-            : AppColors.slate;
+            : colorScheme.onSurfaceVariant;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -320,7 +327,7 @@ class UsageLimitBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isUnlimited)
-            Icon(
+            const Icon(
               Icons.all_inclusive,
               size: 12,
               color: AppColors.sunnyYellow,

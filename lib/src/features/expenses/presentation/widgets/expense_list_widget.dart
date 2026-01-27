@@ -550,6 +550,9 @@ class NoExpensesState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -576,7 +579,7 @@ class NoExpensesState extends StatelessWidget {
             Text(
               'No Expenses Yet',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -585,7 +588,7 @@ class NoExpensesState extends StatelessWidget {
             Text(
               'Track your travel expenses to stay on budget.',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

@@ -61,14 +61,15 @@ class _CurrencyConverterWidgetState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final state = ref.watch(currencyConverterProvider);
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-        border: Border.all(color: AppColors.mutedGray),
+        border: Border.all(color: theme.hintColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +193,7 @@ class _CurrencyConverterWidgetState
                   Text(
                     '1 ${state.fromCurrency} = ${state.result!.rate.toStringAsFixed(4)} ${state.toCurrency}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -246,6 +247,7 @@ class _CurrencyDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,14 +255,14 @@ class _CurrencyDropdown extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: AppSizes.space4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSizes.space12),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.mutedGray),
+            border: Border.all(color: theme.hintColor),
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
           child: DropdownButton<String>(

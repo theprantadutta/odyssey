@@ -16,11 +16,13 @@ class SharedTripsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sharedTripsState = ref.watch(sharedTripsProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: _buildBackButton(context),
@@ -30,14 +32,14 @@ class SharedTripsScreen extends ConsumerWidget {
             Text(
               'Shared with Me',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               'Trips from friends and family',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -46,7 +48,7 @@ class SharedTripsScreen extends ConsumerWidget {
           Container(
             margin: const EdgeInsets.only(right: AppSizes.space16),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               boxShadow: [
                 BoxShadow(
@@ -69,7 +71,7 @@ class SharedTripsScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         color: AppColors.sunnyYellow,
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         onRefresh: () => ref.read(sharedTripsProvider.notifier).refresh(),
         child: _buildContent(context, sharedTripsState, ref),
       ),
@@ -77,6 +79,7 @@ class SharedTripsScreen extends ConsumerWidget {
   }
 
   Widget _buildBackButton(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(AppSizes.space8),
       child: GestureDetector(
@@ -86,7 +89,7 @@ class SharedTripsScreen extends ConsumerWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             boxShadow: [
               BoxShadow(
@@ -96,9 +99,9 @@ class SharedTripsScreen extends ConsumerWidget {
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_rounded,
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
@@ -146,11 +149,12 @@ class _SharedTripCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy');
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: [
           BoxShadow(
@@ -255,7 +259,7 @@ class _SharedTripCard extends StatelessWidget {
                           child: Text(
                             'Shared by ${trip.ownerEmail}',
                             style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -269,7 +273,7 @@ class _SharedTripCard extends StatelessWidget {
                     Text(
                       trip.title,
                       style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.charcoal,
+                        color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
@@ -281,7 +285,7 @@ class _SharedTripCard extends StatelessWidget {
                       Text(
                         trip.description!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.slate,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -312,7 +316,7 @@ class _SharedTripCard extends StatelessWidget {
                                 ? '${dateFormat.format(trip.startDate)} - ${dateFormat.format(trip.endDate!)}'
                                 : dateFormat.format(trip.startDate),
                             style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -499,6 +503,7 @@ class _NoSharedTripsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -528,7 +533,7 @@ class _NoSharedTripsState extends StatelessWidget {
             Text(
               'No shared trips yet',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -537,7 +542,7 @@ class _NoSharedTripsState extends StatelessWidget {
               'When someone shares a trip with you,\nit will appear here.',
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: AppSizes.space16),
@@ -587,6 +592,7 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -609,7 +615,7 @@ class _ErrorState extends StatelessWidget {
             Text(
               'Failed to load shared trips',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -618,7 +624,7 @@ class _ErrorState extends StatelessWidget {
               error,
               textAlign: TextAlign.center,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: AppSizes.space24),

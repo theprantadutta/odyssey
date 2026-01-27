@@ -81,6 +81,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
   Future<void> _selectDate(BuildContext context) async {
     HapticFeedback.selectionClick();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _scheduledDate ?? DateTime.now(),
@@ -88,14 +91,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       lastDate: DateTime(2100),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: colorScheme.copyWith(
               primary: AppColors.sunnyYellow,
-              onPrimary: AppColors.charcoal,
-              onSurface: AppColors.charcoal,
-              surface: AppColors.snowWhite,
+              onPrimary: colorScheme.onSurface,
             ),
-            dialogTheme: const DialogThemeData(backgroundColor: AppColors.snowWhite),
+            dialogTheme: DialogThemeData(backgroundColor: colorScheme.surface),
           ),
           child: child!,
         );
@@ -112,19 +113,20 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
   Future<void> _selectTime(BuildContext context) async {
     HapticFeedback.selectionClick();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _scheduledTime ?? const TimeOfDay(hour: 12, minute: 0),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: colorScheme.copyWith(
               primary: AppColors.sunnyYellow,
-              onPrimary: AppColors.charcoal,
-              onSurface: AppColors.charcoal,
-              surface: AppColors.snowWhite,
+              onPrimary: colorScheme.onSurface,
             ),
-            dialogTheme: const DialogThemeData(backgroundColor: AppColors.snowWhite),
+            dialogTheme: DialogThemeData(backgroundColor: colorScheme.surface),
           ),
           child: child!,
         );
@@ -283,14 +285,17 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.charcoal),
+          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.of(context).pop();
@@ -299,7 +304,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         title: Text(
           widget.activity == null ? 'Add Activity' : 'Edit Activity',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
@@ -454,17 +459,20 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
     required VoidCallback onTap,
     required bool isSelected,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: _isLoading ? null : onTap,
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
             color: isSelected
                 ? AppColors.sunnyYellow
-                : AppColors.mutedGray.withValues(alpha: 0.3),
+                : theme.hintColor.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1.5,
           ),
         ),
@@ -474,7 +482,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
             Text(
               label,
               style: AppTypography.caption.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: AppSizes.space4),
@@ -483,14 +491,14 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                 Icon(
                   icon,
                   size: 18,
-                  color: isSelected ? AppColors.sunnyYellow : AppColors.slate,
+                  color: isSelected ? AppColors.sunnyYellow : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: AppSizes.space8),
                 Expanded(
                   child: Text(
                     value,
                     style: AppTypography.bodyMedium.copyWith(
-                      color: isSelected ? AppColors.charcoal : AppColors.mutedGray,
+                      color: isSelected ? colorScheme.onSurface : theme.hintColor,
                       fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -505,6 +513,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   }
 
   Widget _buildCategorySelector() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Wrap(
       spacing: AppSizes.space8,
       runSpacing: AppSizes.space8,
@@ -526,12 +537,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               horizontal: AppSizes.space16,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.15) : AppColors.snowWhite,
+              color: isSelected ? color.withValues(alpha: 0.15) : colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               border: Border.all(
                 color: isSelected
                     ? color
-                    : AppColors.mutedGray.withValues(alpha: 0.3),
+                    : theme.hintColor.withValues(alpha: 0.3),
                 width: isSelected ? 2 : 1.5,
               ),
             ),
@@ -546,7 +557,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                 Text(
                   category.displayName,
                   style: AppTypography.labelMedium.copyWith(
-                    color: isSelected ? color : AppColors.slate,
+                    color: isSelected ? color : colorScheme.onSurfaceVariant,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),

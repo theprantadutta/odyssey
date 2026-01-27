@@ -90,10 +90,10 @@ class _TripSearchBarState extends State<TripSearchBar>
           child: AnimatedContainer(
             duration: AppAnimations.fast,
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               border: Border.all(
-                color: _isFocused ? AppColors.sunnyYellow : AppColors.warmGray,
+                color: _isFocused ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
                 width: _isFocused ? 2 : 1,
               ),
               boxShadow: _isFocused
@@ -115,16 +115,16 @@ class _TripSearchBarState extends State<TripSearchBar>
               decoration: InputDecoration(
                 hintText: 'Search trips...',
                 hintStyle: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.mutedGray,
+                  color: Theme.of(context).hintColor,
                 ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: _isFocused ? AppColors.sunnyYellow : AppColors.slate,
+                  color: _isFocused ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded),
-                        color: AppColors.slate,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         onPressed: _onClear,
                       )
                     : null,
@@ -157,13 +157,13 @@ class _TripSearchBarState extends State<TripSearchBar>
               height: 52,
               decoration: BoxDecoration(
                 color: widget.activeFilterCount > 0
-                    ? AppColors.sunnyYellow
-                    : AppColors.snowWhite,
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
                   color: widget.activeFilterCount > 0
-                      ? AppColors.goldenGlow
-                      : AppColors.warmGray,
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
                 boxShadow: AppSizes.softShadow,
               ),
@@ -173,8 +173,8 @@ class _TripSearchBarState extends State<TripSearchBar>
                   Icon(
                     Icons.tune_rounded,
                     color: widget.activeFilterCount > 0
-                        ? AppColors.charcoal
-                        : AppColors.slate,
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   if (widget.activeFilterCount > 0)
                     Positioned(
@@ -361,9 +361,9 @@ class _TripFilterBottomSheetState extends State<TripFilterBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.snowWhite,
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppSizes.radiusXl),
         ),
       ),
@@ -376,7 +376,7 @@ class _TripFilterBottomSheetState extends State<TripFilterBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -862,10 +862,10 @@ class _QuickFilterChipState extends State<_QuickFilterChip>
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? color.withValues(alpha: 0.2)
-                : AppColors.snowWhite,
+                : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: Border.all(
-              color: widget.isSelected ? color : AppColors.warmGray,
+              color: widget.isSelected ? color : Theme.of(context).colorScheme.surfaceContainerHighest,
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected ? null : AppSizes.softShadow,
@@ -877,14 +877,14 @@ class _QuickFilterChipState extends State<_QuickFilterChip>
                 Icon(
                   widget.icon,
                   size: 16,
-                  color: widget.isSelected ? color : AppColors.slate,
+                  color: widget.isSelected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: AppSizes.space4),
               ],
               Text(
                 widget.label,
                 style: AppTypography.labelMedium.copyWith(
-                  color: widget.isSelected ? color : AppColors.slate,
+                  color: widget.isSelected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight:
                       widget.isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),

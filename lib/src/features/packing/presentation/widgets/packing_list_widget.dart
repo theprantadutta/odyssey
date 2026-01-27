@@ -95,6 +95,7 @@ class _CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final packingCategory = PackingCategory.fromString(category);
 
     return Container(
@@ -133,14 +134,14 @@ class _CategorySection extends StatelessWidget {
                         Text(
                           packingCategory.displayName,
                           style: AppTypography.titleSmall.copyWith(
-                            color: AppColors.charcoal,
+                            color: colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
                           '$packedCount of ${items.length} packed',
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.slate,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -234,6 +235,8 @@ class NoPackingItemsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -258,7 +261,7 @@ class NoPackingItemsState extends StatelessWidget {
             Text(
               'No packing items yet',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -266,7 +269,7 @@ class NoPackingItemsState extends StatelessWidget {
             Text(
               'Add items to your packing list to stay organized',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

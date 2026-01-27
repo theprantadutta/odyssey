@@ -56,28 +56,31 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.snowWhite,
-      appBar: _buildAppBar(),
+      backgroundColor: colorScheme.surface,
+      appBar: _buildAppBar(theme, colorScheme),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(AppSizes.space20),
           children: [
             // Name field
-            _buildNameField(),
+            _buildNameField(theme, colorScheme),
             const SizedBox(height: AppSizes.space20),
 
             // Category selector
-            _buildCategorySelector(),
+            _buildCategorySelector(theme, colorScheme),
             const SizedBox(height: AppSizes.space20),
 
             // Quantity field
-            _buildQuantityField(),
+            _buildQuantityField(theme, colorScheme),
             const SizedBox(height: AppSizes.space20),
 
             // Notes field
-            _buildNotesField(),
+            _buildNotesField(theme, colorScheme),
             const SizedBox(height: AppSizes.space32),
 
             // Save button
@@ -88,9 +91,9 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     return AppBar(
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
@@ -101,24 +104,24 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: Border.all(
-              color: AppColors.mutedGray.withValues(alpha: 0.3),
+              color: theme.hintColor.withValues(alpha: 0.3),
               width: 1.5,
             ),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 18,
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
       title: Text(
         _isEditing ? 'Edit Item' : 'Add Item',
         style: AppTypography.headlineSmall.copyWith(
-          color: AppColors.charcoal,
+          color: colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -126,14 +129,14 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
     );
   }
 
-  Widget _buildNameField() {
+  Widget _buildNameField(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Item Name',
           style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -141,23 +144,23 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
         TextFormField(
           controller: _nameController,
           textCapitalization: TextCapitalization.sentences,
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+          style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: 'e.g., T-shirts, Toothbrush, Charger...',
-            hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
+            hintStyle: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurfaceVariant),
             filled: true,
-            fillColor: AppColors.snowWhite,
+            fillColor: colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -182,14 +185,14 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
     );
   }
 
-  Widget _buildCategorySelector() {
+  Widget _buildCategorySelector(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Category',
           style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -213,12 +216,12 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? _getCategoryColor(category)
-                      : AppColors.snowWhite,
+                      : colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   border: Border.all(
                     color: isSelected
                         ? _getCategoryColor(category)
-                        : AppColors.mutedGray.withValues(alpha: 0.3),
+                        : theme.hintColor.withValues(alpha: 0.3),
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -233,7 +236,7 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                     Text(
                       category.displayName,
                       style: AppTypography.labelMedium.copyWith(
-                        color: isSelected ? Colors.white : AppColors.charcoal,
+                        color: isSelected ? Colors.white : colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -248,14 +251,14 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
     );
   }
 
-  Widget _buildQuantityField() {
+  Widget _buildQuantityField(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Quantity',
           style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -275,16 +278,16 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.snowWhite,
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   border: Border.all(
-                    color: AppColors.mutedGray.withValues(alpha: 0.3),
+                    color: theme.hintColor.withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.remove_rounded,
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
@@ -299,23 +302,23 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: AppColors.snowWhite,
+                  fillColor: colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     borderSide: BorderSide(
-                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      color: theme.hintColor.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     borderSide: BorderSide(
-                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      color: theme.hintColor.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -372,14 +375,14 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
     );
   }
 
-  Widget _buildNotesField() {
+  Widget _buildNotesField(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Notes (Optional)',
           style: AppTypography.labelLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -388,23 +391,23 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
           controller: _notesController,
           textCapitalization: TextCapitalization.sentences,
           maxLines: 3,
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+          style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: 'Add any notes or reminders...',
-            hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
+            hintStyle: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurfaceVariant),
             filled: true,
-            fillColor: AppColors.snowWhite,
+            fillColor: colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),

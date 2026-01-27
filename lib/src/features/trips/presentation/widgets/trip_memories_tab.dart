@@ -19,12 +19,14 @@ class TripMemoriesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final memoriesState = ref.watch(tripMemoriesProvider(tripId));
 
     return Stack(
       children: [
         // Main content
-        _buildContent(context, ref, memoriesState),
+        _buildContent(context, ref, memoriesState, theme, colorScheme),
         // FAB
         Positioned(
           right: AppSizes.space16,
@@ -39,15 +41,17 @@ class TripMemoriesTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     MemoriesState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
   ) {
     // Loading state
     if (state.isLoading && state.memories.isEmpty) {
-      return _buildLoadingState();
+      return _buildLoadingState(colorScheme);
     }
 
     // Error state
     if (state.error != null && state.memories.isEmpty) {
-      return _buildErrorState(context, ref, state.error!);
+      return _buildErrorState(context, ref, state.error!, colorScheme);
     }
 
     // Empty state
@@ -83,7 +87,7 @@ class TripMemoriesTab extends ConsumerWidget {
                   Text(
                     '${state.memories.length} ${state.memories.length == 1 ? 'Memory' : 'Memories'}',
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   MediaCountBadge(
@@ -109,7 +113,7 @@ class TripMemoriesTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(ColorScheme colorScheme) {
     return Padding(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: GridView.builder(
@@ -124,7 +128,7 @@ class TripMemoriesTab extends ConsumerWidget {
         itemCount: 9,
         itemBuilder: (context, index) => Container(
           decoration: BoxDecoration(
-            color: AppColors.warmGray,
+            color: colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
         ),
@@ -132,7 +136,7 @@ class TripMemoriesTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -156,7 +160,7 @@ class TripMemoriesTab extends ConsumerWidget {
             Text(
               'Failed to load memories',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -164,7 +168,7 @@ class TripMemoriesTab extends ConsumerWidget {
             Text(
               error,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -256,24 +260,26 @@ class TripMemoriesTab extends ConsumerWidget {
     WidgetRef ref,
     dynamic memory,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Memory',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete this memory? This action cannot be undone.',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -285,7 +291,7 @@ class TripMemoriesTab extends ConsumerWidget {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),

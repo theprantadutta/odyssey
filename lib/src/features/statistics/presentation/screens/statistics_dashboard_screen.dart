@@ -17,11 +17,13 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsState = ref.watch(statisticsProvider);
     final isPremium = ref.watch(isPremiumProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
@@ -34,13 +36,13 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               boxShadow: AppSizes.softShadow,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back,
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               size: 20,
             ),
           ),
@@ -51,14 +53,14 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             Text(
               'Statistics',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               'Your travel journey in numbers',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -67,7 +69,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           Container(
             margin: const EdgeInsets.only(right: AppSizes.space16),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               boxShadow: AppSizes.softShadow,
             ),
@@ -114,7 +116,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                   Text(
                     'Loading your statistics...',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -129,6 +131,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -151,7 +154,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             Text(
               'Failed to load statistics',
               style: AppTypography.titleMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -159,7 +162,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             Text(
               'Please check your connection and try again',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -190,9 +193,10 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildContent(BuildContext context, WidgetRef ref, stats, bool isPremium) {
+    final colorScheme = Theme.of(context).colorScheme;
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       onRefresh: () async {
         HapticFeedback.mediumImpact();
         await ref.read(statisticsProvider.notifier).refresh();
@@ -365,6 +369,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildTripsSection(BuildContext context, stats) {
+    final colorScheme = Theme.of(context).colorScheme;
     return _StatsSectionCard(
       title: 'Trips',
       subtitle: 'Your travel adventures',
@@ -396,7 +401,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.all(AppSizes.space12),
           decoration: BoxDecoration(
-            color: AppColors.warmGray,
+            color: colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
           child: Column(
@@ -405,7 +410,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 label: 'Planned',
                 value: '${stats.plannedTrips}',
                 icon: Icons.schedule_rounded,
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: AppSizes.space8),
               _StatsRow(
@@ -429,6 +434,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildActivitiesSection(BuildContext context, stats) {
+    final colorScheme = Theme.of(context).colorScheme;
     return _StatsSectionCard(
       title: 'Activities',
       subtitle: 'Things you\'ve done',
@@ -446,7 +452,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSizes.space12),
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             ),
             child: Column(
@@ -455,7 +461,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 Text(
                   'By Category',
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -496,6 +502,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildBudgetSection(BuildContext context, stats) {
+    final colorScheme = Theme.of(context).colorScheme;
     return _StatsSectionCard(
       title: 'Budget',
       subtitle: 'Your travel spending',
@@ -528,7 +535,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSizes.space12),
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             ),
             child: Column(
@@ -537,7 +544,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 Text(
                   'By Category',
                   style: AppTypography.labelSmall.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -602,6 +609,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildMiniStat(BuildContext context, String label, String value, Color color) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
@@ -625,7 +633,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
           Text(
             label,
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.slate,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -658,10 +666,11 @@ class _StatsSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: AppSizes.softShadow,
       ),
@@ -691,13 +700,13 @@ class _StatsSectionCard extends StatelessWidget {
                       title,
                       style: AppTypography.titleMedium.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.charcoal,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       subtitle,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -728,6 +737,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         if (icon != null) ...[
@@ -738,7 +748,7 @@ class _StatsRow extends StatelessWidget {
           child: Text(
             label,
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.slate,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ),

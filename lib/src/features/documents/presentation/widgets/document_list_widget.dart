@@ -55,6 +55,7 @@ class _DocumentTypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final docType = DocumentType.fromString(group.type);
 
     return Container(
@@ -83,7 +84,7 @@ class _DocumentTypeSection extends StatelessWidget {
                   child: Text(
                     docType.displayName,
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -157,6 +158,8 @@ class NoDocumentsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -181,7 +184,7 @@ class NoDocumentsState extends StatelessWidget {
             Text(
               'No documents yet',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -189,7 +192,7 @@ class NoDocumentsState extends StatelessWidget {
             Text(
               'Upload tickets, reservations, and other travel documents',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

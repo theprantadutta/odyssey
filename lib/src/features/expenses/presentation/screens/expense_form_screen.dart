@@ -75,8 +75,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: Form(
         key: _formKey,
@@ -115,11 +117,14 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return AppBar(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.close_rounded, color: AppColors.charcoal),
+        icon: Icon(Icons.close_rounded, color: colorScheme.onSurface),
         onPressed: () {
           HapticFeedback.lightImpact();
           Navigator.of(context).pop();
@@ -128,7 +133,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       title: Text(
         _isEditing ? 'Edit Expense' : 'Add Expense',
         style: AppTypography.headlineSmall.copyWith(
-          color: AppColors.charcoal,
+          color: colorScheme.onSurface,
         ),
       ),
       centerTitle: true,
@@ -136,6 +141,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildAmountSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FormSectionCard(
       title: 'Amount',
       icon: Icons.attach_money_rounded,
@@ -146,10 +154,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             // Currency dropdown
             Container(
               decoration: BoxDecoration(
-                color: AppColors.snowWhite,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
-                  color: AppColors.mutedGray.withValues(alpha: 0.3),
+                  color: theme.hintColor.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -166,7 +174,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                       child: Text(
                         '${c.symbol} ${c.code}',
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     );
@@ -186,28 +194,28 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
                 ),
                 decoration: InputDecoration(
                   hintText: '0.00',
                   hintStyle: AppTypography.headlineLarge.copyWith(
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                     fontWeight: FontWeight.w700,
                   ),
                   filled: true,
-                  fillColor: AppColors.snowWhite,
+                  fillColor: colorScheme.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     borderSide: BorderSide(
-                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      color: theme.hintColor.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     borderSide: BorderSide(
-                      color: AppColors.mutedGray.withValues(alpha: 0.3),
+                      color: theme.hintColor.withValues(alpha: 0.3),
                       width: 1.5,
                     ),
                   ),
@@ -239,6 +247,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildTitleField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FormSectionCard(
       title: 'Title',
       icon: Icons.title_rounded,
@@ -248,21 +259,21 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           decoration: InputDecoration(
             hintText: 'e.g., Lunch at local restaurant',
             hintStyle: AppTypography.bodyMedium.copyWith(
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
             ),
             filled: true,
-            fillColor: AppColors.snowWhite,
+            fillColor: colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -283,7 +294,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             contentPadding: const EdgeInsets.all(AppSizes.space16),
           ),
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -297,6 +308,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildCategorySelector() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FormSectionCard(
       title: 'Category',
       icon: Icons.category_rounded,
@@ -317,12 +331,12 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                   vertical: AppSizes.space12,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.sunnyYellow : AppColors.snowWhite,
+                  color: isSelected ? AppColors.sunnyYellow : colorScheme.surface,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.goldenGlow
-                        : AppColors.mutedGray.withValues(alpha: 0.3),
+                        : theme.hintColor.withValues(alpha: 0.3),
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -334,7 +348,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                     Text(
                       cat.$2,
                       style: AppTypography.labelMedium.copyWith(
-                        color: isSelected ? AppColors.charcoal : AppColors.slate,
+                        color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -348,6 +362,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildDateField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FormSectionCard(
       title: 'Date',
       icon: Icons.calendar_today_rounded,
@@ -357,10 +374,10 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           child: Container(
             padding: const EdgeInsets.all(AppSizes.space16),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               border: Border.all(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -375,7 +392,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                 Text(
                   DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -387,6 +404,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildNotesField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FormSectionCard(
       title: 'Notes (Optional)',
       icon: Icons.notes_rounded,
@@ -397,21 +417,21 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
           decoration: InputDecoration(
             hintText: 'Add any additional details...',
             hintStyle: AppTypography.bodyMedium.copyWith(
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
             ),
             filled: true,
-            fillColor: AppColors.snowWhite,
+            fillColor: colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide(
-                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                color: theme.hintColor.withValues(alpha: 0.3),
                 width: 1.5,
               ),
             ),
@@ -425,7 +445,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
             contentPadding: const EdgeInsets.all(AppSizes.space16),
           ),
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ],
@@ -433,6 +453,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Widget _buildSubmitButton() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -440,26 +463,26 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
         onPressed: _isSubmitting ? null : _handleSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.sunnyYellow,
-          foregroundColor: AppColors.charcoal,
-          disabledBackgroundColor: AppColors.warmGray,
+          foregroundColor: colorScheme.onSurface,
+          disabledBackgroundColor: colorScheme.surfaceContainerHighest,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
         ),
         child: _isSubmitting
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               )
             : Text(
                 _isEditing ? 'Save Changes' : 'Add Expense',
                 style: AppTypography.labelLarge.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               ),
       ),
@@ -468,6 +491,9 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
   Future<void> _selectDate() async {
     HapticFeedback.lightImpact();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final date = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -475,12 +501,12 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: colorScheme.copyWith(
               primary: AppColors.sunnyYellow,
-              onPrimary: AppColors.charcoal,
-              surface: AppColors.snowWhite,
-              onSurface: AppColors.charcoal,
+              onPrimary: colorScheme.onSurface,
+              surface: colorScheme.surface,
+              onSurface: colorScheme.onSurface,
             ),
           ),
           child: child!,

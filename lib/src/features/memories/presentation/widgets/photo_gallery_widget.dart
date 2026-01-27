@@ -71,6 +71,8 @@ class MediaThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final displayUrl = memory.displayUrl;
     final hasVideo = memory.hasVideo;
     final mediaCount = memory.mediaItems.length;
@@ -96,7 +98,7 @@ class MediaThumbnail extends StatelessWidget {
                     imageUrl: FileUrlHelper.getAuthenticatedUrl(displayUrl),
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
-                      color: AppColors.warmGray,
+                      color: colorScheme.surfaceContainerHighest,
                       child: const Center(
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
@@ -105,10 +107,10 @@ class MediaThumbnail extends StatelessWidget {
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      color: AppColors.warmGray,
-                      child: const Icon(
+                      color: colorScheme.surfaceContainerHighest,
+                      child: Icon(
                         Icons.broken_image_rounded,
-                        color: AppColors.mutedGray,
+                        color: theme.hintColor,
                       ),
                     ),
                   )
@@ -244,6 +246,8 @@ class NoMemoriesState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -270,7 +274,7 @@ class NoMemoriesState extends StatelessWidget {
             Text(
               'No Memories Yet',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -279,7 +283,7 @@ class NoMemoriesState extends StatelessWidget {
             Text(
               'Capture your favorite moments by uploading photos and videos from your trip.',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

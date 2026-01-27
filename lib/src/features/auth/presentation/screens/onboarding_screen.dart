@@ -115,7 +115,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -211,7 +211,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         Text(
           'Welcome to Odyssey!',
           style: AppTypography.headlineLarge.copyWith(
-            color: AppColors.charcoal,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           textAlign: TextAlign.center,
         ),
@@ -221,7 +221,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         Text(
           'Ready to plan your next adventure?',
           style: AppTypography.bodyLarge.copyWith(
-            color: AppColors.slate,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           textAlign: TextAlign.center,
         ),
@@ -230,10 +230,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   Widget _buildDemoTripsCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(AppSizes.space20),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         boxShadow: AppSizes.softShadow,
       ),
@@ -261,13 +263,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     Text(
                       'Sample Trips',
                       style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.charcoal,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       'Explore with demo content',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -276,7 +278,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
             ],
           ),
           const SizedBox(height: AppSizes.space16),
-          const Divider(color: AppColors.cloudGray, height: 1),
+          Divider(color: colorScheme.surfaceContainerHighest, height: 1),
           const SizedBox(height: AppSizes.space16),
 
           // Demo trip previews
@@ -332,7 +334,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
           child: Text(
             title,
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.charcoal,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -346,6 +348,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   Widget _buildKeepCleanOption() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -355,10 +360,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         duration: AppAnimations.fast,
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: _keepClean ? AppColors.lemonLight : AppColors.snowWhite,
+          color: _keepClean ? AppColors.lemonLight : colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           border: Border.all(
-            color: _keepClean ? AppColors.sunnyYellow : AppColors.cloudGray,
+            color: _keepClean ? colorScheme.primary : colorScheme.surfaceContainerHighest,
             width: 2,
           ),
           boxShadow: _keepClean ? AppSizes.softShadow : null,
@@ -370,18 +375,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: _keepClean ? AppColors.sunnyYellow : Colors.transparent,
+                color: _keepClean ? colorScheme.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: _keepClean ? AppColors.sunnyYellow : AppColors.slate,
+                  color: _keepClean ? colorScheme.primary : colorScheme.onSurfaceVariant,
                   width: 2,
                 ),
               ),
               child: _keepClean
-                  ? const Icon(
+                  ? Icon(
                       Icons.check_rounded,
                       size: 16,
-                      color: AppColors.charcoal,
+                      color: colorScheme.onPrimary,
                     )
                   : null,
             ),
@@ -393,13 +398,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   Text(
                     "No thanks, I'll create my own",
                     style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     'Start with a clean slate',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

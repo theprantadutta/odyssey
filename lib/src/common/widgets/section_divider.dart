@@ -62,7 +62,7 @@ class SectionDivider extends StatelessWidget {
             child: Text(
               label!,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.slate,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -105,6 +105,8 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: padding,
       child: Column(
@@ -113,7 +115,7 @@ class SectionHeader extends StatelessWidget {
           Text(
             title,
             style: AppTypography.titleMedium.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -122,7 +124,7 @@ class SectionHeader extends StatelessWidget {
             Text(
               subtitle!,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],

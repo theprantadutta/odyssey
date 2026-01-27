@@ -54,16 +54,24 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.softCream,
-              AppColors.snowWhite,
-            ],
+            colors: isDark
+                ? [
+                    colorScheme.surface,
+                    colorScheme.surface,
+                  ]
+                : [
+                    AppColors.softCream,
+                    AppColors.snowWhite,
+                  ],
           ),
         ),
         child: Center(
@@ -79,7 +87,9 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppColors.lemonLight,
+                        color: isDark
+                            ? AppColors.sunnyYellow.withValues(alpha: 0.15)
+                            : AppColors.lemonLight,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -106,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Text(
                         'Odyssey',
                         style: AppTypography.brandLarge.copyWith(
-                          color: AppColors.charcoal,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -121,7 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Text(
                         'Your Journey Awaits',
                         style: AppTypography.bodyLarge.copyWith(
-                          color: AppColors.slate,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),

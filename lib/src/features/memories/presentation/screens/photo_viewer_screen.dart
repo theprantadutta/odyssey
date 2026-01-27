@@ -322,24 +322,27 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   }
 
   void _showDeleteDialog() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Memory',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete this memory? This action cannot be undone.',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -351,7 +354,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),

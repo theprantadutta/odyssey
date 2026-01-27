@@ -230,9 +230,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -253,7 +255,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     Container(
                       padding: const EdgeInsets.all(AppSizes.space24),
                       decoration: BoxDecoration(
-                        color: AppColors.snowWhite,
+                        color: colorScheme.surface,
                         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
                         boxShadow: AppSizes.softShadow,
                       ),
@@ -265,7 +267,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             Text(
                               'Create Account',
                               style: AppTypography.headlineMedium.copyWith(
-                                color: AppColors.charcoal,
+                                color: colorScheme.onSurface,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -273,7 +275,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             Text(
                               'Start your adventure today!',
                               style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.slate,
+                                color: colorScheme.onSurfaceVariant,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -388,7 +390,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                 Expanded(
                                   child: Container(
                                     height: 1,
-                                    color: AppColors.mutedGray,
+                                    color: theme.hintColor,
                                   ),
                                 ),
                                 Padding(
@@ -398,14 +400,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   child: Text(
                                     'or',
                                     style: AppTypography.bodyMedium.copyWith(
-                                      color: AppColors.slate,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Container(
                                     height: 1,
-                                    color: AppColors.mutedGray,
+                                    color: theme.hintColor,
                                   ),
                                 ),
                               ],
@@ -427,14 +429,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                         child: RichText(
                           text: TextSpan(
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             children: [
                               const TextSpan(text: 'Already have an account? '),
                               TextSpan(
                                 text: 'Sign In',
                                 style: AppTypography.labelLarge.copyWith(
-                                  color: AppColors.sunnyYellow,
+                                  color: colorScheme.primary,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -454,6 +456,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 
   Widget _buildLogoSection() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         // Logo with glow
@@ -464,23 +468,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.sunnyYellow.withValues(alpha: 0.3),
+                color: colorScheme.primary.withValues(alpha: 0.3),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.explore,
+          child: Icon(
+            Icons.travel_explore,
             size: 56,
-            color: AppColors.sunnyYellow,
+            color: colorScheme.primary,
           ),
         ),
         const SizedBox(height: AppSizes.space16),
         Text(
           'Odyssey',
           style: AppTypography.brandLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontSize: 32,
           ),
         ),
@@ -502,6 +506,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     Widget? suffixIcon,
     void Function(String)? onSubmitted,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
@@ -511,50 +518,56 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       enabled: enabled,
       onFieldSubmitted: onSubmitted,
       style: AppTypography.bodyLarge.copyWith(
-        color: AppColors.charcoal,
+        color: colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
+          color: colorScheme.onSurfaceVariant,
         ),
         hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.mutedGray,
+          color: theme.hintColor,
         ),
         prefixIcon: Icon(
           icon,
-          color: AppColors.slate,
+          color: colorScheme.onSurfaceVariant,
         ),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: AppColors.warmGray,
+        fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.sunnyYellow,
+          borderSide: BorderSide(
+            color: colorScheme.primary,
             width: 2,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
+          borderSide: BorderSide(
+            color: colorScheme.error,
             width: 1,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
+          borderSide: BorderSide(
+            color: colorScheme.error,
             width: 2,
           ),
         ),
@@ -570,16 +583,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   Widget _buildGoogleSignInButton(AuthState authState) {
     final isLoading = authState.isGoogleLoading;
     final isDisabled = authState.isLoading || authState.isGoogleLoading;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return SizedBox(
       height: AppSizes.buttonHeightLg,
       child: OutlinedButton(
         onPressed: isDisabled ? null : _handleGoogleSignIn,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppColors.charcoal,
+          backgroundColor: colorScheme.surface,
+          foregroundColor: colorScheme.onSurface,
           side: BorderSide(
-            color: isDisabled ? AppColors.mutedGray : AppColors.slate.withValues(alpha: 0.3),
+            color: isDisabled ? theme.hintColor : colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             width: 1,
           ),
           shape: RoundedRectangleBorder(
@@ -591,12 +606,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               )
             : Row(
@@ -606,7 +621,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: colorScheme.surface,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Center(
@@ -624,7 +639,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                   Text(
                     'Continue with Google',
                     style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

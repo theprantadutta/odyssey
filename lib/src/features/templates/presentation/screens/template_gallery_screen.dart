@@ -38,10 +38,13 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: _buildBackButton(context),
@@ -51,14 +54,14 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
             Text(
               'Trip Templates',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               'Discover and save travel plans',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -66,11 +69,11 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             child: TabBar(
               controller: _tabController,
               labelColor: AppColors.goldenGlow,
-              unselectedLabelColor: AppColors.slate,
+              unselectedLabelColor: colorScheme.onSurfaceVariant,
               indicatorColor: AppColors.goldenGlow,
               indicatorWeight: 3,
               labelStyle: AppTypography.labelLarge.copyWith(
@@ -95,6 +98,9 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
   }
 
   Widget _buildBackButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(AppSizes.space8),
       child: GestureDetector(
@@ -104,7 +110,7 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
         },
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             boxShadow: [
               BoxShadow(
@@ -114,9 +120,9 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_rounded,
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
@@ -139,6 +145,8 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final galleryState = ref.watch(templateGalleryProvider);
 
     return Column(
@@ -148,7 +156,7 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
           padding: const EdgeInsets.all(AppSizes.space16),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               boxShadow: [
                 BoxShadow(
@@ -160,16 +168,16 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
             ),
             child: TextField(
               controller: widget.searchController,
-              style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+              style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Search templates...',
                 hintStyle: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                 ),
-                prefixIcon: const Icon(Icons.search, color: AppColors.slate),
+                prefixIcon: Icon(Icons.search, color: colorScheme.onSurfaceVariant),
                 suffixIcon: widget.searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: AppColors.slate),
+                        icon: Icon(Icons.clear, color: colorScheme.onSurfaceVariant),
                         onPressed: () {
                           widget.searchController.clear();
                           ref.read(templateGalleryProvider.notifier).search(null);
@@ -178,7 +186,7 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.snowWhite,
+                fillColor: colorScheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   borderSide: BorderSide.none,
@@ -269,7 +277,7 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
                         )
                       : RefreshIndicator(
                           color: AppColors.sunnyYellow,
-                          backgroundColor: AppColors.snowWhite,
+                          backgroundColor: colorScheme.surface,
                           onRefresh: () => ref
                               .read(templateGalleryProvider.notifier)
                               .refresh(),
@@ -301,10 +309,11 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
   }
 
   void _showTemplateDetails(BuildContext context, TripTemplateModel template) {
+    final colorScheme = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppSizes.radiusXl),
@@ -346,6 +355,8 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -356,7 +367,7 @@ class _CategoryChip extends StatelessWidget {
           vertical: AppSizes.space8,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.sunnyYellow : AppColors.snowWhite,
+          color: isSelected ? AppColors.sunnyYellow : colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusFull),
           boxShadow: [
             BoxShadow(
@@ -371,7 +382,7 @@ class _CategoryChip extends StatelessWidget {
         child: Text(
           label,
           style: AppTypography.labelMedium.copyWith(
-            color: isSelected ? AppColors.charcoal : AppColors.slate,
+            color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
@@ -385,6 +396,8 @@ class _MyTemplatesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final myTemplatesState = ref.watch(myTemplatesProvider);
 
     if (myTemplatesState.isLoading) {
@@ -410,7 +423,7 @@ class _MyTemplatesTab extends ConsumerWidget {
 
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       onRefresh: () => ref.read(myTemplatesProvider.notifier).refresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -433,10 +446,11 @@ class _MyTemplatesTab extends ConsumerWidget {
   }
 
   void _showTemplateDetails(BuildContext context, TripTemplateModel template) {
+    final colorScheme = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppSizes.radiusXl),
@@ -469,24 +483,26 @@ class _MyTemplatesTab extends ConsumerWidget {
     WidgetRef ref,
     TripTemplateModel template,
   ) async {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     HapticFeedback.lightImpact();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Template',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${template.name}"?',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -495,7 +511,7 @@ class _MyTemplatesTab extends ConsumerWidget {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -549,6 +565,8 @@ class _TemplateDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final structure = template.structure;
 
     return DraggableScrollableSheet(
@@ -569,7 +587,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -586,7 +604,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Text(
-                      template.category?.icon ?? '📋',
+                      template.category?.icon ?? '',
                       style: const TextStyle(fontSize: 32),
                     ),
                   ),
@@ -598,7 +616,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                         Text(
                           template.name,
                           style: AppTypography.headlineSmall.copyWith(
-                            color: AppColors.charcoal,
+                            color: colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -606,7 +624,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                           Text(
                             template.category!.displayName,
                             style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                       ],
@@ -620,7 +638,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 Text(
                   template.description!,
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -628,7 +646,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
               const SizedBox(height: AppSizes.space24),
               Container(
                 height: 1,
-                color: AppColors.warmGray,
+                color: colorScheme.surfaceContainerHighest,
               ),
               const SizedBox(height: AppSizes.space24),
 
@@ -636,7 +654,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
               Text(
                 'Template Contents',
                 style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -678,7 +696,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 Text(
                   'Included Activities',
                   style: AppTypography.titleSmall.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -688,7 +706,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                     margin: const EdgeInsets.only(bottom: AppSizes.space8),
                     padding: const EdgeInsets.all(AppSizes.space12),
                     decoration: BoxDecoration(
-                      color: AppColors.warmGray,
+                      color: colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Row(
@@ -696,7 +714,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.snowWhite,
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -713,7 +731,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                               Text(
                                 activity.title,
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.charcoal,
+                                  color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -721,7 +739,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                                 Text(
                                   activity.location!,
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.slate,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                             ],
@@ -737,7 +755,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                     child: Text(
                       '+${structure.activities.length - 5} more activities',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -749,7 +767,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 Text(
                   'Tips',
                   style: AppTypography.titleSmall.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -777,7 +795,7 @@ class _TemplateDetailsSheet extends StatelessWidget {
                           child: Text(
                             tip,
                             style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -867,6 +885,8 @@ class _EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -889,7 +909,7 @@ class _EmptyStateWidget extends StatelessWidget {
             Text(
               title,
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -898,7 +918,7 @@ class _EmptyStateWidget extends StatelessWidget {
             Text(
               subtitle,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -917,6 +937,8 @@ class _ErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -939,7 +961,7 @@ class _ErrorWidget extends StatelessWidget {
             Text(
               'Something went wrong',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -947,7 +969,7 @@ class _ErrorWidget extends StatelessWidget {
             Text(
               message,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -956,7 +978,7 @@ class _ErrorWidget extends StatelessWidget {
               onPressed: onRetry,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.sunnyYellow,
-                foregroundColor: AppColors.charcoal,
+                foregroundColor: colorScheme.onSurface,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSizes.space24,
                   vertical: AppSizes.space12,

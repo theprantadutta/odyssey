@@ -17,6 +17,7 @@ class NotificationBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
 
+    final colorScheme = Theme.of(context).colorScheme;
     final displayCount = count > 99 ? '99+' : count.toString();
 
     return Container(
@@ -32,7 +33,7 @@ class NotificationBadge extends StatelessWidget {
         color: AppColors.coralBurst,
         borderRadius: BorderRadius.circular(size / 2),
         border: Border.all(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           width: 2,
         ),
         boxShadow: [

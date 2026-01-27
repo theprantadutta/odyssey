@@ -25,6 +25,8 @@ class ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final category = _parseCategory(activity.category);
     final scheduledTime = DateTime.tryParse(activity.scheduledTime);
 
@@ -39,7 +41,7 @@ class ActivityCard extends StatelessWidget {
           vertical: AppSizes.space8,
         ),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           boxShadow: AppSizes.softShadow,
         ),
@@ -88,7 +90,7 @@ class ActivityCard extends StatelessWidget {
                       Text(
                         activity.title,
                         style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -100,7 +102,7 @@ class ActivityCard extends StatelessWidget {
                           Icon(
                             Icons.access_time_rounded,
                             size: AppSizes.iconXs,
-                            color: AppColors.slate,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: AppSizes.space4),
                           Text(
@@ -109,7 +111,7 @@ class ActivityCard extends StatelessWidget {
                                     .format(scheduledTime.toLocal())
                                 : 'No time set',
                             style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.slate,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -121,7 +123,7 @@ class ActivityCard extends StatelessWidget {
                         Text(
                           activity.description!,
                           style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.mutedGray,
+                            color: theme.hintColor,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -141,7 +143,7 @@ class ActivityCard extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Icon(
                       Icons.drag_indicator_rounded,
-                      color: AppColors.mutedGray,
+                      color: theme.hintColor,
                       size: AppSizes.iconMd,
                     ),
                   ),
@@ -151,7 +153,7 @@ class ActivityCard extends StatelessWidget {
                   width: 48,
                   child: Icon(
                     Icons.drag_indicator_rounded,
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                     size: AppSizes.iconMd,
                   ),
                 )
@@ -198,6 +200,8 @@ class ActivityCardCompact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final category = _parseCategory(activity.category);
     final scheduledTime = DateTime.tryParse(activity.scheduledTime);
 
@@ -209,7 +213,7 @@ class ActivityCardCompact extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space12),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
             color: _getCategoryColor(category).withValues(alpha: 0.3),
@@ -242,7 +246,7 @@ class ActivityCardCompact extends StatelessWidget {
                   Text(
                     activity.title,
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -252,7 +256,7 @@ class ActivityCardCompact extends StatelessWidget {
                     Text(
                       DateFormat('h:mm a').format(scheduledTime.toLocal()),
                       style: AppTypography.caption.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -262,7 +266,7 @@ class ActivityCardCompact extends StatelessWidget {
             // Arrow
             Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
               size: AppSizes.iconSm,
             ),
           ],

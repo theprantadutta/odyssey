@@ -22,7 +22,9 @@ class ShimmerLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLoading) return child;
 
-    final highlight = highlightColor ?? AppColors.lemonLight;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final highlight = highlightColor ??
+        (isDark ? Colors.white.withValues(alpha: 0.1) : AppColors.lemonLight);
 
     return child
         .animate(
@@ -50,7 +52,7 @@ class TripCardSkeleton extends StatelessWidget {
           vertical: AppSizes.space8,
         ),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           boxShadow: AppSizes.softShadow,
         ),
@@ -62,7 +64,7 @@ class TripCardSkeleton extends StatelessWidget {
               flex: 6,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.warmGray,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(AppSizes.radiusLg),
                   ),
@@ -84,7 +86,7 @@ class TripCardSkeleton extends StatelessWidget {
                           child: Container(
                             height: 20,
                             decoration: BoxDecoration(
-                              color: AppColors.warmGray,
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
                               borderRadius:
                                   BorderRadius.circular(AppSizes.radiusSm),
                             ),
@@ -95,7 +97,7 @@ class TripCardSkeleton extends StatelessWidget {
                           height: 24,
                           width: 70,
                           decoration: BoxDecoration(
-                            color: AppColors.lemonLight,
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusFull),
                           ),
@@ -108,7 +110,7 @@ class TripCardSkeleton extends StatelessWidget {
                       height: 14,
                       width: 150,
                       decoration: BoxDecoration(
-                        color: AppColors.warmGray,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                       ),
                     ),
@@ -120,7 +122,7 @@ class TripCardSkeleton extends StatelessWidget {
                           height: 24,
                           width: 60,
                           decoration: BoxDecoration(
-                            color: AppColors.softCream,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusFull),
                           ),
@@ -130,7 +132,7 @@ class TripCardSkeleton extends StatelessWidget {
                           height: 24,
                           width: 50,
                           decoration: BoxDecoration(
-                            color: AppColors.softCream,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusFull),
                           ),
@@ -160,7 +162,7 @@ class ActivityCardSkeleton extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: AppSizes.space12),
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           boxShadow: AppSizes.softShadow,
         ),
@@ -171,7 +173,7 @@ class ActivityCardSkeleton extends StatelessWidget {
               width: AppSizes.iconXl,
               height: AppSizes.iconXl,
               decoration: BoxDecoration(
-                color: AppColors.lemonLight,
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(AppSizes.radiusSm),
               ),
             ),
@@ -186,7 +188,7 @@ class ActivityCardSkeleton extends StatelessWidget {
                     height: 18,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: AppColors.warmGray,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                     ),
                   ),
@@ -196,7 +198,7 @@ class ActivityCardSkeleton extends StatelessWidget {
                     height: 14,
                     width: 120,
                     decoration: BoxDecoration(
-                      color: AppColors.warmGray,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
                     ),
                   ),
@@ -253,7 +255,7 @@ class ShimmerBox extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -277,7 +279,7 @@ class ShimmerCircle extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           shape: BoxShape.circle,
         ),
       ),

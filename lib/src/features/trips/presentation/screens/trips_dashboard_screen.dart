@@ -109,29 +109,31 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   Future<void> _handleDeleteTrip(String tripId, String title) async {
     HapticFeedback.lightImpact();
+    final colorScheme = Theme.of(context).colorScheme;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Trip',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "$title"?',
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.slate),
+          style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(
               'Cancel',
-              style: AppTypography.labelLarge.copyWith(color: AppColors.slate),
+              style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant),
             ),
           ),
           TextButton(
@@ -193,20 +195,22 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   Widget build(BuildContext context) {
     final tripsState = ref.watch(tripsProvider);
     final authState = ref.watch(authProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
-        color: AppColors.sunnyYellow,
-        backgroundColor: AppColors.snowWhite,
+        color: colorScheme.primary,
+        backgroundColor: colorScheme.surface,
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
             // App Bar
             SliverAppBar(
               floating: true,
-              backgroundColor: AppColors.cloudGray,
+              backgroundColor: theme.scaffoldBackgroundColor,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               toolbarHeight: 80,
@@ -218,7 +222,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space8),
                   decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     boxShadow: [
                       BoxShadow(
@@ -262,7 +266,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space8),
                   decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     boxShadow: [
                       BoxShadow(
@@ -288,7 +292,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 Container(
                   margin: const EdgeInsets.only(right: AppSizes.space16),
                   decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     boxShadow: [
                       BoxShadow(
@@ -299,9 +303,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                     ],
                   ),
                   child: PopupMenuButton<String>(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.more_vert_rounded,
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     tooltip: 'More options',
                     shape: RoundedRectangleBorder(
@@ -321,6 +325,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                           break;
                         case 'statistics':
                           context.push(AppRoutes.statistics);
+                          break;
+                        case 'settings':
+                          context.push(AppRoutes.settings);
                           break;
                         case 'logout':
                           ref.read(authProvider.notifier).logout();
@@ -385,6 +392,20 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                         ),
                       ),
                       const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'settings',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.settings_outlined,
+                              color: AppColors.slate,
+                              size: 20,
+                            ),
+                            const SizedBox(width: AppSizes.space12),
+                            const Text('Settings'),
+                          ],
+                        ),
+                      ),
                       PopupMenuItem(
                         value: 'logout',
                         child: Row(
@@ -472,6 +493,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     // Use displayName if available, otherwise fall back to extracting from email
     final firstName =
         displayName ?? _getFirstNameFromEmail(authState.user?.email);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +518,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
             Text(
               'Odyssey',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -506,7 +528,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         Text(
           // firstName != null && firstName.isNotEmpty ? firstName : '',
           'Welcome, ${firstName != null && firstName.isNotEmpty ? firstName : ''}',
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.slate),
+          style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
           overflow: TextOverflow.ellipsis,
         ),
       ],
@@ -573,14 +595,14 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 Text(
                   'No trips found',
                   style: AppTypography.headlineSmall.copyWith(
-                    color: AppColors.charcoal,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: AppSizes.space8),
                 Text(
                   'Try adjusting your search or filters',
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.slate,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),

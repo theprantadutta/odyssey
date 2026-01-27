@@ -291,14 +291,17 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.charcoal),
+          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.of(context).pop();
@@ -307,7 +310,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         title: Text(
           widget.trip == null ? 'Create Trip' : 'Edit Trip',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
@@ -365,9 +368,9 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                       borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                       child: LinearProgressIndicator(
                         value: _uploadProgress,
-                        backgroundColor: AppColors.warmGray,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.sunnyYellow),
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.primary),
                         minHeight: 6,
                       ),
                     ),
@@ -375,7 +378,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                     Text(
                       'Uploading... ${(_uploadProgress * 100).toInt()}%',
                       style: AppTypography.caption.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -486,10 +489,10 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                       // Currency Dropdown
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.snowWhite,
+                          color: colorScheme.surface,
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           border: Border.all(
-                            color: AppColors.mutedGray.withValues(alpha: 0.3),
+                            color: theme.hintColor.withValues(alpha: 0.3),
                             width: 1.5,
                           ),
                         ),
@@ -506,7 +509,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                                 child: Text(
                                   '${c.symbol} ${c.code}',
                                   style: AppTypography.bodyMedium.copyWith(
-                                    color: AppColors.charcoal,
+                                    color: colorScheme.onSurface,
                                   ),
                                 ),
                               );
@@ -529,34 +532,34 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                           enabled: !_isLoading,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           style: AppTypography.bodyLarge.copyWith(
-                            color: AppColors.charcoal,
+                            color: colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
                           decoration: InputDecoration(
                             hintText: '0.00',
                             hintStyle: AppTypography.bodyLarge.copyWith(
-                              color: AppColors.mutedGray,
+                              color: theme.hintColor,
                             ),
                             filled: true,
-                            fillColor: AppColors.snowWhite,
+                            fillColor: colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                               borderSide: BorderSide(
-                                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                                color: theme.hintColor.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                               borderSide: BorderSide(
-                                color: AppColors.mutedGray.withValues(alpha: 0.3),
+                                color: theme.hintColor.withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                              borderSide: const BorderSide(
-                                color: AppColors.sunnyYellow,
+                              borderSide: BorderSide(
+                                color: colorScheme.primary,
                                 width: 2,
                               ),
                             ),
@@ -569,7 +572,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                   Text(
                     'Set a budget to track your expenses. All expenses will be converted to this currency.',
                     style: AppTypography.caption.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -603,17 +606,20 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     required DateTime? date,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: _isLoading ? null : onTap,
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.snowWhite,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
             color: date != null
-                ? AppColors.sunnyYellow
-                : AppColors.mutedGray.withValues(alpha: 0.3),
+                ? colorScheme.primary
+                : theme.hintColor.withValues(alpha: 0.3),
             width: date != null ? 2 : 1.5,
           ),
         ),
@@ -623,7 +629,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             Text(
               label,
               style: AppTypography.caption.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: AppSizes.space4),
@@ -632,7 +638,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 Icon(
                   Icons.calendar_today_rounded,
                   size: 18,
-                  color: date != null ? AppColors.sunnyYellow : AppColors.slate,
+                  color: date != null ? colorScheme.primary : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: AppSizes.space8),
                 Flexible(
@@ -642,7 +648,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                         : DateFormat('MMM dd, yyyy').format(date),
                     style: AppTypography.bodyMedium.copyWith(
                       color:
-                          date != null ? AppColors.charcoal : AppColors.mutedGray,
+                          date != null ? colorScheme.onSurface : theme.hintColor,
                       fontWeight: date != null ? FontWeight.w500 : FontWeight.w400,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -657,6 +663,9 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   Widget _buildStatusSelector() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Row(
       children: TripStatus.values.map((status) {
         final isSelected = _status == status;
@@ -700,12 +709,12 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 horizontal: AppSizes.space8,
               ),
               decoration: BoxDecoration(
-                color: isSelected ? bgColor : AppColors.snowWhite,
+                color: isSelected ? bgColor : colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
                   color: isSelected
                       ? textColor
-                      : AppColors.mutedGray.withValues(alpha: 0.3),
+                      : theme.hintColor.withValues(alpha: 0.3),
                   width: isSelected ? 2 : 1.5,
                 ),
               ),
@@ -713,14 +722,14 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 children: [
                   Icon(
                     icon,
-                    color: isSelected ? textColor : AppColors.slate,
+                    color: isSelected ? textColor : colorScheme.onSurfaceVariant,
                     size: 24,
                   ),
                   const SizedBox(height: AppSizes.space4),
                   Text(
                     status.displayName,
                     style: AppTypography.caption.copyWith(
-                      color: isSelected ? textColor : AppColors.slate,
+                      color: isSelected ? textColor : colorScheme.onSurfaceVariant,
                       fontWeight:
                           isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),

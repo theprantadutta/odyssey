@@ -22,12 +22,14 @@ class TripDocumentsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final documentsState = ref.watch(tripDocumentsProvider(tripId));
 
     return Stack(
       children: [
         // Main content
-        _buildContent(context, ref, documentsState),
+        _buildContent(context, ref, documentsState, theme, colorScheme),
         // FAB
         Positioned(
           right: AppSizes.space16,
@@ -42,15 +44,17 @@ class TripDocumentsTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     DocumentsState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
   ) {
     // Loading state
     if (state.isLoading && state.documents.isEmpty) {
-      return _buildLoadingState();
+      return _buildLoadingState(colorScheme);
     }
 
     // Error state
     if (state.error != null && state.documents.isEmpty) {
-      return _buildErrorState(context, ref, state.error!);
+      return _buildErrorState(context, ref, state.error!, colorScheme);
     }
 
     // Empty state
@@ -157,7 +161,7 @@ class TripDocumentsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(ColorScheme colorScheme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: Column(
@@ -166,7 +170,7 @@ class TripDocumentsTab extends ConsumerWidget {
           Container(
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             ),
           ),
@@ -178,7 +182,7 @@ class TripDocumentsTab extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: AppSizes.space12),
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.warmGray,
+                color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
             ),
@@ -188,7 +192,7 @@ class TripDocumentsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -212,7 +216,7 @@ class TripDocumentsTab extends ConsumerWidget {
             Text(
               'Failed to load documents',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -220,7 +224,7 @@ class TripDocumentsTab extends ConsumerWidget {
             Text(
               error,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -384,24 +388,26 @@ class TripDocumentsTab extends ConsumerWidget {
     WidgetRef ref,
     DocumentModel document,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Document',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${document.name}"? This action cannot be undone.',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -413,7 +419,7 @@ class TripDocumentsTab extends ConsumerWidget {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -503,10 +509,12 @@ class _DocumentImageViewerState extends State<_DocumentImageViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: AppColors.charcoal,
+      backgroundColor: colorScheme.onSurface,
       appBar: AppBar(
-        backgroundColor: AppColors.charcoal,
+        backgroundColor: colorScheme.onSurface,
         elevation: 0,
         leading: IconButton(
           onPressed: () {
@@ -570,10 +578,10 @@ class _DocumentImageViewerState extends State<_DocumentImageViewer> {
                 errorWidget: (context, url, error) => Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.broken_image_rounded,
                       size: 64,
-                      color: AppColors.mutedGray,
+                      color: theme.hintColor,
                     ),
                     const SizedBox(height: AppSizes.space16),
                     Text(

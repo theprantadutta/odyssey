@@ -26,6 +26,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final mapState = ref.watch(mapTripsProvider);
     final isPremium = ref.watch(isPremiumProvider);
 
@@ -186,18 +187,18 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
                       Icon(
                         Icons.map_outlined,
                         size: 64,
-                        color: Colors.grey.shade400,
+                        color: theme.hintColor,
                       ),
                       const SizedBox(height: AppSizes.space16),
                       Text(
                         'No trips on the map yet',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSizes.space8),
                       Text(
                         'Your trips with destinations will appear here',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.shade600,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.hintColor,
                             ),
                         textAlign: TextAlign.center,
                       ),
@@ -295,6 +296,8 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   }
 
   Widget _buildZoomButton(IconData icon, VoidCallback onPressed) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Material(
       elevation: 2,
       borderRadius: BorderRadius.circular(AppSizes.radiusSm),
@@ -305,10 +308,10 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusSm),
           ),
-          child: Icon(icon, color: Colors.grey.shade700),
+          child: Icon(icon, color: colorScheme.onSurfaceVariant),
         ),
       ),
     );
@@ -340,6 +343,8 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   }
 
   Widget _buildPaywallScreen(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('World Map'),
@@ -362,7 +367,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
           ),
           // Blur overlay
           Container(
-            color: AppColors.snowWhite.withValues(alpha: 0.8),
+            color: colorScheme.surface.withValues(alpha: 0.8),
           ),
           // Premium prompt
           Center(
@@ -370,11 +375,11 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
               margin: const EdgeInsets.all(AppSizes.space24),
               padding: const EdgeInsets.all(AppSizes.space24),
               decoration: BoxDecoration(
-                color: AppColors.snowWhite,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.charcoal.withValues(alpha: 0.1),
+                    color: colorScheme.onSurface.withValues(alpha: 0.1),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
@@ -386,15 +391,15 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
                   Container(
                     width: 80,
                     height: 80,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
                         colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
                       ),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.map,
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       size: 40,
                     ),
                   ),
@@ -409,7 +414,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
                   Text(
                     'See all your trips on an interactive world map. Track the countries and cities you\'ve visited!',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
                   ),

@@ -130,6 +130,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final structure = widget.template.structure;
 
     return Dialog(
@@ -156,7 +157,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
                         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                       ),
                       child: Text(
-                        widget.template.category?.icon ?? '📋',
+                        widget.template.category?.icon ?? '',
                         style: const TextStyle(fontSize: 24),
                       ),
                     ),
@@ -174,7 +175,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
                           Text(
                             widget.template.name,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -194,7 +195,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
                   Container(
                     padding: const EdgeInsets.all(AppSizes.space12),
                     decoration: BoxDecoration(
-                      color: AppColors.warmGray,
+                      color: colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Row(
@@ -209,7 +210,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
                           child: Text(
                             'This will create a trip with ${structure.activities.length} activities and ${structure.packingItems.length} packing items',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -287,7 +288,7 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
                   Text(
                     'Suggested duration: ${structure.durationDays} days',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -343,6 +344,7 @@ class _DateButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return InkWell(
       onTap: onTap,
@@ -350,7 +352,7 @@ class _DateButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space12),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.mutedGray),
+          border: Border.all(color: theme.hintColor),
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         ),
         child: Column(
@@ -359,7 +361,7 @@ class _DateButton extends StatelessWidget {
             Text(
               label,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 4),
@@ -369,16 +371,16 @@ class _DateButton extends StatelessWidget {
                   Icons.calendar_today_outlined,
                   size: 16,
                   color: date != null
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary,
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   date != null ? _formatDate(date!) : (hint ?? 'Select'),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: date != null
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

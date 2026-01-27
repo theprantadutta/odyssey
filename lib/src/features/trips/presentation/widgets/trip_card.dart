@@ -98,7 +98,7 @@ class _TripCardState extends State<TripCard>
                 vertical: AppSizes.space8,
               ),
               decoration: BoxDecoration(
-                color: AppColors.snowWhite,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                 boxShadow: [
                   BoxShadow(
@@ -221,7 +221,7 @@ class _TripCardState extends State<TripCard>
                                   child: Text(
                                     widget.trip.title,
                                     style: AppTypography.titleMedium.copyWith(
-                                      color: AppColors.charcoal,
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontWeight: FontWeight.w600,
                                     ),
                                     maxLines: 1,
@@ -241,13 +241,13 @@ class _TripCardState extends State<TripCard>
                                 Icon(
                                   Icons.calendar_today_rounded,
                                   size: AppSizes.iconXs,
-                                  color: AppColors.slate,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: AppSizes.space8),
                                 Text(
                                   _formatDateRange(),
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.slate,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -267,14 +267,14 @@ class _TripCardState extends State<TripCard>
                                       vertical: AppSizes.space4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.softCream,
+                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                       borderRadius: BorderRadius.circular(
                                           AppSizes.radiusFull),
                                     ),
                                     child: Text(
                                       tag,
                                       style: AppTypography.caption.copyWith(
-                                        color: AppColors.slate,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   );

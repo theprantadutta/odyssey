@@ -148,7 +148,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
                 child: Text(
                   'Skip',
                   style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.slate,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -271,7 +271,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
               Text(
                 page.title,
                 style: AppTypography.headlineLarge.copyWith(
-                  color: AppColors.charcoal,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -282,7 +282,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
               Text(
                 page.subtitle,
                 style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.slate,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
@@ -304,7 +304,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
       width: isActive ? 24 : 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? AppColors.sunnyYellow : AppColors.mutedGray,
+        color: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).hintColor,
         borderRadius: BorderRadius.circular(4),
       ),
     );

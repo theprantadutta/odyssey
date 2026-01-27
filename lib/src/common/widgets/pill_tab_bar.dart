@@ -42,7 +42,7 @@ class PillTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 56,
-      color: backgroundColor ?? AppColors.snowWhite,
+      color: backgroundColor ?? Theme.of(context).colorScheme.surface,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: padding ?? const EdgeInsets.symmetric(
@@ -119,7 +119,7 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
   @override
   Widget build(BuildContext context) {
     final selectedBgColor = widget.selectedColor ?? AppColors.oceanTeal;
-    final unselectedBgColor = widget.unselectedColor ?? AppColors.warmGray;
+    final unselectedBgColor = widget.unselectedColor ?? Theme.of(context).colorScheme.surfaceContainerHighest;
 
     return GestureDetector(
       onTapDown: (_) => _controller.forward(),
@@ -166,8 +166,8 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
                   key: ValueKey('${widget.index}_${widget.isSelected}'),
                   size: 18,
                   color: widget.isSelected
-                      ? AppColors.snowWhite
-                      : AppColors.slate,
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               AnimatedSize(
@@ -179,7 +179,7 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
                         child: Text(
                           widget.item.label,
                           style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.snowWhite,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -217,7 +217,7 @@ class SliverPillTabBar extends StatelessWidget {
         tabs: tabs,
         selectedIndex: selectedIndex,
         onTabSelected: onTabSelected,
-        backgroundColor: backgroundColor ?? AppColors.snowWhite,
+        backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.surface,
       ),
     );
   }

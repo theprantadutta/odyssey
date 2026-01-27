@@ -183,10 +183,16 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
   }
 
   Widget _buildModeToggle() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.warmGray,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
       padding: const EdgeInsets.all(4),
       child: Row(
@@ -218,6 +224,9 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: widget.enabled ? onTap : null,
       child: AnimatedContainer(
@@ -227,7 +236,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
           horizontal: AppSizes.space12,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.snowWhite : Colors.transparent,
+          color: isSelected ? colorScheme.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(AppSizes.radiusSm),
           boxShadow: isSelected ? AppSizes.softShadow : null,
         ),
@@ -237,13 +246,13 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? AppColors.sunnyYellow : AppColors.slate,
+              color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               label,
               style: AppTypography.labelMedium.copyWith(
-                color: isSelected ? AppColors.charcoal : AppColors.slate,
+                color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -256,16 +265,17 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
   Widget _buildImagePreview() {
     final hasImage = _selectedFile != null ||
         (_urlController.text.trim().isNotEmpty && _mode == CoverImageMode.url);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       height: 180,
       decoration: BoxDecoration(
-        color: AppColors.warmGray,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         border: Border.all(
-          color: hasImage ? AppColors.sunnyYellow : Colors.transparent,
-          width: 2,
+          color: hasImage ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.15),
+          width: hasImage ? 2 : 1,
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -319,6 +329,8 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
   }
 
   Widget _buildPlaceholder() {
+    final hintColor = Theme.of(context).hintColor;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -326,7 +338,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
           Icon(
             Icons.image_outlined,
             size: 48,
-            color: AppColors.mutedGray,
+            color: hintColor,
           ),
           const SizedBox(height: AppSizes.space8),
           Text(
@@ -334,7 +346,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
                 ? 'Select an image to upload'
                 : 'Enter an image URL',
             style: AppTypography.bodySmall.copyWith(
-              color: AppColors.mutedGray,
+              color: hintColor,
             ),
           ),
         ],
@@ -373,37 +385,46 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
   }
 
   Widget _buildUrlInput() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return TextFormField(
       controller: _urlController,
       enabled: widget.enabled,
       onChanged: _onUrlChanged,
       style: AppTypography.bodyLarge.copyWith(
-        color: AppColors.charcoal,
+        color: colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         labelText: 'Image URL',
         hintText: 'https://images.unsplash.com/...',
         labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
+          color: colorScheme.onSurfaceVariant,
         ),
         hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.mutedGray,
+          color: theme.hintColor,
         ),
-        prefixIcon: const Icon(Icons.link_rounded, color: AppColors.slate),
+        prefixIcon: Icon(Icons.link_rounded, color: colorScheme.onSurfaceVariant),
         filled: true,
-        fillColor: AppColors.warmGray,
+        fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.sunnyYellow,
+          borderSide: BorderSide(
+            color: colorScheme.primary,
             width: 2,
           ),
         ),
@@ -438,6 +459,8 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: widget.enabled ? onTap : null,
       child: Container(
@@ -446,10 +469,10 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
           horizontal: AppSizes.space16,
         ),
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
-            color: AppColors.mutedGray.withValues(alpha: 0.3),
+            color: colorScheme.outline.withValues(alpha: 0.15),
             width: 1,
           ),
         ),
@@ -459,13 +482,13 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             Icon(
               icon,
               size: 20,
-              color: widget.enabled ? AppColors.sunnyYellow : AppColors.slate,
+              color: widget.enabled ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               label,
               style: AppTypography.labelMedium.copyWith(
-                color: widget.enabled ? AppColors.charcoal : AppColors.slate,
+                color: widget.enabled ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),

@@ -86,10 +86,12 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final memoriesState = ref.watch(tripMemoriesProvider(widget.tripId));
 
     return Scaffold(
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       appBar: _buildAppBar(),
       body: Form(
         key: _formKey,
@@ -133,11 +135,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return AppBar(
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.close_rounded, color: AppColors.charcoal),
+        icon: Icon(Icons.close_rounded, color: colorScheme.onSurface),
         onPressed: () {
           HapticFeedback.lightImpact();
           Navigator.of(context).pop();
@@ -146,7 +151,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
       title: Text(
         'Add Memory',
         style: AppTypography.headlineSmall.copyWith(
-          color: AppColors.charcoal,
+          color: colorScheme.onSurface,
         ),
       ),
       centerTitle: true,
@@ -154,6 +159,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildMediaPickerSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -162,14 +170,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               'Photos & Videos',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: theme.hintColor,
               ),
             ),
             const Spacer(),
@@ -178,7 +186,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               style: AppTypography.caption.copyWith(
                 color: _selectedMedia.length >= _maxMediaFiles
                     ? AppColors.error
-                    : AppColors.slate,
+                    : colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -190,7 +198,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         Text(
           'Photos: max 10MB each • Videos: max 100MB each',
           style: AppTypography.caption.copyWith(
-            color: AppColors.mutedGray,
+            color: theme.hintColor,
           ),
         ),
       ],
@@ -218,14 +226,17 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildAddMediaButton() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: _showMediaSourceDialog,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           border: Border.all(
-            color: AppColors.mutedGray,
+            color: theme.hintColor,
             width: 2,
             style: BorderStyle.solid,
           ),
@@ -249,7 +260,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               'Add',
               style: AppTypography.caption.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -260,6 +271,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildMediaTile(_SelectedMedia media, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -268,7 +281,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           child: media.isVideo
               ? Container(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   child: const Center(
                     child: Icon(
                       Icons.videocam_rounded,
@@ -343,6 +356,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildCaptionField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -351,14 +367,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               'Caption',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: theme.hintColor,
               ),
             ),
           ],
@@ -371,10 +387,10 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           decoration: InputDecoration(
             hintText: 'Write a caption for your memory...',
             hintStyle: AppTypography.bodyMedium.copyWith(
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
             ),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: colorScheme.surfaceContainerHighest,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide.none,
@@ -393,7 +409,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             contentPadding: const EdgeInsets.all(AppSizes.space16),
           ),
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ],
@@ -401,6 +417,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildLocationField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -409,14 +428,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               'Location',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: theme.hintColor,
               ),
             ),
           ],
@@ -428,14 +447,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           decoration: InputDecoration(
             hintText: 'e.g., Eiffel Tower, Paris',
             hintStyle: AppTypography.bodyMedium.copyWith(
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.location_on_rounded,
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
             ),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: colorScheme.surfaceContainerHighest,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide.none,
@@ -455,7 +474,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             counterText: '',
           ),
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ],
@@ -463,6 +482,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildGpsSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -478,7 +500,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               vertical: AppSizes.space12,
             ),
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             ),
             child: Row(
@@ -487,7 +509,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   Icons.my_location_rounded,
                   color: _showGpsFields
                       ? AppColors.goldenGlow
-                      : AppColors.mutedGray,
+                      : theme.hintColor,
                   size: 20,
                 ),
                 const SizedBox(width: AppSizes.space12),
@@ -496,15 +518,15 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                     'GPS Coordinates',
                     style: AppTypography.bodyMedium.copyWith(
                       color: _showGpsFields
-                          ? AppColors.charcoal
-                          : AppColors.slate,
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
                 Text(
                   '(Optional)',
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.mutedGray,
+                    color: theme.hintColor,
                   ),
                 ),
                 const SizedBox(width: AppSizes.space8),
@@ -512,7 +534,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   _showGpsFields
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                 ),
               ],
             ),
@@ -532,14 +554,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   decoration: InputDecoration(
                     labelText: 'Latitude',
                     labelStyle: AppTypography.bodySmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     hintText: 'e.g., 23.8103',
                     hintStyle: AppTypography.bodySmall.copyWith(
-                      color: AppColors.mutedGray,
+                      color: theme.hintColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.warmGray,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                       borderSide: BorderSide.none,
@@ -565,7 +587,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                     contentPadding: const EdgeInsets.all(AppSizes.space12),
                   ),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                   ),
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
@@ -587,14 +609,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   decoration: InputDecoration(
                     labelText: 'Longitude',
                     labelStyle: AppTypography.bodySmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     hintText: 'e.g., 90.4125',
                     hintStyle: AppTypography.bodySmall.copyWith(
-                      color: AppColors.mutedGray,
+                      color: theme.hintColor,
                     ),
                     filled: true,
-                    fillColor: AppColors.warmGray,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                       borderSide: BorderSide.none,
@@ -620,7 +642,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                     contentPadding: const EdgeInsets.all(AppSizes.space12),
                   ),
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                   ),
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
@@ -646,6 +668,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildDateTimeField() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -654,14 +679,14 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               'Date & Time Taken',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: AppSizes.space8),
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: theme.hintColor,
               ),
             ),
           ],
@@ -676,7 +701,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(AppSizes.space16),
                   decoration: BoxDecoration(
-                    color: AppColors.warmGray,
+                    color: colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
                   child: Row(
@@ -685,7 +710,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                         Icons.calendar_today_rounded,
                         color: _takenAt != null
                             ? AppColors.goldenGlow
-                            : AppColors.mutedGray,
+                            : theme.hintColor,
                         size: 20,
                       ),
                       const SizedBox(width: AppSizes.space12),
@@ -696,8 +721,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                               : 'Select date',
                           style: AppTypography.bodyMedium.copyWith(
                             color: _takenAt != null
-                                ? AppColors.charcoal
-                                : AppColors.mutedGray,
+                                ? colorScheme.onSurface
+                                : theme.hintColor,
                           ),
                         ),
                       ),
@@ -712,7 +737,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                           },
                           child: Icon(
                             Icons.close_rounded,
-                            color: AppColors.mutedGray,
+                            color: theme.hintColor,
                             size: 18,
                           ),
                         ),
@@ -730,8 +755,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                   padding: const EdgeInsets.all(AppSizes.space16),
                   decoration: BoxDecoration(
                     color: _takenAt != null
-                        ? AppColors.warmGray
-                        : AppColors.warmGray.withValues(alpha: 0.5),
+                        ? colorScheme.surfaceContainerHighest
+                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
                   child: Row(
@@ -740,7 +765,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                         Icons.access_time_rounded,
                         color: _takenAtTime != null
                             ? AppColors.goldenGlow
-                            : AppColors.mutedGray,
+                            : theme.hintColor,
                         size: 20,
                       ),
                       const SizedBox(width: AppSizes.space12),
@@ -751,8 +776,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                               : 'Time',
                           style: AppTypography.bodyMedium.copyWith(
                             color: _takenAtTime != null
-                                ? AppColors.charcoal
-                                : AppColors.mutedGray,
+                                ? colorScheme.onSurface
+                                : theme.hintColor,
                           ),
                         ),
                       ),
@@ -764,7 +789,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                           },
                           child: Icon(
                             Icons.close_rounded,
-                            color: AppColors.mutedGray,
+                            color: theme.hintColor,
                             size: 18,
                           ),
                         ),
@@ -780,6 +805,8 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Widget _buildUploadButton(MemoriesState memoriesState) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isUploading = memoriesState.isUploading;
     final progress = memoriesState.uploadProgress;
     final hasContent = _selectedMedia.isNotEmpty || _captionController.text.isNotEmpty;
@@ -787,7 +814,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -805,7 +832,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppColors.warmGray,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(AppColors.sunnyYellow),
                   minHeight: 6,
@@ -815,7 +842,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               Text(
                 'Uploading... ${(progress * 100).toInt()}%',
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSizes.space12),
@@ -827,21 +854,21 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 onPressed: isUploading || !hasContent ? null : _handleUpload,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sunnyYellow,
-                  foregroundColor: AppColors.charcoal,
-                  disabledBackgroundColor: AppColors.warmGray,
-                  disabledForegroundColor: AppColors.mutedGray,
+                  foregroundColor: colorScheme.onSurface,
+                  disabledBackgroundColor: colorScheme.surfaceContainerHighest,
+                  disabledForegroundColor: theme.hintColor,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
                 ),
                 child: isUploading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                       )
                     : Row(
@@ -852,7 +879,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                           Text(
                             'Upload Memory',
                             style: AppTypography.labelLarge.copyWith(
-                              color: AppColors.charcoal,
+                              color: colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -866,10 +893,13 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   void _showMediaSourceDialog() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppSizes.radiusXl),
@@ -885,7 +915,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                 ),
               ),
@@ -893,7 +923,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
               Text(
                 'Add Media',
                 style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: AppSizes.space24),
@@ -966,6 +996,9 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -974,7 +1007,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: AppColors.warmGray,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         ),
         child: Column(
@@ -995,13 +1028,13 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Text(
               label,
               style: AppTypography.labelMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             Text(
               subtitle,
               style: AppTypography.caption.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],

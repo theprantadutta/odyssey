@@ -18,7 +18,8 @@ class TripMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getStatusColor(trip.status);
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = _getStatusColor(trip.status, colorScheme);
 
     return GestureDetector(
       onTap: onTap,
@@ -67,19 +68,6 @@ class TripMarker extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'planned':
-        return AppColors.sunnyYellow;
-      case 'ongoing':
-        return AppColors.oceanTeal;
-      case 'completed':
-        return AppColors.mintGreen;
-      default:
-        return AppColors.slate;
-    }
-  }
-
   IconData _getStatusIcon(String status) {
     switch (status) {
       case 'planned':
@@ -90,6 +78,19 @@ class TripMarker extends StatelessWidget {
         return Icons.check;
       default:
         return Icons.place;
+    }
+  }
+
+  Color _getStatusColor(String status, ColorScheme colorScheme) {
+    switch (status) {
+      case 'planned':
+        return AppColors.sunnyYellow;
+      case 'ongoing':
+        return AppColors.oceanTeal;
+      case 'completed':
+        return AppColors.mintGreen;
+      default:
+        return colorScheme.onSurfaceVariant;
     }
   }
 }
@@ -108,7 +109,9 @@ class TripInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getStatusColor(trip.status);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final color = _getStatusColor(trip.status, colorScheme);
 
     return Card(
       elevation: 8,
@@ -153,7 +156,7 @@ class TripInfoCard extends StatelessWidget {
                         Text(
                           trip.title,
                           style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                              theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
                           maxLines: 1,
@@ -162,11 +165,10 @@ class TripInfoCard extends StatelessWidget {
                         if (trip.destination != null)
                           Text(
                             trip.destination!,
-                            style: Theme.of(context)
-                                .textTheme
+                            style: theme.textTheme
                                 .bodySmall
                                 ?.copyWith(
-                                  color: Colors.grey.shade600,
+                                  color: theme.hintColor,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -191,12 +193,12 @@ class TripInfoCard extends StatelessWidget {
                     color,
                   ),
                   const SizedBox(width: AppSizes.space8),
-                  Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                  Icon(Icons.calendar_today, size: 14, color: theme.hintColor),
                   const SizedBox(width: 4),
                   Text(
                     '${_formatDate(trip.startDate)} - ${_formatDate(trip.endDate)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.hintColor,
                         ),
                   ),
                 ],
@@ -226,7 +228,7 @@ class TripInfoCard extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String status, ColorScheme colorScheme) {
     switch (status) {
       case 'planned':
         return AppColors.sunnyYellow;
@@ -235,7 +237,7 @@ class TripInfoCard extends StatelessWidget {
       case 'completed':
         return AppColors.mintGreen;
       default:
-        return AppColors.slate;
+        return colorScheme.onSurfaceVariant;
     }
   }
 
@@ -311,16 +313,17 @@ class MapStatsOverlay extends StatelessWidget {
   }
 
   Widget _buildStatRow(BuildContext context, IconData icon, String text) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.grey.shade600),
+          Icon(icon, size: 16, color: theme.hintColor),
           const SizedBox(width: 8),
           Text(
             text,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: theme.textTheme.bodySmall,
           ),
         ],
       ),

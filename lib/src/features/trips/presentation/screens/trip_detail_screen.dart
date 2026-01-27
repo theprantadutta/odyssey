@@ -164,7 +164,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -173,7 +173,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,
-              backgroundColor: AppColors.snowWhite,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               surfaceTintColor: Colors.transparent,
               leading: Padding(
                 padding: const EdgeInsets.all(AppSizes.space8),
@@ -194,7 +194,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppColors.snowWhite,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                       boxShadow: [
                         BoxShadow(
@@ -204,9 +204,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back_rounded,
-                      color: AppColors.charcoal,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -223,7 +223,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(AppSizes.space8),
                       decoration: BoxDecoration(
-                        color: AppColors.snowWhite,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                         boxShadow: [
                           BoxShadow(
@@ -258,7 +258,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(AppSizes.space8),
                       decoration: BoxDecoration(
-                        color: AppColors.snowWhite,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                         boxShadow: [
                           BoxShadow(
@@ -268,9 +268,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.more_vert_rounded,
-                        color: AppColors.charcoal,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -281,7 +281,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     ? Text(
                         trip.title,
                         style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
                         ),
                       )
@@ -432,9 +432,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
   void _showOptionsMenu(BuildContext context, TripModel trip) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
       ),
@@ -444,8 +446,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_outlined, color: AppColors.charcoal),
-              title: const Text('Edit Trip', style: TextStyle(color: AppColors.charcoal)),
+              leading: Icon(Icons.edit_outlined, color: colorScheme.onSurface),
+              title: Text('Edit Trip', style: TextStyle(color: colorScheme.onSurface)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
@@ -460,7 +462,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.people_outline, color: AppColors.oceanTeal),
-              title: const Text('Manage Sharing', style: TextStyle(color: AppColors.charcoal)),
+              title: Text('Manage Sharing', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               onTap: () {
                 Navigator.pop(context);
                 context.push('/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}');
@@ -468,7 +470,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.bookmark_add_outlined, color: AppColors.lavenderDream),
-              title: const Text('Save as Template', style: TextStyle(color: AppColors.charcoal)),
+              title: Text('Save as Template', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               onTap: () {
                 Navigator.pop(context);
                 _showSaveAsTemplateDialog(context, trip);

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_typography.dart';
 
@@ -81,6 +80,9 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -94,63 +96,63 @@ class AppTextField extends StatelessWidget {
       onFieldSubmitted: onSubmitted,
       onChanged: onChanged,
       style: AppTypography.bodyLarge.copyWith(
-        color: AppColors.charcoal,
+        color: colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
+          color: colorScheme.onSurfaceVariant,
         ),
         hintStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.mutedGray,
+          color: theme.hintColor,
         ),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: AppColors.slate)
+            ? Icon(prefixIcon, color: colorScheme.onSurfaceVariant)
             : null,
         suffixIcon: suffix,
         filled: true,
-        fillColor: AppColors.snowWhite,
+        fillColor: colorScheme.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           borderSide: BorderSide(
-            color: AppColors.mutedGray.withValues(alpha: 0.3),
-            width: 1.5,
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           borderSide: BorderSide(
-            color: AppColors.mutedGray.withValues(alpha: 0.3),
-            width: 1.5,
+            color: colorScheme.outline.withValues(alpha: 0.15),
+            width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.sunnyYellow,
+          borderSide: BorderSide(
+            color: colorScheme.primary,
             width: 2,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
+          borderSide: BorderSide(
+            color: colorScheme.error,
             width: 2,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          borderSide: const BorderSide(
-            color: AppColors.error,
+          borderSide: BorderSide(
+            color: colorScheme.error,
             width: 2,
           ),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           borderSide: BorderSide(
-            color: AppColors.mutedGray.withValues(alpha: 0.2),
-            width: 1.5,
+            color: colorScheme.outline.withValues(alpha: 0.1),
+            width: 1,
           ),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -183,6 +185,8 @@ class LabeledTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -191,7 +195,7 @@ class LabeledTextField extends StatelessWidget {
             Text(
               label,
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             if (isRequired) ...[
@@ -199,7 +203,7 @@ class LabeledTextField extends StatelessWidget {
               Text(
                 '*',
                 style: AppTypography.labelLarge.copyWith(
-                  color: AppColors.error,
+                  color: colorScheme.error,
                 ),
               ),
             ],

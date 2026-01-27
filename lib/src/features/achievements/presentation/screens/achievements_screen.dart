@@ -33,13 +33,15 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final achievementsState = ref.watch(achievementsProvider);
     final totalPoints = achievementsState.totalPoints;
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
@@ -52,13 +54,13 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               boxShadow: AppSizes.softShadow,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back,
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               size: 20,
             ),
           ),
@@ -69,14 +71,14 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
             Text(
               'Achievements',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               'Collect badges as you explore',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -129,14 +131,14 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
             decoration: BoxDecoration(
-              color: AppColors.snowWhite,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(AppSizes.radiusLg),
               boxShadow: AppSizes.softShadow,
             ),
             child: TabBar(
               controller: _tabController,
               labelColor: AppColors.sunnyYellow,
-              unselectedLabelColor: AppColors.slate,
+              unselectedLabelColor: colorScheme.onSurfaceVariant,
               labelStyle: AppTypography.labelMedium.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -178,7 +180,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
                   Text(
                     'Loading achievements...',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -198,6 +200,8 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -220,7 +224,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
             Text(
               'Failed to load achievements',
               style: AppTypography.titleMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -228,7 +232,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
             Text(
               'Please check your connection and try again',
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -266,6 +270,8 @@ class _EarnedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (achievements.isEmpty) {
       return const _EmptyState(
         icon: Icons.emoji_events_outlined,
@@ -284,7 +290,7 @@ class _EarnedTab extends StatelessWidget {
 
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       onRefresh: () async {},
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -310,10 +316,11 @@ class _EarnedTab extends StatelessWidget {
   }
 
   void _showAchievementDetails(BuildContext context, UserAchievement ua) {
+    final colorScheme = Theme.of(context).colorScheme;
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -333,6 +340,8 @@ class _InProgressTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (achievements.isEmpty) {
       return const _EmptyState(
         icon: Icons.trending_up_rounded,
@@ -344,7 +353,7 @@ class _InProgressTab extends StatelessWidget {
 
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       onRefresh: () async {},
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -366,10 +375,11 @@ class _InProgressTab extends StatelessWidget {
   }
 
   void _showAchievementDetails(BuildContext context, UserAchievement ua) {
+    final colorScheme = Theme.of(context).colorScheme;
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -389,6 +399,8 @@ class _LockedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (achievements.isEmpty) {
       return const _EmptyState(
         icon: Icons.star_rounded,
@@ -415,7 +427,7 @@ class _LockedTab extends StatelessWidget {
 
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       onRefresh: () async {},
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -450,10 +462,11 @@ class _LockedTab extends StatelessWidget {
   }
 
   void _showAchievementDetails(BuildContext context, Achievement a) {
+    final colorScheme = Theme.of(context).colorScheme;
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -476,13 +489,14 @@ class _CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final color = _getCategoryColor(category);
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.space16),
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: AppSizes.softShadow,
       ),
@@ -509,7 +523,7 @@ class _CategorySection extends StatelessWidget {
                   category.displayName,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -589,6 +603,7 @@ class _TierHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final colors = _getTierColors(tier);
 
     return Container(
@@ -597,7 +612,7 @@ class _TierHeader extends StatelessWidget {
         vertical: AppSizes.space12,
       ),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: AppSizes.softShadow,
         border: Border.all(
@@ -642,7 +657,7 @@ class _TierHeader extends StatelessWidget {
                 Text(
                   '$count achievements locked',
                   style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -699,6 +714,8 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -722,7 +739,7 @@ class _EmptyState extends StatelessWidget {
               title,
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -730,7 +747,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -756,6 +773,8 @@ class _AchievementDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final tier = AchievementTier.fromString(achievement.tier);
     final colors = _getTierColors(tier);
 
@@ -769,7 +788,7 @@ class _AchievementDetailSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.mutedGray,
+              color: theme.hintColor,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -787,7 +806,7 @@ class _AchievementDetailSheet extends StatelessWidget {
             achievement.name,
             style: AppTypography.headlineSmall.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
           ),
@@ -796,7 +815,7 @@ class _AchievementDetailSheet extends StatelessWidget {
           Text(
             achievement.description,
             style: AppTypography.bodyLarge.copyWith(
-              color: AppColors.slate,
+              color: colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -861,7 +880,7 @@ class _AchievementDetailSheet extends StatelessWidget {
                 Text(
                   'Progress: $progress / ${achievement.threshold}',
                   style: AppTypography.titleSmall.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -869,7 +888,7 @@ class _AchievementDetailSheet extends StatelessWidget {
                 Container(
                   height: 8,
                   decoration: BoxDecoration(
-                    color: AppColors.warmGray,
+                    color: colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: ClipRRect(
@@ -891,19 +910,19 @@ class _AchievementDetailSheet extends StatelessWidget {
                 vertical: AppSizes.space12,
               ),
               decoration: BoxDecoration(
-                color: AppColors.warmGray,
+                color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.lock_outline_rounded,
-                      color: AppColors.slate, size: 20),
+                      color: colorScheme.onSurfaceVariant, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Complete ${achievement.threshold} to unlock',
                     style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

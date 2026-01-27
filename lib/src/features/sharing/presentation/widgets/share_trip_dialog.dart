@@ -197,7 +197,7 @@ class _ShareTripDialogState extends ConsumerState<ShareTripDialog> {
                                 border: Border.all(
                                   color: isSelected
                                       ? AppColors.oceanTeal
-                                      : AppColors.mutedGray,
+                                      : theme.hintColor,
                                 ),
                                 borderRadius:
                                     BorderRadius.circular(AppSizes.radiusMd),

@@ -55,6 +55,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final subscription = ref.watch(subscriptionProvider);
     final purchaseState = ref.watch(purchaseProvider);
 
@@ -80,12 +82,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.charcoal),
+          icon: Icon(Icons.close, color: colorScheme.onSurface),
           onPressed: purchaseState.isPurchasing
               ? null
               : () => Navigator.of(context).pop(),
@@ -119,7 +121,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     ),
                     child: Icon(
                       widget.featureIcon ?? Icons.workspace_premium,
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       size: 48,
                     ),
                   ),
@@ -131,7 +133,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     widget.customTitle ?? 'Unlock ${widget.featureName}',
                     style: AppTypography.headlineSmall.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -143,7 +145,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     widget.customDescription ??
                         '${widget.featureName ?? 'This feature'} is available with Odyssey Premium. Upgrade now to unlock it and many more features!',
                     style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -168,7 +170,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     child: Text(
                       'Restore Purchases',
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                         decoration: TextDecoration.underline,
                       ),
                     ),
@@ -180,7 +182,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   Text(
                     'Payment will be charged to your account. Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the current period.',
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.mutedGray,
+                      color: theme.hintColor,
                       fontSize: 10,
                     ),
                     textAlign: TextAlign.center,
@@ -193,12 +195,12 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           // Loading overlay
           if (purchaseState.isPurchasing)
             Container(
-              color: AppColors.charcoal.withValues(alpha: 0.5),
+              color: colorScheme.onSurface.withValues(alpha: 0.5),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.all(AppSizes.space24),
                   decoration: BoxDecoration(
-                    color: AppColors.snowWhite,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
                   child: Column(
@@ -211,7 +213,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                       Text(
                         'Processing purchase...',
                         style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.charcoal,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -273,10 +275,13 @@ class _PremiumFeaturesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.cloudGray,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
       ),
       child: Column(
@@ -286,7 +291,7 @@ class _PremiumFeaturesList extends StatelessWidget {
             'Premium includes:',
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: AppSizes.space12),
@@ -315,6 +320,8 @@ class _FeatureItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.space4),
       child: Row(
@@ -328,7 +335,7 @@ class _FeatureItem extends StatelessWidget {
           Text(
             text,
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
             ),
           ),
         ],
@@ -356,6 +363,8 @@ class _PricingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: isEnabled ? onTap : null,
       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -372,11 +381,11 @@ class _PricingCard extends StatelessWidget {
                     end: Alignment.bottomRight,
                   )
                 : null,
-            color: isRecommended ? null : AppColors.snowWhite,
+            color: isRecommended ? null : colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: isRecommended
                 ? null
-                : Border.all(color: AppColors.warmGray, width: 1.5),
+                : Border.all(color: colorScheme.surfaceContainerHighest, width: 1.5),
             boxShadow: isRecommended
                 ? [
                     BoxShadow(
@@ -399,7 +408,7 @@ class _PricingCard extends StatelessWidget {
                           title,
                           style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.charcoal,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                         if (isRecommended) ...[
@@ -410,7 +419,7 @@ class _PricingCard extends StatelessWidget {
                               vertical: AppSizes.space4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.charcoal,
+                              color: colorScheme.onSurface,
                               borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                             ),
                             child: Text(
@@ -431,8 +440,8 @@ class _PricingCard extends StatelessWidget {
                         subtitle!,
                         style: AppTypography.bodySmall.copyWith(
                           color: isRecommended
-                              ? AppColors.charcoal.withValues(alpha: 0.7)
-                              : AppColors.slate,
+                              ? colorScheme.onSurface.withValues(alpha: 0.7)
+                              : colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -443,7 +452,7 @@ class _PricingCard extends StatelessWidget {
                 price,
                 style: AppTypography.titleLarge.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],
@@ -481,6 +490,8 @@ class PaywallDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
@@ -499,9 +510,9 @@ class PaywallDialog extends StatelessWidget {
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.lock,
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 size: 32,
               ),
             ),
@@ -519,7 +530,7 @@ class PaywallDialog extends StatelessWidget {
             Text(
               'Upgrade to Premium to unlock this feature and enjoy unlimited trips, video uploads, and more!',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -533,7 +544,7 @@ class PaywallDialog extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.sunnyYellow,
-                  foregroundColor: AppColors.charcoal,
+                  foregroundColor: colorScheme.onSurface,
                   padding: const EdgeInsets.symmetric(
                     vertical: AppSizes.space12,
                   ),
@@ -553,7 +564,7 @@ class PaywallDialog extends StatelessWidget {
               child: Text(
                 'Maybe Later',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ),

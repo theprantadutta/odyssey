@@ -20,6 +20,7 @@ class PremiumBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isPremium) return const SizedBox.shrink();
 
+    final colorScheme = Theme.of(context).colorScheme;
     final iconSize = size ?? 16.0;
 
     return Container(
@@ -47,7 +48,7 @@ class PremiumBadge extends StatelessWidget {
         children: [
           Icon(
             Icons.workspace_premium,
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             size: iconSize,
           ),
           if (showLabel) ...[
@@ -55,7 +56,7 @@ class PremiumBadge extends StatelessWidget {
             Text(
               'Premium',
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -74,15 +75,17 @@ class PremiumIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.sunnyYellow,
         shape: BoxShape.circle,
       ),
       child: Icon(
         Icons.workspace_premium,
-        color: AppColors.charcoal,
+        color: colorScheme.onSurface,
         size: size,
       ),
     );
@@ -108,6 +111,8 @@ class PremiumLockOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLocked) return child;
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -127,7 +132,7 @@ class PremiumLockOverlay extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.charcoal.withValues(alpha: 0.3),
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Column(
@@ -146,9 +151,9 @@ class PremiumLockOverlay extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lock,
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       size: 24,
                     ),
                   ),
@@ -179,7 +184,7 @@ class PremiumLockOverlay extends StatelessWidget {
                     child: Text(
                       'Upgrade to Premium',
                       style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.charcoal,
+                        color: colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

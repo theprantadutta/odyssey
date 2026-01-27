@@ -22,6 +22,9 @@ class PackingItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Dismissible(
       key: Key(item.id),
       direction: DismissDirection.endToStart,
@@ -62,12 +65,12 @@ class PackingItemTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: item.isPacked
                 ? AppColors.mintGreen.withValues(alpha: 0.1)
-                : AppColors.snowWhite,
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
             border: Border.all(
               color: item.isPacked
                   ? AppColors.mintGreen.withValues(alpha: 0.3)
-                  : AppColors.warmGray,
+                  : colorScheme.surfaceContainerHighest,
               width: 1,
             ),
           ),
@@ -91,7 +94,7 @@ class PackingItemTile extends StatelessWidget {
                     border: Border.all(
                       color: item.isPacked
                           ? AppColors.mintGreen
-                          : AppColors.slate.withValues(alpha: 0.4),
+                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                       width: 2,
                     ),
                   ),
@@ -119,12 +122,12 @@ class PackingItemTile extends StatelessWidget {
                             item.name,
                             style: AppTypography.bodyLarge.copyWith(
                               color: item.isPacked
-                                  ? AppColors.slate
-                                  : AppColors.charcoal,
+                                  ? colorScheme.onSurfaceVariant
+                                  : colorScheme.onSurface,
                               decoration: item.isPacked
                                   ? TextDecoration.lineThrough
                                   : null,
-                              decorationColor: AppColors.slate,
+                              decorationColor: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -155,7 +158,7 @@ class PackingItemTile extends StatelessWidget {
                       Text(
                         item.notes!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.slate,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

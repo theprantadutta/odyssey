@@ -19,12 +19,14 @@ class TripActivitiesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final activitiesState = ref.watch(tripActivitiesProvider(tripId));
 
     return Stack(
       children: [
         // Main content
-        _buildContent(context, ref, activitiesState),
+        _buildContent(context, ref, activitiesState, theme, colorScheme),
         // FAB
         Positioned(
           right: AppSizes.space16,
@@ -39,15 +41,17 @@ class TripActivitiesTab extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     ActivitiesState state,
+    ThemeData theme,
+    ColorScheme colorScheme,
   ) {
     // Loading state
     if (state.isLoading && state.activities.isEmpty) {
-      return _buildLoadingState();
+      return _buildLoadingState(colorScheme);
     }
 
     // Error state
     if (state.error != null && state.activities.isEmpty) {
-      return _buildErrorState(context, ref, state.error!);
+      return _buildErrorState(context, ref, state.error!, colorScheme);
     }
 
     // Empty state
@@ -81,7 +85,7 @@ class TripActivitiesTab extends ConsumerWidget {
                   Text(
                     '${state.activities.length} ${state.activities.length == 1 ? 'Activity' : 'Activities'}',
                     style: AppTypography.titleSmall.copyWith(
-                      color: AppColors.slate,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   if (state.activities.length > 1)
@@ -135,7 +139,7 @@ class TripActivitiesTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(ColorScheme colorScheme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: Column(
@@ -145,7 +149,7 @@ class TripActivitiesTab extends ConsumerWidget {
             margin: const EdgeInsets.only(bottom: AppSizes.space16),
             height: AppSizes.activityCardHeight,
             decoration: BoxDecoration(
-              color: AppColors.warmGray,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             ),
           ),
@@ -154,7 +158,7 @@ class TripActivitiesTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error) {
+  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space32),
@@ -178,7 +182,7 @@ class TripActivitiesTab extends ConsumerWidget {
             Text(
               'Failed to load activities',
               style: AppTypography.headlineMedium.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -186,7 +190,7 @@ class TripActivitiesTab extends ConsumerWidget {
             Text(
               error,
               style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -269,24 +273,26 @@ class TripActivitiesTab extends ConsumerWidget {
     WidgetRef ref,
     ActivityModel activity,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         ),
         title: Text(
           'Delete Activity',
           style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${activity.title}"? This action cannot be undone.',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         actions: [
@@ -298,7 +304,7 @@ class TripActivitiesTab extends ConsumerWidget {
             child: Text(
               'Cancel',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),

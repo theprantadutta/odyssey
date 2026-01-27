@@ -20,6 +20,8 @@ class TripOverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.space16),
       child: Column(
@@ -59,7 +61,7 @@ class TripOverviewTab extends StatelessWidget {
           const SizedBox(height: AppSizes.space16),
 
           // Trip Stats
-          _buildStatsRow(),
+          _buildStatsRow(context),
 
           // Divider after stats
           const SectionDivider(
@@ -71,7 +73,7 @@ class TripOverviewTab extends StatelessWidget {
             Text(
               'About This Trip',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: AppSizes.space12),
@@ -79,7 +81,7 @@ class TripOverviewTab extends StatelessWidget {
               child: Text(
                 trip.description!,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
+                  color: colorScheme.onSurface,
                   height: 1.5,
                 ),
               ),
@@ -94,7 +96,7 @@ class TripOverviewTab extends StatelessWidget {
             Text(
               'Tags',
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: AppSizes.space12),
@@ -117,7 +119,7 @@ class TripOverviewTab extends StatelessWidget {
           Text(
             'Trip Timeline',
             style: AppTypography.headlineSmall.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: AppSizes.space12),
@@ -125,12 +127,14 @@ class TripOverviewTab extends StatelessWidget {
             child: Column(
               children: [
                 _buildDateRow(
+                  context: context,
                   icon: Icons.flight_takeoff,
                   label: 'Departure',
                   date: DateTime.parse(trip.startDate),
                 ),
                 const Divider(height: AppSizes.space24),
                 _buildDateRow(
+                  context: context,
                   icon: Icons.flight_land,
                   label: 'Return',
                   date: DateTime.parse(trip.endDate),
@@ -143,11 +147,12 @@ class TripOverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
+            context: context,
             icon: Icons.calendar_month,
             value: '$duration',
             label: duration == 1 ? 'Day' : 'Days',
@@ -157,6 +162,7 @@ class TripOverviewTab extends StatelessWidget {
         const SizedBox(width: AppSizes.space12),
         Expanded(
           child: _buildStatCard(
+            context: context,
             icon: Icons.location_on,
             value: '0',
             label: 'Activities',
@@ -166,6 +172,7 @@ class TripOverviewTab extends StatelessWidget {
         const SizedBox(width: AppSizes.space12),
         Expanded(
           child: _buildStatCard(
+            context: context,
             icon: Icons.photo_camera,
             value: '0',
             label: 'Memories',
@@ -177,11 +184,14 @@ class TripOverviewTab extends StatelessWidget {
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required IconData icon,
     required String value,
     required String label,
     required Color color,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GlassContainer(
       child: Column(
         children: [
@@ -194,14 +204,14 @@ class TripOverviewTab extends StatelessWidget {
           Text(
             value,
             style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.charcoal,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             label,
             style: AppTypography.labelSmall.copyWith(
-              color: AppColors.textSecondary,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -210,10 +220,13 @@ class TripOverviewTab extends StatelessWidget {
   }
 
   Widget _buildDateRow({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required DateTime date,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         Container(
@@ -236,14 +249,14 @@ class TripOverviewTab extends StatelessWidget {
               Text(
                 label,
                 style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSizes.space4),
               Text(
                 DateFormat('EEEE, MMMM d, yyyy').format(date),
                 style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textPrimary,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                 ),
               ),

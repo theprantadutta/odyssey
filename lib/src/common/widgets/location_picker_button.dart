@@ -152,6 +152,8 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
   @override
   Widget build(BuildContext context) {
     final isDisabled = !widget.isEnabled || _isLoading;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return GestureDetector(
       onTapDown: _handleTapDown,
@@ -171,13 +173,13 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
               ),
               decoration: BoxDecoration(
                 color: isDisabled
-                    ? AppColors.warmGray
+                    ? colorScheme.surfaceContainerHighest
                     : AppColors.lemonLight,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
                   color: isDisabled
-                      ? AppColors.mutedGray.withValues(alpha: 0.3)
-                      : AppColors.sunnyYellow.withValues(alpha: 0.5),
+                      ? theme.hintColor.withValues(alpha: 0.3)
+                      : colorScheme.primary.withValues(alpha: 0.5),
                   width: 1.5,
                 ),
               ),
@@ -191,7 +193,7 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.goldenGlow,
+                          colorScheme.primary,
                         ),
                       ),
                     )
@@ -200,16 +202,16 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
                       Icons.my_location_rounded,
                       size: AppSizes.iconSm,
                       color: isDisabled
-                          ? AppColors.mutedGray
-                          : AppColors.goldenGlow,
+                          ? theme.hintColor
+                          : colorScheme.primary,
                     ),
                   const SizedBox(width: AppSizes.space8),
                   Text(
                     _isLoading ? 'Getting Location...' : 'Get Current Location',
                     style: AppTypography.labelMedium.copyWith(
                       color: isDisabled
-                          ? AppColors.mutedGray
-                          : AppColors.charcoal,
+                          ? theme.hintColor
+                          : colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

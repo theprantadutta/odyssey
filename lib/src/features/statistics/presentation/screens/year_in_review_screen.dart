@@ -565,6 +565,7 @@ class YearInReviewScreen extends ConsumerWidget {
   }
 
   Widget _buildPaywallScreen(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Year in Review'),
@@ -574,11 +575,11 @@ class YearInReviewScreen extends ConsumerWidget {
           margin: const EdgeInsets.all(AppSizes.space24),
           padding: const EdgeInsets.all(AppSizes.space24),
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: AppColors.charcoal.withValues(alpha: 0.1),
+                color: colorScheme.onSurface.withValues(alpha: 0.1),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -596,9 +597,9 @@ class YearInReviewScreen extends ConsumerWidget {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.calendar_month,
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   size: 40,
                 ),
               ),
@@ -613,7 +614,7 @@ class YearInReviewScreen extends ConsumerWidget {
               Text(
                 'Relive your travel memories with a beautiful yearly summary. See your trips, destinations, and achievements at a glance!',
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -628,7 +629,7 @@ class YearInReviewScreen extends ConsumerWidget {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.sunnyYellow,
-                    foregroundColor: AppColors.charcoal,
+                    foregroundColor: colorScheme.onSurface,
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSizes.space16,
                     ),

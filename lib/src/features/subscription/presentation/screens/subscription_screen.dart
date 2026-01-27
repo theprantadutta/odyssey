@@ -68,6 +68,7 @@ class _CurrentPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isPremium = status?.isPremium ?? false;
 
     return Container(
@@ -80,11 +81,11 @@ class _CurrentPlanCard extends StatelessWidget {
                 end: Alignment.bottomRight,
               )
             : null,
-        color: isPremium ? null : AppColors.snowWhite,
+        color: isPremium ? null : colorScheme.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: (isPremium ? AppColors.sunnyYellow : AppColors.charcoal)
+            color: (isPremium ? AppColors.sunnyYellow : colorScheme.onSurface)
                 .withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 4),
@@ -98,7 +99,7 @@ class _CurrentPlanCard extends StatelessWidget {
             children: [
               Icon(
                 isPremium ? Icons.workspace_premium : Icons.person_outline,
-                color: isPremium ? AppColors.charcoal : AppColors.slate,
+                color: isPremium ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 size: 28,
               ),
               const SizedBox(width: AppSizes.space12),
@@ -108,7 +109,7 @@ class _CurrentPlanCard extends StatelessWidget {
                   Text(
                     isPremium ? 'Premium' : 'Free Plan',
                     style: AppTypography.headlineSmall.copyWith(
-                      color: isPremium ? AppColors.charcoal : AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -116,7 +117,7 @@ class _CurrentPlanCard extends StatelessWidget {
                     Text(
                       _getPlanLabel(status!.plan),
                       style: AppTypography.bodySmall.copyWith(
-                        color: isPremium ? AppColors.charcoal.withValues(alpha: 0.7) : AppColors.slate,
+                        color: isPremium ? colorScheme.onSurface.withValues(alpha: 0.7) : colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -129,13 +130,13 @@ class _CurrentPlanCard extends StatelessWidget {
                     vertical: AppSizes.space4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.charcoal.withValues(alpha: 0.1),
+                    color: colorScheme.onSurface.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   ),
                   child: Text(
                     'Active',
                     style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.charcoal,
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -147,7 +148,7 @@ class _CurrentPlanCard extends StatelessWidget {
             Text(
               'Renews on ${_formatDate(status!.expiresAt!)}',
               style: AppTypography.bodySmall.copyWith(
-                color: isPremium ? AppColors.charcoal.withValues(alpha: 0.7) : AppColors.slate,
+                color: isPremium ? colorScheme.onSurface.withValues(alpha: 0.7) : colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -156,7 +157,7 @@ class _CurrentPlanCard extends StatelessWidget {
             Text(
               'Lifetime access - Never expires!',
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.charcoal.withValues(alpha: 0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -262,6 +263,7 @@ class _UsageBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isWarning = percentage >= 80;
 
     return Column(
@@ -274,7 +276,7 @@ class _UsageBar extends StatelessWidget {
             Text(
               '$used / $limit',
               style: AppTypography.bodySmall.copyWith(
-                color: isWarning ? AppColors.error : AppColors.slate,
+                color: isWarning ? AppColors.error : colorScheme.onSurfaceVariant,
                 fontWeight: isWarning ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -285,7 +287,7 @@ class _UsageBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusSm),
           child: LinearProgressIndicator(
             value: percentage / 100,
-            backgroundColor: AppColors.warmGray,
+            backgroundColor: colorScheme.surfaceContainerHighest,
             valueColor: AlwaysStoppedAnimation(
               isWarning ? AppColors.error : color,
             ),
@@ -304,6 +306,8 @@ class _UpgradeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (pricing == null) return const SizedBox.shrink();
 
     return Column(
@@ -319,7 +323,7 @@ class _UpgradeSection extends StatelessWidget {
         Text(
           'Unlock unlimited trips, video uploads, and more!',
           style: AppTypography.bodyMedium.copyWith(
-            color: AppColors.slate,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: AppSizes.space16),
@@ -379,15 +383,17 @@ class _PricingOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
       child: Container(
         padding: const EdgeInsets.all(AppSizes.space16),
         decoration: BoxDecoration(
-          color: isPopular ? AppColors.sunnyYellow.withValues(alpha: 0.1) : AppColors.snowWhite,
+          color: isPopular ? AppColors.sunnyYellow.withValues(alpha: 0.1) : colorScheme.surface,
           border: Border.all(
-            color: isPopular ? AppColors.sunnyYellow : AppColors.warmGray,
+            color: isPopular ? AppColors.sunnyYellow : colorScheme.surfaceContainerHighest,
             width: isPopular ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -420,7 +426,7 @@ class _PricingOption extends StatelessWidget {
                           child: Text(
                             'Best Value',
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.charcoal,
+                              color: colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -433,7 +439,7 @@ class _PricingOption extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.slate,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -444,7 +450,7 @@ class _PricingOption extends StatelessWidget {
               price,
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
               ),
             ),
           ],
@@ -540,6 +546,8 @@ class _FeatureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.space8),
       child: Row(
@@ -555,7 +563,7 @@ class _FeatureRow extends StatelessWidget {
             child: Text(
               free,
               style: AppTypography.bodySmall.copyWith(
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

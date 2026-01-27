@@ -94,10 +94,11 @@ class _NotificationHistoryScreenState
   void _handleDeleteNotification(String notificationId) {
     ref.read(notificationHistoryProvider.notifier).deleteNotification(notificationId);
 
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Notification deleted'),
-        backgroundColor: AppColors.charcoal,
+        backgroundColor: colorScheme.onSurface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -143,22 +144,24 @@ class _NotificationHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final state = ref.watch(notificationHistoryProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.cloudGray,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.cloudGray,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.charcoal),
+          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Notifications',
           style: AppTypography.titleLarge.copyWith(
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -185,7 +188,7 @@ class _NotificationHistoryScreenState
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: AppColors.sunnyYellow,
-        backgroundColor: AppColors.snowWhite,
+        backgroundColor: colorScheme.surface,
         child: _buildBody(state),
       ),
     );
@@ -215,6 +218,7 @@ class _NotificationHistoryScreenState
   }
 
   Widget _buildEmptyState() {
+    final colorScheme = Theme.of(context).colorScheme;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
@@ -239,7 +243,7 @@ class _NotificationHistoryScreenState
               Text(
                 'No notifications yet',
                 style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: AppSizes.space8),
@@ -248,7 +252,7 @@ class _NotificationHistoryScreenState
                 child: Text(
                   "When you receive notifications about trips, shares, and achievements, they'll appear here.",
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),

@@ -22,6 +22,8 @@ class DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final docType = DocumentType.fromString(document.type);
     final fileType = FileType.fromString(document.fileType ?? 'other');
 
@@ -56,14 +58,14 @@ class DocumentCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSizes.space12),
           decoration: BoxDecoration(
-            color: AppColors.snowWhite,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            border: Border.all(color: AppColors.warmGray, width: 1),
+            border: Border.all(color: colorScheme.surfaceContainerHighest, width: 1),
           ),
           child: Row(
             children: [
               // Thumbnail or icon
-              _buildThumbnail(fileType),
+              _buildThumbnail(fileType, colorScheme),
 
               const SizedBox(width: AppSizes.space12),
 
@@ -78,7 +80,7 @@ class DocumentCard extends StatelessWidget {
                           child: Text(
                             document.name,
                             style: AppTypography.bodyLarge.copyWith(
-                              color: AppColors.charcoal,
+                              color: colorScheme.onSurface,
                               fontWeight: FontWeight.w500,
                             ),
                             maxLines: 1,
@@ -121,7 +123,7 @@ class DocumentCard extends StatelessWidget {
                         Text(
                           fileType.displayName,
                           style: AppTypography.caption.copyWith(
-                            color: AppColors.slate,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                         // File count badge for multiple files
@@ -163,7 +165,7 @@ class DocumentCard extends StatelessWidget {
                       Text(
                         document.notes!,
                         style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.slate,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -176,9 +178,9 @@ class DocumentCard extends StatelessWidget {
               const SizedBox(width: AppSizes.space8),
 
               // Arrow
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.slate,
+                color: colorScheme.onSurfaceVariant,
                 size: 20,
               ),
             ],
@@ -188,7 +190,7 @@ class DocumentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildThumbnail(FileType fileType) {
+  Widget _buildThumbnail(FileType fileType, ColorScheme colorScheme) {
     final primaryUrl = document.primaryUrl;
 
     if (fileType == FileType.image && primaryUrl != null) {
@@ -202,19 +204,19 @@ class DocumentCard extends StatelessWidget {
           placeholder: (context, url) => Container(
             width: 56,
             height: 56,
-            color: AppColors.warmGray,
-            child: const Icon(
+            color: colorScheme.surfaceContainerHighest,
+            child: Icon(
               Icons.image_rounded,
-              color: AppColors.slate,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           errorWidget: (context, url, error) => Container(
             width: 56,
             height: 56,
-            color: AppColors.warmGray,
-            child: const Icon(
+            color: colorScheme.surfaceContainerHighest,
+            child: Icon(
               Icons.broken_image_rounded,
-              color: AppColors.slate,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -227,7 +229,7 @@ class DocumentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: fileType == FileType.pdf
             ? AppColors.coralBurst.withValues(alpha: 0.1)
-            : AppColors.warmGray,
+            : colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
       ),
       child: Center(
@@ -235,7 +237,7 @@ class DocumentCard extends StatelessWidget {
           fileType == FileType.pdf
               ? Icons.picture_as_pdf_rounded
               : Icons.insert_drive_file_rounded,
-          color: fileType == FileType.pdf ? AppColors.coralBurst : AppColors.slate,
+          color: fileType == FileType.pdf ? AppColors.coralBurst : colorScheme.onSurfaceVariant,
           size: 28,
         ),
       ),

@@ -56,9 +56,12 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.snowWhite,
-      appBar: _buildAppBar(),
+      backgroundColor: colorScheme.surface,
+      appBar: _buildAppBar(theme, colorScheme),
       body: Form(
         key: _formKey,
         child: Column(
@@ -68,34 +71,34 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 padding: const EdgeInsets.all(AppSizes.space20),
                 children: [
                   // Name field (MANDATORY)
-                  _buildNameField(),
+                  _buildNameField(colorScheme),
                   const SizedBox(height: AppSizes.space20),
 
                   // File picker
-                  _buildFilePicker(),
+                  _buildFilePicker(theme, colorScheme),
                   const SizedBox(height: AppSizes.space20),
 
                   // Type selector
-                  _buildTypeSelector(),
+                  _buildTypeSelector(colorScheme),
                   const SizedBox(height: AppSizes.space20),
 
                   // Notes field
-                  _buildNotesField(),
+                  _buildNotesField(colorScheme),
                 ],
               ),
             ),
 
             // Upload button
-            _buildUploadButton(),
+            _buildUploadButton(colorScheme),
           ],
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(ThemeData theme, ColorScheme colorScheme) {
     return AppBar(
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
@@ -106,20 +109,20 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.warmGray,
+            color: colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 18,
-            color: AppColors.charcoal,
+            color: colorScheme.onSurface,
           ),
         ),
       ),
       title: Text(
         'Upload Document',
         style: AppTypography.headlineSmall.copyWith(
-          color: AppColors.charcoal,
+          color: colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -127,7 +130,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildNameField() {
+  Widget _buildNameField(ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -136,7 +139,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               'Document Name',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -165,12 +168,12 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         TextFormField(
           controller: _nameController,
           textCapitalization: TextCapitalization.sentences,
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+          style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: 'e.g., Flight to Paris, Hotel Booking...',
-            hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
+            hintStyle: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurfaceVariant),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: colorScheme.surfaceContainerHighest,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide.none,
@@ -201,7 +204,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildFilePicker() {
+  Widget _buildFilePicker(ThemeData theme, ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -210,7 +213,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               'Files',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -220,7 +223,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               style: AppTypography.caption.copyWith(
                 color: _selectedFiles.length >= _maxFilesPerDocument
                     ? AppColors.error
-                    : AppColors.slate,
+                    : colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -235,7 +238,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _selectedFiles.length,
             separatorBuilder: (_, _) => const SizedBox(height: AppSizes.space8),
-            itemBuilder: (context, index) => _buildFileItem(_selectedFiles[index], index),
+            itemBuilder: (context, index) => _buildFileItem(_selectedFiles[index], index, colorScheme),
           ),
           const SizedBox(height: AppSizes.space12),
         ],
@@ -248,10 +251,10 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSizes.space16),
               decoration: BoxDecoration(
-                color: AppColors.warmGray,
+                color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                 border: Border.all(
-                  color: AppColors.mutedGray,
+                  color: theme.hintColor,
                   width: 1,
                   style: BorderStyle.solid,
                 ),
@@ -288,14 +291,14 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         Text(
           'PDF, JPG, PNG, WEBP (max 10MB each, up to 10 files)',
           style: AppTypography.caption.copyWith(
-            color: AppColors.mutedGray,
+            color: theme.hintColor,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFileItem(fp.PlatformFile file, int index) {
+  Widget _buildFileItem(fp.PlatformFile file, int index, ColorScheme colorScheme) {
     final isImage = file.extension?.toLowerCase() == 'jpg' ||
         file.extension?.toLowerCase() == 'jpeg' ||
         file.extension?.toLowerCase() == 'png' ||
@@ -304,7 +307,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space12),
       decoration: BoxDecoration(
-        color: AppColors.warmGray,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         border: Border.all(
           color: AppColors.lavenderDream.withValues(alpha: 0.3),
@@ -352,7 +355,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 Text(
                   file.name,
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.charcoal,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -362,7 +365,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 Text(
                   _formatFileSize(file.size),
                   style: AppTypography.caption.copyWith(
-                    color: AppColors.slate,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -377,7 +380,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             },
             icon: Icon(
               Icons.close_rounded,
-              color: AppColors.mutedGray,
+              color: colorScheme.onSurfaceVariant,
               size: 20,
             ),
             constraints: const BoxConstraints(
@@ -391,7 +394,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildTypeSelector() {
+  Widget _buildTypeSelector(ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -400,7 +403,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               'Document Type',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -408,7 +411,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -433,7 +436,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? _getTypeColor(type)
-                      : AppColors.warmGray,
+                      : colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   border: Border.all(
                     color: isSelected
@@ -453,7 +456,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                     Text(
                       type.displayName,
                       style: AppTypography.labelMedium.copyWith(
-                        color: isSelected ? Colors.white : AppColors.charcoal,
+                        color: isSelected ? Colors.white : colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -468,7 +471,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildNotesField() {
+  Widget _buildNotesField(ColorScheme colorScheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -477,7 +480,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               'Notes',
               style: AppTypography.labelLarge.copyWith(
-                color: AppColors.charcoal,
+                color: colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -485,7 +488,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             Text(
               '(Optional)',
               style: AppTypography.caption.copyWith(
-                color: AppColors.mutedGray,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -495,12 +498,12 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           controller: _notesController,
           textCapitalization: TextCapitalization.sentences,
           maxLines: 3,
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.charcoal),
+          style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: 'Add any notes or reminders...',
-            hintStyle: AppTypography.bodyLarge.copyWith(color: AppColors.slate),
+            hintStyle: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurfaceVariant),
             filled: true,
-            fillColor: AppColors.warmGray,
+            fillColor: colorScheme.surfaceContainerHighest,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               borderSide: BorderSide.none,
@@ -521,13 +524,13 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildUploadButton() {
+  Widget _buildUploadButton(ColorScheme colorScheme) {
     final isEnabled = _selectedFiles.isNotEmpty && !_isLoading;
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.snowWhite,
+        color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -545,7 +548,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                 child: LinearProgressIndicator(
                   value: _uploadProgress,
-                  backgroundColor: AppColors.warmGray,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
                   minHeight: 6,
@@ -555,7 +558,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               Text(
                 'Uploading... ${(_uploadProgress * 100).toInt()}%',
                 style: AppTypography.caption.copyWith(
-                  color: AppColors.slate,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSizes.space12),
@@ -652,9 +655,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       return;
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.snowWhite,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -668,7 +673,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
               Text(
                 'Add Document',
                 style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.charcoal,
+                  color: colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
