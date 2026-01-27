@@ -396,16 +396,16 @@ class LoadingOverlay extends StatelessWidget {
                             );
                           },
                           child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 48),
+                            margin: const EdgeInsets.symmetric(horizontal: 32),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 40,
-                              vertical: 36,
+                              horizontal: 28,
+                              vertical: 20,
                             ),
                             decoration: BoxDecoration(
                               color: isDark
                                   ? colorScheme.surface
                                   : Colors.white,
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
                                   color: (isDark
@@ -431,27 +431,12 @@ class LoadingOverlay extends StatelessWidget {
                                 width: 1.5,
                               ),
                             ),
-                            child: Column(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Decorative top accent
-                                Container(
-                                  width: 48,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppColors.sunnyYellow,
-                                        AppColors.goldenGlow,
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                                const SizedBox(height: 28),
                                 // Loader with glow effect
                                 Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: RadialGradient(
@@ -460,37 +445,57 @@ class LoadingOverlay extends StatelessWidget {
                                             .withValues(alpha: 0.15),
                                         Colors.transparent,
                                       ],
-                                      radius: 1.2,
+                                      radius: 1.0,
                                     ),
                                   ),
                                   child:
-                                      loadingWidget ?? const OrbitalLoader(size: 64),
+                                      loadingWidget ?? const OrbitalLoader(size: 48),
                                 ),
                                 if (message != null) ...[
-                                  const SizedBox(height: 24),
-                                  Text(
-                                    message!,
-                                    style: AppTypography.titleMedium.copyWith(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.9)
-                                          : colorScheme.onSurface,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
+                                  const SizedBox(width: 20),
+                                  // Decorative accent line
+                                  Container(
+                                    width: 3,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          AppColors.sunnyYellow,
+                                          AppColors.goldenGlow,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(2),
                                     ),
-                                    textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: 8),
-                                  // Subtle hint text
-                                  Text(
-                                    'Please wait...',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.5)
-                                          : colorScheme.onSurfaceVariant,
-                                    ),
+                                  const SizedBox(width: 20),
+                                  // Text content
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        message!,
+                                        style: AppTypography.titleMedium.copyWith(
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.9)
+                                              : colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Please wait...',
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.5)
+                                              : colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
-                                const SizedBox(height: 8),
                               ],
                             ),
                           ),
