@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/token_refresh_service.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -113,44 +114,78 @@ class Auth extends _$Auth {
   Future<void> _checkAuthStatus() async {
     AppLogger.auth('Checking authentication status...');
     state = state.copyWith(isLoading: true);
+
+    final storageService = StorageService();
+    final tokenRefreshService = TokenRefreshService();
+
     try {
       // Check if user has seen intro (first-time app launch)
-      final hasSeenIntro = await StorageService().hasSeenIntro();
+      final hasSeenIntro = await storageService.hasSeenIntro();
       AppLogger.auth('Has seen intro: $hasSeenIntro');
 
-      final isAuth = await _authRepository.isAuthenticated();
-      if (isAuth) {
-        AppLogger.auth('Token found, fetching user data...');
-        final user = await _authRepository.getCurrentUser();
-        final hasCompletedOnboarding = await StorageService()
-            .isOnboardingCompleted();
-        AppLogger.auth(
-          'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
-        );
-        state = state.copyWith(
-          user: user,
-          isAuthenticated: true,
-          isLoading: false,
-          hasSeenIntro: hasSeenIntro,
-          needsOnboarding: !hasCompletedOnboarding,
-        );
+      // Check if we have any tokens
+      final hasAccessToken = await storageService.getAccessToken() != null;
+      final hasRefreshToken = await storageService.getRefreshToken() != null;
 
-        // Register device for push notifications
-        _registerDeviceForNotifications();
-      } else {
-        AppLogger.auth('No valid token found');
+      if (!hasAccessToken && !hasRefreshToken) {
+        // No tokens at all - user needs to login
+        AppLogger.auth('No tokens found, user needs to login');
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
           hasSeenIntro: hasSeenIntro,
         );
+        return;
       }
+
+      // Check if access token is expired
+      final isExpired = await storageService.isAccessTokenExpired();
+      AppLogger.auth('Access token expired: $isExpired');
+
+      if (isExpired && hasRefreshToken) {
+        // Try to refresh the token
+        AppLogger.auth('Attempting to refresh expired token...');
+        final refreshSuccess = await tokenRefreshService.refreshToken();
+
+        if (!refreshSuccess) {
+          // Refresh failed - clear auth and require login
+          AppLogger.auth('Token refresh failed, clearing auth data');
+          await storageService.clearAuthData();
+          state = state.copyWith(
+            isAuthenticated: false,
+            isLoading: false,
+            hasSeenIntro: hasSeenIntro,
+          );
+          return;
+        }
+        AppLogger.auth('Token refresh successful');
+      }
+
+      // Token is valid (or was refreshed) - fetch user
+      AppLogger.auth('Token valid, fetching user data...');
+      final user = await _authRepository.getCurrentUser();
+      final hasCompletedOnboarding = await storageService.isOnboardingCompleted();
+      AppLogger.auth(
+        'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
+      );
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isLoading: false,
+        hasSeenIntro: hasSeenIntro,
+        needsOnboarding: !hasCompletedOnboarding,
+      );
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
     } catch (e) {
       AppLogger.auth('Auth check failed: $e', isError: true);
+      // Clear auth data on failure to ensure clean state
+      await storageService.clearAuthData();
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
-        error: e.toString(),
+        hasSeenIntro: await storageService.hasSeenIntro(),
       );
     }
   }
