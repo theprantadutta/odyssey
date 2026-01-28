@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
+import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
 import 'package:odyssey/src/features/templates/data/models/template_model.dart';
 import 'package:odyssey/src/features/templates/presentation/providers/templates_provider.dart';
 
@@ -42,6 +44,22 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _onPublicToggled(bool isPublic) {
+    if (isPublic) {
+      final isPremium = ref.read(isPremiumProvider);
+      if (!isPremium) {
+        PaywallUtils.showPaywall(
+          context,
+          featureName: 'Public Templates',
+          customDescription: 'Share your templates with the community with Premium',
+          featureIcon: Icons.public,
+        );
+        return;
+      }
+    }
+    setState(() => _isPublic = isPublic);
   }
 
   Future<void> _saveTemplate() async {
@@ -217,7 +235,7 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
               // Public toggle
               SwitchListTile(
                 value: _isPublic,
-                onChanged: (value) => setState(() => _isPublic = value),
+                onChanged: _onPublicToggled,
                 title: const Text('Share publicly'),
                 subtitle: const Text('Allow others to use this template'),
                 contentPadding: EdgeInsets.zero,

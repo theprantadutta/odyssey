@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../data/models/achievement_model.dart';
 import '../providers/achievements_provider.dart';
 import '../widgets/achievement_badge.dart';
@@ -392,14 +393,15 @@ class _InProgressTab extends StatelessWidget {
   }
 }
 
-class _LockedTab extends StatelessWidget {
+class _LockedTab extends ConsumerWidget {
   final List<Achievement> achievements;
 
   const _LockedTab({required this.achievements});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isPremium = ref.watch(isPremiumProvider);
 
     if (achievements.isEmpty) {
       return const _EmptyState(
@@ -431,9 +433,15 @@ class _LockedTab extends StatelessWidget {
       onRefresh: () async {},
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
-        itemCount: sortedTiers.length,
+        itemCount: sortedTiers.length + (isPremium ? 0 : 1),
         itemBuilder: (context, index) {
-          final tier = sortedTiers[index];
+          // Show premium upsell banner for free users
+          if (!isPremium && index == 0) {
+            return const _PremiumAchievementsBanner();
+          }
+
+          final tierIndex = isPremium ? index : index - 1;
+          final tier = sortedTiers[tierIndex];
           final tierAchievements = byTier[tier]!;
 
           return Column(
@@ -445,10 +453,9 @@ class _LockedTab extends StatelessWidget {
                 spacing: AppSizes.space12,
                 runSpacing: AppSizes.space16,
                 children: tierAchievements
-                    .map((a) => AchievementBadge(
+                    .map((a) => _LockedAchievementBadge(
                           achievement: a,
-                          isEarned: false,
-                          size: 70,
+                          isPremium: isPremium,
                           onTap: () => _showAchievementDetails(context, a),
                         ))
                     .toList(),
@@ -994,6 +1001,136 @@ class _StatChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PremiumAchievementsBanner extends StatelessWidget {
+  const _PremiumAchievementsBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.space20),
+      padding: const EdgeInsets.all(AppSizes.space16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.sunnyYellow.withValues(alpha: 0.15),
+            AppColors.goldenGlow.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(
+          color: AppColors.sunnyYellow.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.sunnyYellow.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.workspace_premium_rounded,
+              color: AppColors.goldenGlow,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: AppSizes.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Unlock All Achievements',
+                  style: AppTypography.titleSmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Some achievements require Premium. Upgrade to earn them all!',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedAchievementBadge extends StatelessWidget {
+  final Achievement achievement;
+  final bool isPremium;
+  final VoidCallback onTap;
+
+  const _LockedAchievementBadge({
+    required this.achievement,
+    required this.isPremium,
+    required this.onTap,
+  });
+
+  bool get _isPremiumOnlyAchievement {
+    // Premium-only achievements are typically in special category or platinum tier
+    final category = AchievementCategory.fromString(achievement.category);
+    final tier = AchievementTier.fromString(achievement.tier);
+    return category == AchievementCategory.special || tier == AchievementTier.platinum;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showPremiumLock = !isPremium && _isPremiumOnlyAchievement;
+
+    return Stack(
+      children: [
+        AchievementBadge(
+          achievement: achievement,
+          isEarned: false,
+          size: 70,
+          onTap: onTap,
+        ),
+        if (showPremiumLock)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.sunnyYellow,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                size: 12,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

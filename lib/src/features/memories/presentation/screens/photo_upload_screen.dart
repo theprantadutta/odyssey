@@ -7,6 +7,8 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/location_picker_button.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../../data/repositories/memory_repository.dart';
 import '../providers/memories_provider.dart';
 
@@ -1045,7 +1047,21 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
 
   Future<void> _pickMedia(ImageSource source, {required bool isVideo}) async {
     try {
+      // Check if user is trying to pick video and is not premium
       if (isVideo) {
+        final isPremium = ref.read(isPremiumProvider);
+        if (!isPremium) {
+          if (mounted) {
+            PaywallUtils.showPaywall(
+              context,
+              featureName: 'Video Uploads',
+              customDescription: 'Upload videos to your memories with Premium',
+              featureIcon: Icons.videocam,
+            );
+          }
+          return;
+        }
+
         final pickedFile = await _imagePicker.pickVideo(
           source: source,
           maxDuration: const Duration(minutes: 5),

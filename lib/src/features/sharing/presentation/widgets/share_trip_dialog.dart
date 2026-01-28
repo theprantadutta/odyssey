@@ -5,6 +5,8 @@ import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
 import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
+import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
 
 class ShareTripDialog extends ConsumerStatefulWidget {
   final String tripId;
@@ -72,6 +74,22 @@ class _ShareTripDialogState extends ConsumerState<ShareTripDialog> {
         backgroundColor: AppColors.success,
       ),
     );
+  }
+
+  void _onPermissionChanged(SharePermission permission) {
+    if (permission == SharePermission.edit) {
+      final isPremium = ref.read(isPremiumProvider);
+      if (!isPremium) {
+        PaywallUtils.showPaywall(
+          context,
+          featureName: 'Edit Sharing',
+          customDescription: 'Allow collaborators to edit your trips with Premium',
+          featureIcon: Icons.edit,
+        );
+        return;
+      }
+    }
+    setState(() => _selectedPermission = permission);
   }
 
   @override
@@ -183,8 +201,7 @@ class _ShareTripDialogState extends ConsumerState<ShareTripDialog> {
                                 : 0,
                           ),
                           child: InkWell(
-                            onTap: () =>
-                                setState(() => _selectedPermission = permission),
+                            onTap: () => _onPermissionChanged(permission),
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusMd),
                             child: Container(
