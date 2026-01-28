@@ -35,10 +35,6 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(tripsProvider);
-    });
   }
 
   @override
