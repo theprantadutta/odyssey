@@ -106,6 +106,9 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
       ),
       child: Container(
         width: 400,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         padding: const EdgeInsets.all(AppSizes.space20),
         child: Form(
           key: _formKey,
@@ -144,101 +147,112 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
               ),
               const SizedBox(height: AppSizes.space20),
 
-              // Name field
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Template name',
-                  hintText: 'Enter a name for this template',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              // Scrollable content
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name field
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Template name',
+                          hintText: 'Enter a name for this template',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSizes.space16),
+
+                      // Description field
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Description (optional)',
+                          hintText: 'Describe what this template is for',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.space16),
+
+                      // Category selector
+                      Text(
+                        'Category',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.space8),
+                      Wrap(
+                        spacing: AppSizes.space8,
+                        runSpacing: AppSizes.space8,
+                        children: TemplateCategory.values.take(6).map((category) {
+                          final isSelected = _selectedCategory == category;
+                          return FilterChip(
+                            label: Text('${category.icon} ${category.displayName}'),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedCategory = selected ? category : null;
+                              });
+                            },
+                            selectedColor: AppColors.oceanTeal.withValues(alpha: 0.2),
+                            checkmarkColor: AppColors.oceanTeal,
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: AppSizes.space16),
+
+                      // Include options
+                      Text(
+                        'Include in template',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.space8),
+                      CheckboxListTile(
+                        value: _includeActivities,
+                        onChanged: (value) =>
+                            setState(() => _includeActivities = value ?? true),
+                        title: const Text('Activities'),
+                        subtitle: const Text('Include planned activities'),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      CheckboxListTile(
+                        value: _includePackingItems,
+                        onChanged: (value) =>
+                            setState(() => _includePackingItems = value ?? true),
+                        title: const Text('Packing list'),
+                        subtitle: const Text('Include packing items'),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      // Public toggle
+                      SwitchListTile(
+                        value: _isPublic,
+                        onChanged: _onPublicToggled,
+                        title: const Text('Share publicly'),
+                        subtitle: const Text('Allow others to use this template'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Description field
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Description (optional)',
-                  hintText: 'Describe what this template is for',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Category selector
-              Text(
-                'Category',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space8),
-              Wrap(
-                spacing: AppSizes.space8,
-                runSpacing: AppSizes.space8,
-                children: TemplateCategory.values.take(6).map((category) {
-                  final isSelected = _selectedCategory == category;
-                  return FilterChip(
-                    label: Text('${category.icon} ${category.displayName}'),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = selected ? category : null;
-                      });
-                    },
-                    selectedColor: AppColors.oceanTeal.withValues(alpha: 0.2),
-                    checkmarkColor: AppColors.oceanTeal,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Include options
-              Text(
-                'Include in template',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space8),
-              CheckboxListTile(
-                value: _includeActivities,
-                onChanged: (value) =>
-                    setState(() => _includeActivities = value ?? true),
-                title: const Text('Activities'),
-                subtitle: const Text('Include planned activities'),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                value: _includePackingItems,
-                onChanged: (value) =>
-                    setState(() => _includePackingItems = value ?? true),
-                title: const Text('Packing list'),
-                subtitle: const Text('Include packing items'),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-
-              // Public toggle
-              SwitchListTile(
-                value: _isPublic,
-                onChanged: _onPublicToggled,
-                title: const Text('Share publicly'),
-                subtitle: const Text('Allow others to use this template'),
-                contentPadding: EdgeInsets.zero,
               ),
 
               const SizedBox(height: AppSizes.space20),
