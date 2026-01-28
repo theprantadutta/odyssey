@@ -99,6 +99,7 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -136,11 +137,12 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                       'Save as Template',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -192,6 +194,7 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                         'Category',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: AppSizes.space8),
@@ -220,6 +223,7 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                         'Include in template',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: AppSizes.space8),
@@ -227,8 +231,14 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                         value: _includeActivities,
                         onChanged: (value) =>
                             setState(() => _includeActivities = value ?? true),
-                        title: const Text('Activities'),
-                        subtitle: const Text('Include planned activities'),
+                        title: Text(
+                          'Activities',
+                          style: TextStyle(color: colorScheme.onSurface),
+                        ),
+                        subtitle: Text(
+                          'Include planned activities',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
                         controlAffinity: ListTileControlAffinity.leading,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -236,8 +246,14 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                         value: _includePackingItems,
                         onChanged: (value) =>
                             setState(() => _includePackingItems = value ?? true),
-                        title: const Text('Packing list'),
-                        subtitle: const Text('Include packing items'),
+                        title: Text(
+                          'Packing list',
+                          style: TextStyle(color: colorScheme.onSurface),
+                        ),
+                        subtitle: Text(
+                          'Include packing items',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
                         controlAffinity: ListTileControlAffinity.leading,
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -246,8 +262,14 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
                       SwitchListTile(
                         value: _isPublic,
                         onChanged: _onPublicToggled,
-                        title: const Text('Share publicly'),
-                        subtitle: const Text('Allow others to use this template'),
+                        title: Text(
+                          'Share publicly',
+                          style: TextStyle(color: colorScheme.onSurface),
+                        ),
+                        subtitle: Text(
+                          'Allow others to use this template',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
+                        ),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ],
