@@ -375,12 +375,15 @@ class _DateButton extends StatelessWidget {
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  date != null ? _formatDate(date!) : (hint ?? 'Select'),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: date != null
-                        ? colorScheme.onSurface
-                        : colorScheme.onSurfaceVariant,
+                Expanded(
+                  child: Text(
+                    date != null ? _formatDate(date!) : (hint ?? 'Select'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: date != null
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

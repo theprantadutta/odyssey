@@ -221,6 +221,12 @@ class TripTemplateModel {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
+  /// System user ID used for official templates
+  static const String systemUserId = '00000000-0000-0000-0000-000000000001';
+
+  /// Whether this template is an official system template
+  bool get isSystemTemplate => userId == systemUserId;
+
   const TripTemplateModel({
     required this.id,
     required this.userId,

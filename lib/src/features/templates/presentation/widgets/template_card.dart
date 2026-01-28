@@ -8,7 +8,9 @@ class TemplateCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onUse;
   final VoidCallback? onDelete;
+  final VoidCallback? onFork;
   final bool showActions;
+  final bool showForkButton;
 
   const TemplateCard({
     super.key,
@@ -16,7 +18,9 @@ class TemplateCard extends StatelessWidget {
     this.onTap,
     this.onUse,
     this.onDelete,
+    this.onFork,
     this.showActions = true,
+    this.showForkButton = false,
   });
 
   @override
@@ -83,7 +87,38 @@ class TemplateCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (template.isPublic)
+                  // Official badge for system templates
+                  if (template.isSystemTemplate)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.space8,
+                        vertical: AppSizes.space4,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.goldenGlow, Color(0xFFE6A800)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, size: 12, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'Official',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (template.isPublic)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSizes.space8,
@@ -182,7 +217,18 @@ class TemplateCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (onDelete != null) ...[
+                    // Show fork button for public templates not owned by user
+                    if (showForkButton && onFork != null) ...[
+                      const SizedBox(width: AppSizes.space8),
+                      IconButton(
+                        onPressed: onFork,
+                        icon: const Icon(Icons.copy_outlined),
+                        color: AppColors.oceanTeal,
+                        tooltip: 'Save to My Templates',
+                      ),
+                    ],
+                    // Only show delete for non-system templates
+                    if (onDelete != null && !template.isSystemTemplate) ...[
                       const SizedBox(width: AppSizes.space8),
                       IconButton(
                         onPressed: onDelete,

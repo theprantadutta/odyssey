@@ -134,6 +134,56 @@ class MyTemplates extends _$MyTemplates {
       return false;
     }
   }
+
+  Future<TripTemplateModel?> updateTemplate(
+    String templateId, {
+    String? name,
+    String? description,
+    bool? isPublic,
+    String? category,
+  }) async {
+    try {
+      final repository = ref.read(templateRepositoryProvider);
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (description != null) updates['description'] = description;
+      if (isPublic != null) updates['is_public'] = isPublic;
+      if (category != null) updates['category'] = category;
+
+      final updated = await repository.updateTemplate(templateId, updates);
+
+      // Update the template in state
+      state = state.copyWith(
+        templates: state.templates.map((t) {
+          if (t.id == templateId) return updated;
+          return t;
+        }).toList(),
+      );
+
+      return updated;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return null;
+    }
+  }
+
+  Future<TripTemplateModel?> forkTemplate(String templateId) async {
+    try {
+      final repository = ref.read(templateRepositoryProvider);
+      final forked = await repository.forkTemplate(templateId);
+
+      // Add the forked template to my templates
+      state = state.copyWith(
+        templates: [forked, ...state.templates],
+        total: state.total + 1,
+      );
+
+      return forked;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return null;
+    }
+  }
 }
 
 /// State for public template gallery

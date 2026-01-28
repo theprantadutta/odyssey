@@ -297,7 +297,10 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
                                       _showTemplateDetails(context, template),
                                   onUse: () =>
                                       _useTemplate(context, ref, template),
+                                  onFork: () =>
+                                      _forkTemplate(context, ref, template),
                                   showActions: true,
+                                  showForkButton: true,
                                 ),
                               );
                             },
@@ -337,6 +340,108 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
       final tripId = result['id'] as String?;
       if (tripId != null) {
         context.push('/trips/$tripId');
+      }
+    }
+  }
+
+  Future<void> _forkTemplate(
+    BuildContext context,
+    WidgetRef ref,
+    TripTemplateModel template,
+  ) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    HapticFeedback.lightImpact();
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Save to My Templates',
+          style: AppTypography.headlineSmall.copyWith(
+            color: colorScheme.onSurface,
+          ),
+        ),
+        content: Text(
+          'This will create a copy of "${template.name}" in your templates. You can customize it later.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.oceanTeal,
+            ),
+            child: Text(
+              'Save',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.oceanTeal,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final forked =
+          await ref.read(myTemplatesProvider.notifier).forkTemplate(template.id);
+      if (forked != null && context.mounted) {
+        HapticFeedback.mediumImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: AppSizes.space12),
+                Expanded(child: Text('Saved "${forked.name}" to your templates')),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+          ),
+        );
+      } else if (context.mounted) {
+        final myTemplatesState = ref.read(myTemplatesProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: AppSizes.space12),
+                Expanded(
+                  child: Text(
+                    myTemplatesState.error ?? 'Failed to save template',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+          ),
+        );
       }
     }
   }

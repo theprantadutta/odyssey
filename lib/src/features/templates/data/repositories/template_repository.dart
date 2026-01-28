@@ -93,6 +93,12 @@ class TemplateRepository {
     await _dioClient.delete('/templates/$templateId');
   }
 
+  /// Fork a template (create a copy for the current user)
+  Future<TripTemplateModel> forkTemplate(String templateId) async {
+    final response = await _dioClient.post('/templates/$templateId/fork');
+    return TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Create trip from template
   Future<Map<String, dynamic>> useTemplate(
     String templateId,
