@@ -15,18 +15,30 @@ class StatisticsState {
   final OverallStatistics? statistics;
   final bool isLoading;
   final String? error;
+  final bool isPremiumRequired;
+  final String? premiumFeatureName;
 
-  const StatisticsState({this.statistics, this.isLoading = false, this.error});
+  const StatisticsState({
+    this.statistics,
+    this.isLoading = false,
+    this.error,
+    this.isPremiumRequired = false,
+    this.premiumFeatureName,
+  });
 
   StatisticsState copyWith({
     OverallStatistics? statistics,
     bool? isLoading,
     String? error,
+    bool? isPremiumRequired,
+    String? premiumFeatureName,
   }) {
     return StatisticsState(
       statistics: statistics ?? this.statistics,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      isPremiumRequired: isPremiumRequired ?? this.isPremiumRequired,
+      premiumFeatureName: premiumFeatureName ?? this.premiumFeatureName,
     );
   }
 }
@@ -44,11 +56,18 @@ class Statistics extends _$Statistics {
   }
 
   Future<void> _loadStatistics() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, error: null, isPremiumRequired: false);
 
     try {
       final stats = await _repository.getOverallStatistics();
       state = state.copyWith(statistics: stats, isLoading: false);
+    } on PremiumRequiredException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: e.featureName,
+        error: e.message,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

@@ -122,11 +122,106 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 ],
               ),
             )
-          : statsState.error != null && statsState.statistics == null
-              ? _buildErrorState(context, ref, statsState.error!)
-              : statsState.statistics != null
-                  ? _buildContent(context, ref, statsState.statistics!, isPremium)
-                  : const SizedBox(),
+          : statsState.isPremiumRequired && statsState.statistics == null
+              ? _buildPremiumGate(context, statsState.premiumFeatureName ?? 'Full Statistics')
+              : statsState.error != null && statsState.statistics == null
+                  ? _buildErrorState(context, ref, statsState.error!)
+                  : statsState.statistics != null
+                      ? _buildContent(context, ref, statsState.statistics!, isPremium)
+                      : const SizedBox(),
+    );
+  }
+
+  Widget _buildPremiumGate(BuildContext context, String featureName) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.space32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.sunnyYellow.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.bar_chart_rounded,
+                size: 48,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space24),
+            Text(
+              'Unlock $featureName',
+              style: AppTypography.headlineSmall.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSizes.space12),
+            Text(
+              'Get detailed insights into your travel journey with Premium. See where you\'ve been, what you\'ve done, and how much you\'ve spent!',
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSizes.space32),
+            ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                PaywallUtils.showPaywall(
+                  context,
+                  featureName: featureName,
+                  featureIcon: Icons.bar_chart_rounded,
+                );
+              },
+              icon: const Icon(Icons.workspace_premium_rounded),
+              label: const Text('Upgrade to Premium'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.sunnyYellow,
+                foregroundColor: colorScheme.onSurface,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space24,
+                  vertical: AppSizes.space16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                ),
+                elevation: 4,
+                shadowColor: AppColors.sunnyYellow.withValues(alpha: 0.4),
+              ),
+            ),
+            const SizedBox(height: AppSizes.space16),
+            TextButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Maybe Later',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

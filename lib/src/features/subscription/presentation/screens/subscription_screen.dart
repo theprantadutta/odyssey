@@ -466,8 +466,15 @@ class _FeaturesComparison extends StatelessWidget {
 
   const _FeaturesComparison({this.limits, required this.isPremium});
 
+  String _formatLimit(int value) => value == -1 ? 'Unlimited' : '$value';
+
+  String _formatBoolLimit(bool value) => value ? 'Yes' : 'No';
+
   @override
   Widget build(BuildContext context) {
+    final freeLimits = limits?.free;
+    final premiumLimits = limits?.premium;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space16),
@@ -484,44 +491,44 @@ class _FeaturesComparison extends StatelessWidget {
 
             _FeatureRow(
               feature: 'Active Trips',
-              free: '5',
-              premium: 'Unlimited',
+              free: _formatLimit(freeLimits?.activeTrips ?? 5),
+              premium: _formatLimit(premiumLimits?.activeTrips ?? -1),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Storage',
-              free: '1 GB',
-              premium: '25 GB',
+              free: freeLimits?.formattedStorage ?? '1 GB',
+              premium: premiumLimits?.formattedStorage ?? '25 GB',
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Video Uploads',
-              free: 'No',
-              premium: 'Yes',
+              free: _formatBoolLimit(freeLimits?.allowVideo ?? false),
+              premium: _formatBoolLimit(premiumLimits?.allowVideo ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'World Map',
-              free: 'No',
-              premium: 'Yes',
+              free: _formatBoolLimit(freeLimits?.allowWorldMap ?? false),
+              premium: _formatBoolLimit(premiumLimits?.allowWorldMap ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Year in Review',
-              free: 'No',
-              premium: 'Yes',
+              free: _formatBoolLimit(freeLimits?.allowYearInReview ?? false),
+              premium: _formatBoolLimit(premiumLimits?.allowYearInReview ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Full Statistics',
-              free: 'No',
-              premium: 'Yes',
+              free: _formatBoolLimit(freeLimits?.allowFullStatistics ?? false),
+              premium: _formatBoolLimit(premiumLimits?.allowFullStatistics ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Edit Collaboration',
-              free: 'No',
-              premium: 'Yes',
+              free: _formatBoolLimit(freeLimits?.allowEditSharing ?? false),
+              premium: _formatBoolLimit(premiumLimits?.allowEditSharing ?? true),
               hasFeature: isPremium,
             ),
           ],
