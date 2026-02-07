@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/database/database_service.dart';
 import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/token_refresh_service.dart';
+import '../../../../core/sync/sync_service.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -178,6 +180,9 @@ class Auth extends _$Auth {
 
       // Register device for push notifications
       _registerDeviceForNotifications();
+
+      // Trigger initial sync to pull latest data
+      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Auth check failed: $e', isError: true);
       // Clear auth data on failure to ensure clean state
@@ -218,6 +223,9 @@ class Auth extends _$Auth {
 
       // Register device for push notifications
       _registerDeviceForNotifications();
+
+      // Trigger initial sync
+      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Registration failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -244,6 +252,9 @@ class Auth extends _$Auth {
 
       // Register device for push notifications
       _registerDeviceForNotifications();
+
+      // Trigger initial sync
+      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Login failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -260,6 +271,12 @@ class Auth extends _$Auth {
       await _unregisterDeviceForNotifications();
 
       await _authRepository.logout();
+
+      // Clear local database on logout
+      await DatabaseService().clearAllData();
+      SyncService().dispose();
+      SyncService().initialize();
+
       AppLogger.auth('Logout successful');
       state = const AuthState(isAuthenticated: false, isLoading: false);
     } catch (e) {
@@ -315,6 +332,9 @@ class Auth extends _$Auth {
       // Register device for push notifications
       _registerDeviceForNotifications();
 
+      // Trigger initial sync
+      _triggerInitialSync();
+
       return false;
     } on AccountLinkingRequiredException catch (e) {
       AppLogger.auth('Account linking required: ${e.message}');
@@ -361,6 +381,9 @@ class Auth extends _$Auth {
 
       // Register device for push notifications
       _registerDeviceForNotifications();
+
+      // Trigger initial sync
+      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Account linking failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -402,6 +425,9 @@ class Auth extends _$Auth {
 
       // Register device for push notifications
       _registerDeviceForNotifications();
+
+      // Trigger initial sync
+      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Auto-link failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -422,6 +448,18 @@ class Auth extends _$Auth {
   Future<void> setIntroSeen() async {
     await StorageService().setIntroSeen(true);
     state = state.copyWith(hasSeenIntro: true);
+  }
+
+  /// Trigger initial sync to pull latest data (fire and forget)
+  void _triggerInitialSync() {
+    Future.microtask(() async {
+      try {
+        await SyncService().performInitialSync();
+        AppLogger.auth('Initial sync completed');
+      } catch (e) {
+        AppLogger.auth('Initial sync failed: $e', isError: true);
+      }
+    });
   }
 
   /// Register device for push notifications (fire and forget)

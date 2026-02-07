@@ -363,18 +363,18 @@ class LoadingOverlay extends StatelessWidget {
     return Stack(
       children: [
         child,
-        AnimatedSwitcher(
-          duration: AppAnimations.normal,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
-          },
-          child: isLoading
-              ? Positioned.fill(
-                  key: const ValueKey('loading_overlay'),
-                  child: BackdropFilter(
+        Positioned.fill(
+          child: AnimatedSwitcher(
+            duration: AppAnimations.normal,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: isLoading
+                ? BackdropFilter(
+                    key: const ValueKey('loading_overlay'),
                     filter: ImageFilter.blur(
                       sigmaX: blurAmount,
                       sigmaY: blurAmount,
@@ -505,9 +505,9 @@ class LoadingOverlay extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
-                )
+                  )
               : const SizedBox.shrink(key: ValueKey('empty')),
+          ),
         ),
       ],
     );

@@ -109,6 +109,9 @@ class ApiConfig {
   // Trip endpoints
   static const String defaultTrips = '$trips/default-trips';
 
+  // Sync endpoints
+  static const String sync = '/sync';
+
   // Timeouts
   // Increased receive timeout to accommodate seeding demo images on first user setup
   static const Duration connectTimeout = Duration(seconds: 30);
