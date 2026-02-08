@@ -128,4 +128,5 @@ class ApiConfig {
   static const String accessTokenExpiryKey = 'access_token_expiry';
   static const String userIdKey = 'user_id';
   static const String onboardingCompletedKey = 'onboarding_completed';
+  static const String cachedUserDataKey = 'cached_user_data';
 }

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/database/database_service.dart';
 import '../../../../core/services/auth_event_service.dart';
+import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/token_refresh_service.dart';
@@ -98,6 +101,14 @@ class Auth extends _$Auth {
   /// Handle auth events from interceptors (e.g., session expired)
   void _handleAuthEvent(AuthEvent event) {
     AppLogger.auth('Auth event received: $event');
+
+    // Don't process logout events while offline - these are likely
+    // network failures, not actual auth rejections from the server
+    if (!ConnectivityService().isOnline) {
+      AppLogger.auth('Ignoring auth event while offline');
+      return;
+    }
+
     if (event == AuthEvent.sessionExpired ||
         event == AuthEvent.tokenRefreshFailed) {
       // Only update if currently authenticated to avoid redundant updates
@@ -109,6 +120,59 @@ class Auth extends _$Auth {
           error: 'Your session has expired. Please log in again.',
         );
       }
+    }
+  }
+
+  /// Check if an error is a network/connectivity error (not an auth error)
+  bool _isNetworkError(Object error) {
+    if (error is DioException) {
+      return error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.unknown;
+    }
+    return false;
+  }
+
+  /// Load cached user data from storage
+  Future<UserModel?> _loadCachedUser() async {
+    final userJson = await StorageService().getCachedUserData();
+    if (userJson == null) return null;
+    try {
+      return UserModel.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
+    } catch (e) {
+      AppLogger.auth('Failed to parse cached user data: $e', isError: true);
+      return null;
+    }
+  }
+
+  /// Authenticate from cached user data (offline fallback)
+  Future<void> _authenticateFromCache(
+    StorageService storageService,
+    bool hasSeenIntro,
+  ) async {
+    final cachedUser = await _loadCachedUser();
+    if (cachedUser != null) {
+      final hasCompletedOnboarding =
+          await storageService.isOnboardingCompleted();
+      AppLogger.auth(
+        'Authenticated from cache: ${cachedUser.email}',
+      );
+      state = state.copyWith(
+        user: cachedUser,
+        isAuthenticated: true,
+        isLoading: false,
+        hasSeenIntro: hasSeenIntro,
+        needsOnboarding: !hasCompletedOnboarding,
+      );
+    } else {
+      AppLogger.auth('No cached user data available');
+      state = state.copyWith(
+        isAuthenticated: false,
+        isLoading: false,
+        hasSeenIntro: hasSeenIntro,
+      );
     }
   }
 
@@ -140,58 +204,90 @@ class Auth extends _$Auth {
         return;
       }
 
-      // Check if access token is expired
-      final isExpired = await storageService.isAccessTokenExpired();
-      AppLogger.auth('Access token expired: $isExpired');
+      final isOnline = ConnectivityService().isOnline;
+      AppLogger.auth('Network status: ${isOnline ? "online" : "offline"}');
 
-      if (isExpired && hasRefreshToken) {
-        // Try to refresh the token
-        AppLogger.auth('Attempting to refresh expired token...');
-        final refreshSuccess = await tokenRefreshService.refreshToken();
+      if (isOnline) {
+        // ONLINE: Try normal auth flow with network fallback
+        final isExpired = await storageService.isAccessTokenExpired();
+        AppLogger.auth('Access token expired: $isExpired');
 
-        if (!refreshSuccess) {
-          // Refresh failed - clear auth and require login
-          AppLogger.auth('Token refresh failed, clearing auth data');
-          await storageService.clearAuthData();
+        if (isExpired && hasRefreshToken) {
+          AppLogger.auth('Attempting to refresh expired token...');
+          final refreshSuccess = await tokenRefreshService.refreshToken();
+
+          if (!refreshSuccess) {
+            AppLogger.auth('Token refresh failed, clearing auth data');
+            await storageService.clearAuthData();
+            state = state.copyWith(
+              isAuthenticated: false,
+              isLoading: false,
+              hasSeenIntro: hasSeenIntro,
+            );
+            return;
+          }
+          AppLogger.auth('Token refresh successful');
+        }
+
+        // Fetch user from server
+        try {
+          AppLogger.auth('Fetching user data from server...');
+          final user = await _authRepository.getCurrentUser();
+
+          // Cache user data for offline use
+          await storageService
+              .saveUserData(jsonEncode(user.toJson()));
+
+          final hasCompletedOnboarding =
+              await storageService.isOnboardingCompleted();
+          AppLogger.auth(
+            'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
+          );
           state = state.copyWith(
-            isAuthenticated: false,
+            user: user,
+            isAuthenticated: true,
             isLoading: false,
             hasSeenIntro: hasSeenIntro,
+            needsOnboarding: !hasCompletedOnboarding,
           );
-          return;
+
+          _registerDeviceForNotifications();
+          _triggerInitialSync();
+        } catch (e) {
+          if (_isNetworkError(e)) {
+            // Network error while online (e.g., server unreachable)
+            AppLogger.auth(
+              'Network error fetching user, falling back to cache',
+            );
+            await _authenticateFromCache(storageService, hasSeenIntro);
+          } else {
+            // Auth error (401, etc.) - clear auth
+            AppLogger.auth('Auth error fetching user: $e', isError: true);
+            await storageService.clearAuthData();
+            state = state.copyWith(
+              isAuthenticated: false,
+              isLoading: false,
+              hasSeenIntro: hasSeenIntro,
+            );
+          }
         }
-        AppLogger.auth('Token refresh successful');
+      } else {
+        // OFFLINE: Skip all network calls, use cached user
+        AppLogger.auth('Offline - authenticating from cache');
+        await _authenticateFromCache(storageService, hasSeenIntro);
       }
-
-      // Token is valid (or was refreshed) - fetch user
-      AppLogger.auth('Token valid, fetching user data...');
-      final user = await _authRepository.getCurrentUser();
-      final hasCompletedOnboarding = await storageService.isOnboardingCompleted();
-      AppLogger.auth(
-        'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
-      );
-      state = state.copyWith(
-        user: user,
-        isAuthenticated: true,
-        isLoading: false,
-        hasSeenIntro: hasSeenIntro,
-        needsOnboarding: !hasCompletedOnboarding,
-      );
-
-      // Register device for push notifications
-      _registerDeviceForNotifications();
-
-      // Trigger initial sync to pull latest data
-      _triggerInitialSync();
     } catch (e) {
       AppLogger.auth('Auth check failed: $e', isError: true);
-      // Clear auth data on failure to ensure clean state
-      await storageService.clearAuthData();
-      state = state.copyWith(
-        isAuthenticated: false,
-        isLoading: false,
-        hasSeenIntro: await storageService.hasSeenIntro(),
-      );
+      // Safety net: try cache before giving up
+      try {
+        final hasSeenIntro = await storageService.hasSeenIntro();
+        await _authenticateFromCache(storageService, hasSeenIntro);
+      } catch (_) {
+        state = state.copyWith(
+          isAuthenticated: false,
+          isLoading: false,
+        );
+      }
     }
   }
 
@@ -212,6 +308,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Registration successful: ${user.email}');
 
       state = state.copyWith(
@@ -242,6 +339,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Login successful: ${user.email}');
 
       state = state.copyWith(
@@ -315,6 +413,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Google Sign-In successful: ${user.email}');
 
       // Check if onboarding was completed
@@ -369,6 +468,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Account linking successful: ${user.email}');
 
       state = state.copyWith(
@@ -408,6 +508,7 @@ class Auth extends _$Auth {
 
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Auto-link successful: ${user.email}');
 
       // Check if onboarding was completed

@@ -101,12 +101,26 @@ class StorageService {
     return value == 'true';
   }
 
+  // Cached User Data (for offline auth)
+  Future<void> saveUserData(String userJson) async {
+    await _storage.write(key: ApiConfig.cachedUserDataKey, value: userJson);
+  }
+
+  Future<String?> getCachedUserData() async {
+    return await _storage.read(key: ApiConfig.cachedUserDataKey);
+  }
+
+  Future<void> deleteUserData() async {
+    await _storage.delete(key: ApiConfig.cachedUserDataKey);
+  }
+
   // Clear all auth data (logout) - preserves intro/onboarding state
   Future<void> clearAuthData() async {
     await deleteAccessToken();
     await deleteRefreshToken();
     await deleteUserId();
     await _storage.delete(key: ApiConfig.accessTokenExpiryKey);
+    await deleteUserData();
   }
 
   // Clear all data (full reset)
