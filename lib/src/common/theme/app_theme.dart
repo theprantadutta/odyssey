@@ -21,6 +21,8 @@ class AppTheme {
         onPrimary: AppColors.charcoal,
         secondary: AppColors.oceanTeal,
         onSecondary: AppColors.pureWhite,
+        secondaryContainer: Color(0xFFE0F7F4),
+        onSecondaryContainer: Color(0xFF00564E),
         tertiary: AppColors.coralBurst,
         onTertiary: AppColors.pureWhite,
         surface: AppColors.snowWhite,
@@ -441,6 +443,8 @@ class AppTheme {
       colorScheme: ColorScheme.dark(
         primary: AppColors.sunsetGold,
         secondary: AppColors.softGold,
+        secondaryContainer: const Color(0xFF0D3330),
+        onSecondaryContainer: const Color(0xFF80CBC4),
         tertiary: AppColors.navyAccent,
         surface: AppColors.deepNavy,
         error: AppColors.error,

@@ -267,14 +267,14 @@ class _TripCardState extends State<TripCard>
                                       vertical: AppSizes.space4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                      color: Theme.of(context).colorScheme.secondaryContainer,
                                       borderRadius: BorderRadius.circular(
                                           AppSizes.radiusFull),
                                     ),
                                     child: Text(
                                       tag,
                                       style: AppTypography.caption.copyWith(
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context).colorScheme.onSecondaryContainer,
                                       ),
                                     ),
                                   );
