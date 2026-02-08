@@ -7,7 +7,7 @@ import 'src/common/theme/app_theme.dart';
 import 'src/common/theme/theme_provider.dart';
 import 'src/core/database/database_service.dart';
 import 'src/core/network/dio_client.dart';
-import 'src/core/providers/connectivity_provider.dart';
+
 import 'src/core/router/app_router.dart';
 import 'src/core/services/connectivity_service.dart';
 import 'src/core/services/logger_service.dart';
@@ -69,53 +69,8 @@ class OdysseyApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: router,
       builder: (context, child) {
-        return Stack(
-          children: [
-            child ?? const SizedBox.shrink(),
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _OfflineBannerWrapper(),
-            ),
-          ],
-        );
+        return child ?? const SizedBox.shrink();
       },
-    );
-  }
-}
-
-/// Wrapper to show offline banner at the top of the app
-class _OfflineBannerWrapper extends ConsumerWidget {
-  const _OfflineBannerWrapper();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isOnline = ref.watch(connectivityProvider);
-
-    if (isOnline) return const SizedBox.shrink();
-
-    return Material(
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top,
-          left: 16,
-          right: 16,
-          bottom: 8,
-        ),
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Row(
-          children: [
-            Icon(Icons.cloud_off, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(
-              "You're offline. Changes will sync when connected.",
-              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

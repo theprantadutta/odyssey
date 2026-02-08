@@ -10,6 +10,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/theme_provider.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/form_section_card.dart';
+import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
@@ -109,6 +110,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final subscriptionState = ref.watch(subscriptionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
+    final isOnline = ref.watch(connectivityProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -222,6 +224,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               iconBackgroundColor: AppColors.coralBurst.withValues(alpha: 0.15),
               iconColor: AppColors.coralBurst,
               children: [
+                SettingsTile(
+                  title: 'Network Status',
+                  subtitle: isOnline ? 'Online' : 'Offline',
+                  showChevron: false,
+                  trailing: Icon(
+                    isOnline ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
+                    size: 20,
+                    color: isOnline ? AppColors.oceanTeal : colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 SettingsTile(
                   title: 'App Version',
                   subtitle: _appVersion,
