@@ -99,9 +99,8 @@ dependencies:
   flutter_dotenv: ^6.0.0
 
   # Offline Database
-  drift: ^2.22.1
-  sqlite3_flutter_libs: ^0.6.0
-  path: ^1.9.0
+  drift: ^2.31.0
+  drift_flutter: ^0.2.8
 
   # Connectivity
   connectivity_plus: ^7.0.0
@@ -127,7 +126,7 @@ dev_dependencies:
   json_serializable: ^6.8.0
 
   # Drift Code Generation
-  drift_dev: ^2.22.1
+  drift_dev: ^2.31.0
 
   # Testing
   mocktail: ^1.0.4

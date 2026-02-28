@@ -16,6 +16,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../widgets/about_dialog.dart';
+import '../widgets/legal_document_viewer.dart';
 import '../widgets/settings_tile.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -212,6 +213,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     activeTrackColor: AppColors.lemonLight,
                   ),
                   onTap: _handleToggleTheme,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space16),
+
+            // Legal Section
+            FormSectionCard(
+              title: 'Legal',
+              icon: Icons.gavel_rounded,
+              iconBackgroundColor: AppColors.sunnyYellow.withValues(alpha: 0.15),
+              iconColor: AppColors.sunnyYellow,
+              children: [
+                SettingsTile(
+                  title: 'Privacy Policy',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const LegalDocumentViewer(
+                        title: 'Privacy Policy',
+                        assetPath: 'assets/legal/privacy.md',
+                      ),
+                    ));
+                  },
+                ),
+                SettingsTile(
+                  title: 'Terms & Conditions',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const LegalDocumentViewer(
+                        title: 'Terms & Conditions',
+                        assetPath: 'assets/legal/terms.md',
+                      ),
+                    ));
+                  },
                 ),
               ],
             ),
