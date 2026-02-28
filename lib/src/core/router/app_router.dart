@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/logger_service.dart';
 import '../../features/auth/presentation/screens/intro_screen.dart';
+import '../../features/auth/presentation/screens/legal_agreement_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -28,6 +29,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 class AppRoutes {
   static const String splash = '/splash';
   static const String intro = '/intro';
+  static const String legalAgreement = '/legal';
   static const String login = '/login';
   static const String register = '/register';
   static const String onboarding = '/onboarding';
@@ -56,6 +58,7 @@ class AuthChangeNotifier extends ChangeNotifier {
       if (previous?.isAuthenticated != next.isAuthenticated ||
           previous?.isLoading != next.isLoading ||
           previous?.hasSeenIntro != next.hasSeenIntro ||
+          previous?.hasAcceptedTerms != next.hasAcceptedTerms ||
           previous?.needsOnboarding != next.needsOnboarding) {
         notifyListeners();
       }
@@ -88,11 +91,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = authState.isAuthenticated;
       final isLoading = authState.isLoading;
       final hasSeenIntro = authState.hasSeenIntro;
+      final hasAcceptedTerms = authState.hasAcceptedTerms;
       final needsOnboarding = authState.needsOnboarding;
 
       final currentLocation = state.matchedLocation;
       final isOnSplash = currentLocation == AppRoutes.splash;
       final isOnIntro = currentLocation == AppRoutes.intro;
+      final isOnLegalAgreement = currentLocation == AppRoutes.legalAgreement;
       final isOnLogin = currentLocation == AppRoutes.login;
       final isOnRegister = currentLocation == AppRoutes.register;
       final isOnOnboarding = currentLocation == AppRoutes.onboarding;
@@ -100,7 +105,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Show splash only during initial auth check (isLoading + not yet authenticated)
       // Don't redirect to splash during logout (isLoading + still authenticated)
-      if (isLoading && !isAuthenticated && !isOnSplash && !isOnAuthScreen && !isOnIntro) {
+      if (isLoading && !isAuthenticated && !isOnSplash && !isOnAuthScreen && !isOnIntro && !isOnLegalAgreement) {
         return AppRoutes.splash;
       }
 
@@ -108,6 +113,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isLoading && !hasSeenIntro && !isOnIntro) {
         AppLogger.navigation('Redirecting to intro (first-time user)');
         return AppRoutes.intro;
+      }
+
+      // Show legal agreement if intro seen but terms not accepted
+      if (!isLoading && hasSeenIntro && !hasAcceptedTerms && !isOnLegalAgreement) {
+        AppLogger.navigation('Redirecting to legal agreement (terms not accepted)');
+        return AppRoutes.legalAgreement;
       }
 
       // Redirect to post-auth onboarding if user just registered/logged in
@@ -118,13 +129,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Redirect to home if authenticated and onboarding complete
       // Don't redirect during loading (e.g., logout in progress)
-      if (!isLoading && isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro)) {
+      if (!isLoading && isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro || isOnLegalAgreement)) {
         AppLogger.navigation('Redirecting to home (authenticated)');
         return AppRoutes.home;
       }
 
-      // Redirect to login if not authenticated (but has seen intro)
-      if (!isAuthenticated && hasSeenIntro && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
+      // Redirect to login if not authenticated (but has seen intro and accepted terms)
+      if (!isAuthenticated && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
         AppLogger.navigation('Redirecting to login (not authenticated)');
         return AppRoutes.login;
       }
@@ -139,6 +150,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.intro,
         builder: (context, state) => const IntroScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.legalAgreement,
+        builder: (context, state) => const LegalAgreementScreen(),
       ),
       GoRoute(
         path: AppRoutes.login,

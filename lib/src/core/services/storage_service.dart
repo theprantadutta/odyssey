@@ -88,6 +88,18 @@ class StorageService {
     return value == 'true';
   }
 
+  // Terms & Conditions (legal agreement acceptance)
+  static const String _termsAcceptedKey = 'terms_accepted';
+
+  Future<void> setTermsAccepted(bool accepted) async {
+    await _storage.write(key: _termsAcceptedKey, value: accepted.toString());
+  }
+
+  Future<bool> hasAcceptedTerms() async {
+    final value = await _storage.read(key: _termsAcceptedKey);
+    return value == 'true';
+  }
+
   // Onboarding (post-authentication)
   Future<void> setOnboardingCompleted(bool completed) async {
     await _storage.write(

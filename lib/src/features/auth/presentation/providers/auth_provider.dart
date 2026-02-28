@@ -25,6 +25,7 @@ class AuthState {
   final String? error;
   final bool isAuthenticated;
   final bool hasSeenIntro;
+  final bool hasAcceptedTerms;
   final bool needsOnboarding;
   final bool needsAccountLinking;
   final String? pendingFirebaseToken;
@@ -36,6 +37,7 @@ class AuthState {
     this.error,
     this.isAuthenticated = false,
     this.hasSeenIntro = true, // Default to true to avoid flash
+    this.hasAcceptedTerms = true, // Default to true to avoid flash
     this.needsOnboarding = false,
     this.needsAccountLinking = false,
     this.pendingFirebaseToken,
@@ -48,6 +50,7 @@ class AuthState {
     String? error,
     bool? isAuthenticated,
     bool? hasSeenIntro,
+    bool? hasAcceptedTerms,
     bool? needsOnboarding,
     bool? needsAccountLinking,
     String? pendingFirebaseToken,
@@ -59,6 +62,7 @@ class AuthState {
       error: error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
+      hasAcceptedTerms: hasAcceptedTerms ?? this.hasAcceptedTerms,
       needsOnboarding: needsOnboarding ?? this.needsOnboarding,
       needsAccountLinking: needsAccountLinking ?? this.needsAccountLinking,
       pendingFirebaseToken: pendingFirebaseToken ?? this.pendingFirebaseToken,
@@ -151,6 +155,7 @@ class Auth extends _$Auth {
   Future<void> _authenticateFromCache(
     StorageService storageService,
     bool hasSeenIntro,
+    bool hasAcceptedTerms,
   ) async {
     final cachedUser = await _loadCachedUser();
     if (cachedUser != null) {
@@ -164,6 +169,7 @@ class Auth extends _$Auth {
         isAuthenticated: true,
         isLoading: false,
         hasSeenIntro: hasSeenIntro,
+        hasAcceptedTerms: hasAcceptedTerms,
         needsOnboarding: !hasCompletedOnboarding,
       );
     } else {
@@ -172,6 +178,7 @@ class Auth extends _$Auth {
         isAuthenticated: false,
         isLoading: false,
         hasSeenIntro: hasSeenIntro,
+        hasAcceptedTerms: hasAcceptedTerms,
       );
     }
   }
@@ -187,7 +194,8 @@ class Auth extends _$Auth {
     try {
       // Check if user has seen intro (first-time app launch)
       final hasSeenIntro = await storageService.hasSeenIntro();
-      AppLogger.auth('Has seen intro: $hasSeenIntro');
+      final hasAcceptedTerms = await storageService.hasAcceptedTerms();
+      AppLogger.auth('Has seen intro: $hasSeenIntro, has accepted terms: $hasAcceptedTerms');
 
       // Check if we have any tokens
       final hasAccessToken = await storageService.getAccessToken() != null;
@@ -200,6 +208,7 @@ class Auth extends _$Auth {
           isAuthenticated: false,
           isLoading: false,
           hasSeenIntro: hasSeenIntro,
+          hasAcceptedTerms: hasAcceptedTerms,
         );
         return;
       }
@@ -223,6 +232,7 @@ class Auth extends _$Auth {
               isAuthenticated: false,
               isLoading: false,
               hasSeenIntro: hasSeenIntro,
+              hasAcceptedTerms: hasAcceptedTerms,
             );
             return;
           }
@@ -248,6 +258,7 @@ class Auth extends _$Auth {
             isAuthenticated: true,
             isLoading: false,
             hasSeenIntro: hasSeenIntro,
+            hasAcceptedTerms: hasAcceptedTerms,
             needsOnboarding: !hasCompletedOnboarding,
           );
 
@@ -259,7 +270,7 @@ class Auth extends _$Auth {
             AppLogger.auth(
               'Network error fetching user, falling back to cache',
             );
-            await _authenticateFromCache(storageService, hasSeenIntro);
+            await _authenticateFromCache(storageService, hasSeenIntro, hasAcceptedTerms);
           } else {
             // Auth error (401, etc.) - clear auth
             AppLogger.auth('Auth error fetching user: $e', isError: true);
@@ -268,20 +279,22 @@ class Auth extends _$Auth {
               isAuthenticated: false,
               isLoading: false,
               hasSeenIntro: hasSeenIntro,
+              hasAcceptedTerms: hasAcceptedTerms,
             );
           }
         }
       } else {
         // OFFLINE: Skip all network calls, use cached user
         AppLogger.auth('Offline - authenticating from cache');
-        await _authenticateFromCache(storageService, hasSeenIntro);
+        await _authenticateFromCache(storageService, hasSeenIntro, hasAcceptedTerms);
       }
     } catch (e) {
       AppLogger.auth('Auth check failed: $e', isError: true);
       // Safety net: try cache before giving up
       try {
         final hasSeenIntro = await storageService.hasSeenIntro();
-        await _authenticateFromCache(storageService, hasSeenIntro);
+        final hasAcceptedTerms = await storageService.hasAcceptedTerms();
+        await _authenticateFromCache(storageService, hasSeenIntro, hasAcceptedTerms);
       } catch (_) {
         state = state.copyWith(
           isAuthenticated: false,
@@ -549,6 +562,12 @@ class Auth extends _$Auth {
   Future<void> setIntroSeen() async {
     await StorageService().setIntroSeen(true);
     state = state.copyWith(hasSeenIntro: true);
+  }
+
+  /// Mark terms as accepted (updates both storage and state)
+  Future<void> setTermsAccepted() async {
+    await StorageService().setTermsAccepted(true);
+    state = state.copyWith(hasAcceptedTerms: true);
   }
 
   /// Trigger initial sync to pull latest data (fire and forget)
