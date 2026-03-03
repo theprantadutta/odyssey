@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/packing_model.dart';
 import '../../data/repositories/packing_repository.dart';
@@ -126,6 +129,7 @@ class TripPacking extends _$TripPacking {
       if (!ref.mounted) return;
 
       AppLogger.info('Packing item created successfully');
+      unawaited(ref.read(analyticsServiceProvider).trackPackingItemCreated(category: request.category));
 
       // Add to list
       final updatedItems = [...state.items, newItem];
@@ -226,6 +230,7 @@ class TripPacking extends _$TripPacking {
       if (!ref.mounted) return;
 
       AppLogger.info('Packed status toggled successfully');
+      unawaited(ref.read(analyticsServiceProvider).trackPackingItemToggled(packed: !currentItem.isPacked));
 
       state = state.copyWith(items: updatedItems, progress: progress);
     } catch (e) {

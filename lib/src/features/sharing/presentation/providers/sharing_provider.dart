@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:odyssey/src/core/providers/analytics_provider.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
 import 'package:odyssey/src/features/sharing/data/repositories/sharing_repository.dart';
 
@@ -80,6 +83,7 @@ class TripShares extends _$TripShares {
     try {
       final repository = ref.read(sharingRepositoryProvider);
       final share = await repository.shareTrip(tripId, request);
+      unawaited(ref.read(analyticsServiceProvider).trackTripShared(permission: request.permission.name));
       state = state.copyWith(
         shares: [...state.shares, share],
         total: state.total + 1,
@@ -102,6 +106,7 @@ class TripShares extends _$TripShares {
         shareId,
         permission,
       );
+      unawaited(ref.read(analyticsServiceProvider).trackSharePermissionChanged(newPermission: permission.name));
       state = state.copyWith(
         shares: state.shares.map((s) {
           if (s.id == shareId) return updatedShare;
@@ -119,6 +124,7 @@ class TripShares extends _$TripShares {
     try {
       final repository = ref.read(sharingRepositoryProvider);
       await repository.revokeShare(tripId, shareId);
+      unawaited(ref.read(analyticsServiceProvider).trackShareRevoked());
       state = state.copyWith(
         shares: state.shares.where((s) => s.id != shareId).toList(),
         total: state.total - 1,
@@ -247,6 +253,7 @@ class Invite extends _$Invite {
     try {
       final repository = ref.read(sharingRepositoryProvider);
       final response = await repository.acceptInvite(inviteCode);
+      unawaited(ref.read(analyticsServiceProvider).trackInviteAccepted());
       state = state.copyWith(isAccepting: false);
       // Refresh shared trips list
       ref.invalidate(sharedTripsProvider);
@@ -262,6 +269,7 @@ class Invite extends _$Invite {
     try {
       final repository = ref.read(sharingRepositoryProvider);
       await repository.declineInvite(inviteCode);
+      unawaited(ref.read(analyticsServiceProvider).trackInviteDeclined());
       state = state.copyWith(isDeclining: false);
       return true;
     } catch (e) {

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../core/providers/analytics_provider.dart';
 import '../../core/services/storage_service.dart';
 
 part 'theme_provider.g.dart';
@@ -24,6 +27,10 @@ class AppThemeMode extends _$AppThemeMode {
     final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     state = newMode;
     await StorageService().setThemeMode(newMode == ThemeMode.dark);
+    final isDark = newMode == ThemeMode.dark;
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackDarkModeToggled(enabled: isDark));
+    unawaited(analytics.setUserProperty(name: 'theme_mode', value: isDark ? 'dark' : 'light'));
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

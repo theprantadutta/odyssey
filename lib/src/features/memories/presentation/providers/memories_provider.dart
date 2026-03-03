@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/memory_model.dart';
 import '../../data/repositories/memory_repository.dart';
@@ -120,6 +123,10 @@ class TripMemories extends _$TripMemories {
       if (!ref.mounted) return;
 
       AppLogger.info('Memory uploaded successfully');
+      final hasVideo = mediaFiles?.any((f) => f.isVideo) ?? false;
+      unawaited(ref.read(analyticsServiceProvider).trackMemoryUploaded(
+        mediaType: hasVideo ? 'video' : 'photo',
+      ));
 
       // Add to list
       final updatedMemories = [newMemory, ...state.memories];

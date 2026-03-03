@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/database/database_service.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
@@ -333,6 +334,11 @@ class Auth extends _$Auth {
         needsOnboarding: true, // New user needs onboarding
       );
 
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackSignUp(method: 'email'));
+      unawaited(analytics.setUserId(user.id));
+      unawaited(analytics.setUserProperty(name: 'has_completed_onboarding', value: 'false'));
+
       // Register device for push notifications
       _registerDeviceForNotifications();
 
@@ -363,6 +369,10 @@ class Auth extends _$Auth {
         isLoading: false,
       );
 
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackLogin(method: 'email'));
+      unawaited(analytics.setUserId(user.id));
+
       // Register device for push notifications
       _registerDeviceForNotifications();
 
@@ -391,6 +401,9 @@ class Auth extends _$Auth {
       SyncService().initialize();
 
       AppLogger.auth('Logout successful');
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackLogout());
+      unawaited(analytics.setUserId(null));
       state = const AuthState(isAuthenticated: false, isLoading: false);
     } catch (e) {
       AppLogger.auth('Logout failed: $e', isError: true);
@@ -407,6 +420,9 @@ class Auth extends _$Auth {
   Future<void> completeOnboarding() async {
     await StorageService().setOnboardingCompleted(true);
     state = state.copyWith(needsOnboarding: false);
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackOnboardingCompleted(addedDemoTrips: false));
+    unawaited(analytics.setUserProperty(name: 'has_completed_onboarding', value: 'true'));
   }
 
   /// Sign in with Google
@@ -442,6 +458,10 @@ class Auth extends _$Auth {
         needsOnboarding:
             !hasCompletedOnboarding, // Show onboarding if not completed
       );
+
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackLogin(method: 'google'));
+      unawaited(analytics.setUserId(user.id));
 
       // Register device for push notifications
       _registerDeviceForNotifications();
@@ -494,6 +514,10 @@ class Auth extends _$Auth {
         pendingFirebaseToken: null,
       );
 
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackAccountLinked());
+      unawaited(analytics.setUserId(user.id));
+
       // Register device for push notifications
       _registerDeviceForNotifications();
 
@@ -539,6 +563,10 @@ class Auth extends _$Auth {
         needsOnboarding: !hasCompletedOnboarding,
       );
 
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackAccountLinked());
+      unawaited(analytics.setUserId(user.id));
+
       // Register device for push notifications
       _registerDeviceForNotifications();
 
@@ -564,12 +592,14 @@ class Auth extends _$Auth {
   Future<void> setIntroSeen() async {
     await StorageService().setIntroSeen(true);
     state = state.copyWith(hasSeenIntro: true);
+    unawaited(ref.read(analyticsServiceProvider).trackIntroSeen());
   }
 
   /// Mark terms as accepted (updates both storage and state)
   Future<void> setTermsAccepted() async {
     await StorageService().setTermsAccepted(true);
     state = state.copyWith(hasAcceptedTerms: true);
+    unawaited(ref.read(analyticsServiceProvider).trackTermsAccepted());
   }
 
   /// Trigger initial sync to pull latest data (fire and forget)

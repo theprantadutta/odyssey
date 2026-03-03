@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/repositories/subscription_repository.dart';
@@ -89,6 +92,10 @@ class Subscription extends _$Subscription {
       );
 
       AppLogger.info('Subscription data loaded: ${state.status?.tier}');
+      unawaited(ref.read(analyticsServiceProvider).setUserProperty(
+        name: 'subscription_tier',
+        value: state.tier.name,
+      ));
     } catch (e) {
       AppLogger.error('Failed to load subscription data: $e');
       state = state.copyWith(isLoading: false, error: e.toString());

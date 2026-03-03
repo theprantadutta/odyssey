@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/repositories/expense_repository.dart';
@@ -113,6 +116,10 @@ class TripExpenses extends _$TripExpenses {
       if (!ref.mounted) return;
 
       AppLogger.info('Expense created successfully');
+      unawaited(ref.read(analyticsServiceProvider).trackExpenseCreated(
+        category: request.category,
+        currency: request.currency,
+      ));
 
       // Add to list and update total
       final updatedExpenses = [newExpense, ...state.expenses];

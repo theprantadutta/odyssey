@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:odyssey/src/core/providers/analytics_provider.dart';
 import 'package:odyssey/src/features/templates/data/models/template_model.dart';
 import 'package:odyssey/src/features/templates/data/repositories/template_repository.dart';
 
@@ -92,6 +95,7 @@ class MyTemplates extends _$MyTemplates {
     try {
       final repository = ref.read(templateRepositoryProvider);
       final template = await repository.createTemplate(request);
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateCreated(source: 'scratch'));
       state = state.copyWith(
         templates: [template, ...state.templates],
         total: state.total + 1,
@@ -109,6 +113,7 @@ class MyTemplates extends _$MyTemplates {
     try {
       final repository = ref.read(templateRepositoryProvider);
       final template = await repository.createTemplateFromTrip(request);
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateCreated(source: 'from_trip'));
       state = state.copyWith(
         templates: [template, ...state.templates],
         total: state.total + 1,
@@ -171,6 +176,7 @@ class MyTemplates extends _$MyTemplates {
     try {
       final repository = ref.read(templateRepositoryProvider);
       final forked = await repository.forkTemplate(templateId);
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateForked(templateId: templateId));
 
       // Add the forked template to my templates
       state = state.copyWith(
@@ -266,6 +272,9 @@ class TemplateGallery extends _$TemplateGallery {
       isLoading: true,
     );
     await _loadTemplates();
+    if (category != null) {
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateGallerySearched(category: category.name));
+    }
   }
 
   Future<void> search(String? query) async {
@@ -275,6 +284,9 @@ class TemplateGallery extends _$TemplateGallery {
       isLoading: true,
     );
     await _loadTemplates();
+    if (query != null && query.isNotEmpty) {
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateGallerySearched(category: 'search'));
+    }
   }
 
   Future<Map<String, dynamic>?> useTemplate(
@@ -282,7 +294,12 @@ class TemplateGallery extends _$TemplateGallery {
   ) async {
     try {
       final repository = ref.read(templateRepositoryProvider);
-      return await repository.useTemplate(request.templateId, request);
+      final result = await repository.useTemplate(request.templateId, request);
+      unawaited(ref.read(analyticsServiceProvider).trackTemplateUsed(
+        templateId: request.templateId,
+        isPublic: true,
+      ));
+      return result;
     } catch (e) {
       state = state.copyWith(error: e.toString());
       return null;

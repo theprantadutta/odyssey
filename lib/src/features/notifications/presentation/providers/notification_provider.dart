@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -184,6 +185,7 @@ class Notifications extends _$Notifications {
   Future<bool> requestPermission() async {
     final hasPermission = await _notificationService.requestPermission();
     state = state.copyWith(hasPermission: hasPermission);
+    unawaited(ref.read(analyticsServiceProvider).trackNotificationPermission(granted: hasPermission));
     return hasPermission;
   }
 }

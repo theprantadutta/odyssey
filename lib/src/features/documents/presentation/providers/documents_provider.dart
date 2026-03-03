@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/document_model.dart';
 import '../../data/repositories/document_repository.dart';
@@ -110,6 +113,7 @@ class TripDocuments extends _$TripDocuments {
       );
 
       AppLogger.info('Document uploaded successfully');
+      unawaited(ref.read(analyticsServiceProvider).trackDocumentUploaded(type: type ?? 'other'));
 
       // Reload to get updated grouped data
       await _loadDocuments();

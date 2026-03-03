@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/activity_model.dart';
 import '../../data/repositories/activity_repository.dart';
@@ -96,6 +99,7 @@ class TripActivities extends _$TripActivities {
       if (!ref.mounted) return;
 
       AppLogger.info('Activity created successfully: ${newActivity.title}');
+      unawaited(ref.read(analyticsServiceProvider).trackActivityCreated(category: request.category));
 
       // Add to list and sort by sort_order
       final updatedActivities = [...state.activities, newActivity];

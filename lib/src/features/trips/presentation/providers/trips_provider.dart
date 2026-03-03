@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/models/trip_filter_model.dart';
@@ -172,6 +175,9 @@ class Trips extends _$Trips {
       clearSearch: query == null || query.isEmpty,
     );
     await updateFilters(newFilters);
+    unawaited(ref.read(analyticsServiceProvider).trackTripSearch(
+      hasResults: state.trips.isNotEmpty,
+    ));
   }
 
   /// Filter by status
@@ -181,6 +187,7 @@ class Trips extends _$Trips {
       clearStatus: statuses == null || statuses.isEmpty,
     );
     await updateFilters(newFilters);
+    unawaited(ref.read(analyticsServiceProvider).trackTripFilterApplied(filterType: 'status'));
   }
 
   /// Filter by tags
@@ -190,6 +197,7 @@ class Trips extends _$Trips {
       clearTags: tags == null || tags.isEmpty,
     );
     await updateFilters(newFilters);
+    unawaited(ref.read(analyticsServiceProvider).trackTripFilterApplied(filterType: 'tags'));
   }
 
   /// Filter by date range
@@ -201,6 +209,7 @@ class Trips extends _$Trips {
       clearStartDateTo: to == null,
     );
     await updateFilters(newFilters);
+    unawaited(ref.read(analyticsServiceProvider).trackTripFilterApplied(filterType: 'date'));
   }
 
   /// Update sorting
@@ -227,6 +236,7 @@ class Trips extends _$Trips {
     try {
       final newTrip = await _tripRepository.createTrip(request);
       AppLogger.info('Trip created successfully: ${newTrip.title}');
+      unawaited(ref.read(analyticsServiceProvider).trackTripCreated(source: 'manual'));
       state = state.copyWith(
         trips: [newTrip, ...state.trips],
         total: state.total + 1,
@@ -248,6 +258,7 @@ class Trips extends _$Trips {
         return trip.id == id ? updatedTrip : trip;
       }).toList();
       AppLogger.info('Trip updated successfully: ${updatedTrip.title}');
+      unawaited(ref.read(analyticsServiceProvider).trackTripUpdated());
       state = state.copyWith(trips: updatedTrips);
       // Reload available tags in case tags changed
       _loadAvailableTags();
@@ -264,6 +275,7 @@ class Trips extends _$Trips {
       await _tripRepository.deleteTrip(id);
       final updatedTrips = state.trips.where((trip) => trip.id != id).toList();
       AppLogger.info('Trip deleted successfully');
+      unawaited(ref.read(analyticsServiceProvider).trackTripDeleted());
       state = state.copyWith(trips: updatedTrips, total: state.total - 1);
       // Reload available tags
       _loadAvailableTags();

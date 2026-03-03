@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/services/purchase_service.dart';
 import 'subscription_provider.dart';
@@ -94,8 +97,18 @@ class Purchase extends _$Purchase {
     }
   }
 
+  String _planFromProductId(String? productId) {
+    if (productId == ProductIds.monthlySubscription) return 'monthly';
+    if (productId == ProductIds.yearlySubscription) return 'yearly';
+    if (productId == ProductIds.lifetimePurchase) return 'lifetime';
+    return 'unknown';
+  }
+
   void _onPurchaseComplete(PurchaseResult result) {
     AppLogger.info('Purchase complete: ${result.productId}');
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseCompleted(
+      plan: _planFromProductId(result.productId),
+    ));
     state = state.copyWith(
       isPurchasing: false,
       successMessage: 'Purchase successful! You are now a Premium member.',
@@ -108,6 +121,7 @@ class Purchase extends _$Purchase {
 
   void _onPurchaseError(String error) {
     AppLogger.error('Purchase error: $error');
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseFailed(plan: 'unknown', error: error));
     state = state.copyWith(
       isPurchasing: false,
       error: error,
@@ -127,6 +141,7 @@ class Purchase extends _$Purchase {
       state = state.copyWith(error: 'Monthly subscription not available');
       return;
     }
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseInitiated(plan: 'monthly'));
     await _purchase(product);
   }
 
@@ -137,6 +152,7 @@ class Purchase extends _$Purchase {
       state = state.copyWith(error: 'Yearly subscription not available');
       return;
     }
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseInitiated(plan: 'yearly'));
     await _purchase(product);
   }
 
@@ -147,6 +163,7 @@ class Purchase extends _$Purchase {
       state = state.copyWith(error: 'Lifetime purchase not available');
       return;
     }
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseInitiated(plan: 'lifetime'));
     await _purchase(product);
   }
 
@@ -170,6 +187,7 @@ class Purchase extends _$Purchase {
   Future<void> restorePurchases() async {
     if (state.isPurchasing) return;
 
+    unawaited(ref.read(analyticsServiceProvider).trackRestoreInitiated());
     state = state.copyWith(isPurchasing: true, clearError: true);
 
     await _purchaseService.restorePurchases();

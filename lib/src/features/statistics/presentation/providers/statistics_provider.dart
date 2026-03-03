@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../data/models/statistics_model.dart';
 import '../../data/repositories/statistics_repository.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
@@ -72,6 +75,7 @@ class Statistics extends _$Statistics {
     try {
       final stats = await _repository.getOverallStatistics();
       state = state.copyWith(statistics: stats, isLoading: false);
+      unawaited(ref.read(analyticsServiceProvider).trackStatisticsViewed());
     } on PremiumRequiredException catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -154,6 +158,7 @@ class YearInReview extends _$YearInReview {
     try {
       final stats = await _repository.getYearInReview(year: state.selectedYear);
       state = state.copyWith(stats: stats, isLoading: false);
+      unawaited(ref.read(analyticsServiceProvider).trackYearInReviewViewed(year: state.selectedYear));
     } on PremiumRequiredException catch (e) {
       state = state.copyWith(
         isLoading: false,

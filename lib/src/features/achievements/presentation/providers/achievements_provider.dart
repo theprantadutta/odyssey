@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/providers/analytics_provider.dart';
 import '../../data/models/achievement_model.dart';
 import '../../data/repositories/achievement_repository.dart';
 
@@ -77,6 +80,7 @@ class Achievements extends _$Achievements {
         totalEarned: response.totalEarned,
         isLoading: false,
       );
+      unawaited(ref.read(analyticsServiceProvider).trackAchievementsViewed());
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -90,6 +94,12 @@ class Achievements extends _$Achievements {
     try {
       final unlocked = await _repository.checkAchievements();
       if (unlocked.isNotEmpty) {
+        for (final unlock in unlocked) {
+          unawaited(ref.read(analyticsServiceProvider).trackAchievementEarned(
+            achievementId: unlock.achievementId,
+            type: unlock.type,
+          ));
+        }
         await refresh();
       }
       return unlocked;
@@ -159,6 +169,7 @@ class Leaderboard extends _$Leaderboard {
         currentUserEntry: response.currentUserEntry,
         isLoading: false,
       );
+      unawaited(ref.read(analyticsServiceProvider).trackLeaderboardViewed());
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

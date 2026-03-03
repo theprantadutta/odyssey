@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/subscription_provider.dart' show SubscriptionState, subscriptionProvider, isPremiumProvider;
 
@@ -29,6 +32,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(ref.read(analyticsServiceProvider).trackPaywallShown(
+      featureName: widget.featureName ?? 'unknown',
+    ));
     // Listen for purchase success to close the screen
     ref.listenManual(purchaseProvider, (previous, next) {
       if (next.successMessage != null && previous?.successMessage == null) {
