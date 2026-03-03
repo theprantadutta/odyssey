@@ -192,9 +192,24 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _EarnedTab(achievements: achievementsState.earned),
-                    _InProgressTab(achievements: achievementsState.inProgress),
-                    _LockedTab(achievements: achievementsState.locked),
+                    _EarnedTab(
+                      achievements: achievementsState.earned,
+                      onRefresh: () async {
+                        await ref.read(achievementsProvider.notifier).checkAndUnlock();
+                      },
+                    ),
+                    _InProgressTab(
+                      achievements: achievementsState.inProgress,
+                      onRefresh: () async {
+                        await ref.read(achievementsProvider.notifier).checkAndUnlock();
+                      },
+                    ),
+                    _LockedTab(
+                      achievements: achievementsState.locked,
+                      onRefresh: () async {
+                        await ref.read(achievementsProvider.notifier).checkAndUnlock();
+                      },
+                    ),
                   ],
                 ),
     );
@@ -266,8 +281,9 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
 
 class _EarnedTab extends StatelessWidget {
   final List<UserAchievement> achievements;
+  final Future<void> Function() onRefresh;
 
-  const _EarnedTab({required this.achievements});
+  const _EarnedTab({required this.achievements, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +308,7 @@ class _EarnedTab extends StatelessWidget {
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
-      onRefresh: () async {},
+      onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
         itemCount: byCategory.length,
@@ -336,8 +352,9 @@ class _EarnedTab extends StatelessWidget {
 
 class _InProgressTab extends StatelessWidget {
   final List<UserAchievement> achievements;
+  final Future<void> Function() onRefresh;
 
-  const _InProgressTab({required this.achievements});
+  const _InProgressTab({required this.achievements, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +372,7 @@ class _InProgressTab extends StatelessWidget {
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
-      onRefresh: () async {},
+      onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
         itemCount: achievements.length,
@@ -395,8 +412,9 @@ class _InProgressTab extends StatelessWidget {
 
 class _LockedTab extends ConsumerWidget {
   final List<Achievement> achievements;
+  final Future<void> Function() onRefresh;
 
-  const _LockedTab({required this.achievements});
+  const _LockedTab({required this.achievements, required this.onRefresh});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -430,7 +448,7 @@ class _LockedTab extends ConsumerWidget {
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
-      onRefresh: () async {},
+      onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
         itemCount: sortedTiers.length + (isPremium ? 0 : 1),
