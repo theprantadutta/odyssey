@@ -15,6 +15,12 @@ class ActivitiesDao extends DatabaseAccessor<AppDatabase> with _$ActivitiesDaoMi
         .watch();
   }
 
+  Future<List<LocalActivity>> getAll() {
+    return (select(localActivities)
+          ..where((a) => a.isDeleted.equals(false)))
+        .get();
+  }
+
   Future<List<LocalActivity>> getByTrip(String tripId) {
     return (select(localActivities)
           ..where((a) => a.tripId.equals(tripId) & a.isDeleted.equals(false))

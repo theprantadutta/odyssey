@@ -15,6 +15,12 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase> with _$ExpensesDaoMixin 
         .watch();
   }
 
+  Future<List<LocalExpense>> getAll() {
+    return (select(localExpenses)
+          ..where((e) => e.isDeleted.equals(false)))
+        .get();
+  }
+
   Future<List<LocalExpense>> getByTrip(String tripId) {
     return (select(localExpenses)
           ..where((e) => e.tripId.equals(tripId) & e.isDeleted.equals(false))

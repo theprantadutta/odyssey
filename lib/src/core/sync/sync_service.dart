@@ -186,6 +186,7 @@ class SyncService {
         await _processEntityChanges('documents', changes['documents'], _upsertDocument, _deleteEntity);
         await _processEntityChanges('packing_items', changes['packing_items'], _upsertPackingItem, _deleteEntity);
         await _processEntityChanges('trip_shares', changes['trip_shares'], _upsertTripShare, _deleteEntity);
+        await _processEntityChanges('templates', changes['templates'], _upsertTemplate, _deleteEntity);
       });
 
       await _db.syncQueueDao.setLastSyncAt(serverTime);
@@ -362,6 +363,9 @@ class SyncService {
 
   Future<void> _upsertTripShare(Map<String, dynamic> data) async {
     final id = data['id'] as String;
+    final existing = await _db.sharesDao.getById(id);
+    if (existing != null && existing.isDirty) return; // Don't overwrite local changes
+
     final companion = LocalTripSharesCompanion(
       id: Value(id),
       tripId: Value(data['trip_id'] as String),
@@ -373,8 +377,34 @@ class SyncService {
       status: Value(data['status'] as String),
       createdAt: Value(DateTime.parse(data['created_at'] as String)),
       acceptedAt: Value(data['accepted_at'] as String?),
+      inviteExpiresAt: Value(data['invite_expires_at'] as String?),
+      isDirty: const Value(false),
+      isLocalOnly: const Value(false),
+      isDeleted: const Value(false),
     );
-    await _db.into(_db.localTripShares).insertOnConflictUpdate(companion);
+    await _db.sharesDao.upsert(companion);
+  }
+
+  Future<void> _upsertTemplate(Map<String, dynamic> data) async {
+    final id = data['id'] as String;
+    final existing = await _db.templatesDao.getById(id);
+    if (existing != null && existing.isDirty) return; // Don't overwrite local changes
+
+    await _db.templatesDao.upsert(LocalTemplatesCompanion(
+      id: Value(id),
+      userId: Value(data['user_id'] as String),
+      name: Value(data['name'] as String),
+      description: Value(data['description'] as String?),
+      structureJson: Value(jsonEncode(data['structure_json'] ?? {})),
+      isPublic: Value(data['is_public'] as bool? ?? false),
+      category: Value(data['category'] as String?),
+      useCount: Value(data['use_count'] as int? ?? 0),
+      createdAt: Value(DateTime.parse(data['created_at'] as String)),
+      updatedAt: Value(DateTime.parse(data['updated_at'] as String)),
+      isDirty: const Value(false),
+      isLocalOnly: const Value(false),
+      isDeleted: const Value(false),
+    ));
   }
 
   // ─── Delete Handlers ──────────────────────────────────────────
@@ -396,7 +426,9 @@ class SyncService {
       case 'packing_items':
         await _db.packingDao.hardDelete(id);
       case 'trip_shares':
-        await (_db.delete(_db.localTripShares)..where((s) => s.id.equals(id))).go();
+        await _db.sharesDao.hardDelete(id);
+      case 'templates':
+        await _db.templatesDao.hardDelete(id);
     }
   }
 
@@ -420,6 +452,10 @@ class SyncService {
         await _upsertDocument({...data, 'id': entityId});
       case 'packing_item':
         await _upsertPackingItem({...data, 'id': entityId});
+      case 'template':
+        await _upsertTemplate({...data, 'id': entityId});
+      case 'trip_share':
+        await _upsertTripShare({...data, 'id': entityId});
     }
   }
 
@@ -437,6 +473,10 @@ class SyncService {
         await _db.documentsDao.clearDirty(entityId);
       case 'packing_item':
         await _db.packingDao.clearDirty(entityId);
+      case 'template':
+        await _db.templatesDao.clearDirty(entityId);
+      case 'trip_share':
+        await _db.sharesDao.clearDirty(entityId);
     }
   }
 

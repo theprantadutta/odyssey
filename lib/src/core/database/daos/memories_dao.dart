@@ -15,6 +15,12 @@ class MemoriesDao extends DatabaseAccessor<AppDatabase> with _$MemoriesDaoMixin 
         .watch();
   }
 
+  Future<List<LocalMemory>> getAll() {
+    return (select(localMemories)
+          ..where((m) => m.isDeleted.equals(false)))
+        .get();
+  }
+
   Future<List<LocalMemory>> getByTrip(String tripId) {
     return (select(localMemories)
           ..where((m) => m.tripId.equals(tripId) & m.isDeleted.equals(false))

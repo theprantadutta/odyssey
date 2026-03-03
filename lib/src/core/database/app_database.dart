@@ -6,11 +6,15 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'daos/activities_dao.dart';
+import 'daos/achievements_dao.dart';
 import 'daos/documents_dao.dart';
 import 'daos/expenses_dao.dart';
 import 'daos/memories_dao.dart';
 import 'daos/packing_dao.dart';
+import 'daos/shares_dao.dart';
+import 'daos/subscription_cache_dao.dart';
 import 'daos/sync_queue_dao.dart';
+import 'daos/templates_dao.dart';
 import 'daos/trips_dao.dart';
 
 part 'app_database.g.dart';
@@ -157,9 +161,116 @@ class LocalTripShares extends Table {
   TextColumn get status => text()();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get acceptedAt => text().nullable()();
+  TextColumn get inviteExpiresAt => text().nullable()();
+  // Sync columns
+  BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
+  BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+// ─── Templates ─────────────────────────────────────────────────────
+
+class LocalTemplates extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get structureJson => text().withDefault(const Constant('{}'))();
+  BoolColumn get isPublic => boolean().withDefault(const Constant(false))();
+  TextColumn get category => text().nullable()();
+  IntColumn get useCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  // Sync columns
+  BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
+  BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class LocalPublicTemplates extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get structureJson => text().withDefault(const Constant('{}'))();
+  BoolColumn get isPublic => boolean().withDefault(const Constant(true))();
+  TextColumn get category => text().nullable()();
+  IntColumn get useCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ─── Achievements ──────────────────────────────────────────────────
+
+class LocalAchievements extends Table {
+  TextColumn get id => text()();
+  TextColumn get type => text()();
+  TextColumn get name => text()();
+  TextColumn get description => text()();
+  TextColumn get icon => text()();
+  TextColumn get category => text()();
+  IntColumn get threshold => integer()();
+  TextColumn get tier => text()();
+  IntColumn get points => integer()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class LocalUserAchievements extends Table {
+  TextColumn get id => text()();
+  TextColumn get achievementId => text()();
+  IntColumn get progress => integer()();
+  TextColumn get earnedAt => text().nullable()();
+  BoolColumn get seen => boolean().withDefault(const Constant(false))();
+  TextColumn get achievementJson => text().withDefault(const Constant('{}'))();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ─── Shared Trips ──────────────────────────────────────────────────
+
+class LocalSharedTrips extends Table {
+  TextColumn get id => text()(); // tripId as PK
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get coverImageUrl => text().nullable()();
+  TextColumn get startDate => text()();
+  TextColumn get endDate => text().nullable()();
+  TextColumn get status => text()();
+  TextColumn get ownerEmail => text()();
+  TextColumn get permission => text()();
+  TextColumn get sharedAt => text()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ─── Subscription Cache ────────────────────────────────────────────
+
+class LocalSubscriptionCache extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }
 
 class SyncQueue extends Table {
@@ -196,6 +307,12 @@ class SyncMetadata extends Table {
     LocalDocuments,
     LocalPackingItems,
     LocalTripShares,
+    LocalTemplates,
+    LocalPublicTemplates,
+    LocalAchievements,
+    LocalUserAchievements,
+    LocalSharedTrips,
+    LocalSubscriptionCache,
     SyncQueue,
     SyncMetadata,
   ],
@@ -206,6 +323,10 @@ class SyncMetadata extends Table {
     MemoriesDao,
     DocumentsDao,
     PackingDao,
+    TemplatesDao,
+    AchievementsDao,
+    SharesDao,
+    SubscriptionCacheDao,
     SyncQueueDao,
   ],
 )
@@ -213,7 +334,33 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          // Add new tables
+          await m.createTable(localTemplates);
+          await m.createTable(localPublicTemplates);
+          await m.createTable(localAchievements);
+          await m.createTable(localUserAchievements);
+          await m.createTable(localSharedTrips);
+          await m.createTable(localSubscriptionCache);
+
+          // Add missing columns to LocalTripShares
+          await m.addColumn(localTripShares, localTripShares.inviteExpiresAt);
+          await m.addColumn(localTripShares, localTripShares.isDirty);
+          await m.addColumn(localTripShares, localTripShares.isLocalOnly);
+          await m.addColumn(localTripShares, localTripShares.isDeleted);
+        }
+      },
+    );
+  }
 
   Future<void> clearAllData() async {
     await transaction(() async {
