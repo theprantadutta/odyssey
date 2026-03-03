@@ -96,4 +96,19 @@ class NotificationHistoryRepository {
       return false;
     }
   }
+
+  /// Delete all notifications for the current user
+  Future<bool> deleteAllNotifications() async {
+    try {
+      await _dioClient.delete(
+        ApiConfig.notificationsDeleteAll,
+      );
+
+      AppLogger.info('All notifications deleted');
+      return true;
+    } on DioException catch (e) {
+      AppLogger.error('Failed to delete all notifications', e);
+      return false;
+    }
+  }
 }

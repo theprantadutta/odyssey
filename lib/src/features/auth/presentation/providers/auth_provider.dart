@@ -11,7 +11,9 @@ import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/token_refresh_service.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
+import '../../../../core/router/app_router.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -582,12 +584,65 @@ class Auth extends _$Auth {
     });
   }
 
+  /// Handle notification tap by routing to the appropriate screen
+  void _handleNotificationTap(Map<String, dynamic> data) {
+    try {
+      final router = ref.read(routerProvider);
+      final type = data['type'] as String?;
+
+      switch (type) {
+        case 'trip_invite':
+        case 'invite_expiring':
+          final inviteCode = data['invite_code'];
+          if (inviteCode != null) {
+            router.push('${AppRoutes.acceptInvite}/$inviteCode');
+          }
+          break;
+        case 'invite_accepted':
+        case 'invite_declined':
+        case 'share_revoked':
+        case 'permission_changed':
+        case 'memory_added':
+        case 'document_added':
+        case 'activity_added':
+        case 'expense_added':
+        case 'trip_reminder':
+          final tripId = data['trip_id'];
+          if (tripId != null) {
+            router.push('${AppRoutes.tripDetail}/$tripId');
+          }
+          break;
+        case 'achievement_earned':
+          router.push(AppRoutes.achievements);
+          break;
+        default:
+          // Unknown type - navigate to notifications list
+          router.push(AppRoutes.notifications);
+          break;
+      }
+    } catch (e) {
+      AppLogger.auth('Error handling notification tap: $e', isError: true);
+    }
+  }
+
+  /// Handle foreground message by incrementing unread badge count
+  void _handleForegroundMessage() {
+    try {
+      ref.read(unreadNotificationCountProvider.notifier).increment();
+    } catch (e) {
+      AppLogger.auth('Error incrementing notification count: $e', isError: true);
+    }
+  }
+
   /// Register device for push notifications (fire and forget)
   void _registerDeviceForNotifications() {
     Future.microtask(() async {
       try {
         final notificationsNotifier = ref.read(notificationsProvider.notifier);
-        await notificationsNotifier.initialize();
+        await notificationsNotifier.initialize(
+          onTap: _handleNotificationTap,
+          onForegroundMessage: _handleForegroundMessage,
+        );
         final success = await notificationsNotifier.registerDevice();
         if (success) {
           AppLogger.auth('Device registered for push notifications');

@@ -3,8 +3,9 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_typography.dart';
 
 /// Badge widget to display unread notification count
+/// When count is null (loading state), the badge is hidden
 class NotificationBadge extends StatelessWidget {
-  final int count;
+  final int? count;
   final double size;
 
   const NotificationBadge({
@@ -15,10 +16,10 @@ class NotificationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (count <= 0) return const SizedBox.shrink();
+    if (count == null || count! <= 0) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;
-    final displayCount = count > 99 ? '99+' : count.toString();
+    final displayCount = count! > 99 ? '99+' : count.toString();
 
     return Container(
       constraints: BoxConstraints(
@@ -26,7 +27,7 @@ class NotificationBadge extends StatelessWidget {
         minHeight: size,
       ),
       padding: EdgeInsets.symmetric(
-        horizontal: count > 9 ? 4 : 0,
+        horizontal: count! > 9 ? 4 : 0,
         vertical: 0,
       ),
       decoration: BoxDecoration(

@@ -91,14 +91,18 @@ class _NotificationHistoryScreenState
     }
   }
 
-  void _handleDeleteNotification(String notificationId) {
-    ref.read(notificationHistoryProvider.notifier).deleteNotification(notificationId);
+  void _handleDeleteNotification(String notificationId) async {
+    final success = await ref
+        .read(notificationHistoryProvider.notifier)
+        .deleteNotification(notificationId);
+
+    if (!mounted) return;
 
     final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Notification deleted'),
-        backgroundColor: colorScheme.onSurface,
+        content: Text(success ? 'Notification deleted' : 'Failed to delete notification'),
+        backgroundColor: success ? colorScheme.onSurface : AppColors.coralBurst,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -120,25 +124,101 @@ class _NotificationHistoryScreenState
     final state = ref.read(notificationHistoryProvider);
     if (state.unreadCount == 0) return;
 
-    await ref.read(notificationHistoryProvider.notifier).markAllAsRead();
+    final success = await ref.read(notificationHistoryProvider.notifier).markAllAsRead();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: AppSizes.space12),
-              Text('All notifications marked as read'),
+              Icon(
+                success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: AppSizes.space12),
+              Text(success
+                  ? 'All notifications marked as read'
+                  : 'Failed to mark notifications as read'),
             ],
           ),
-          backgroundColor: AppColors.success,
+          backgroundColor: success ? AppColors.success : AppColors.coralBurst,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
         ),
       );
+    }
+  }
+
+  void _handleClearAll() async {
+    HapticFeedback.mediumImpact();
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Clear All Notifications',
+          style: AppTypography.headlineSmall.copyWith(
+            color: colorScheme.onSurface,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete all notifications? This cannot be undone.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
+            child: Text(
+              'Clear All',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.coralBurst,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await ref
+          .read(notificationHistoryProvider.notifier)
+          .deleteAllNotifications();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success
+                ? 'All notifications cleared'
+                : 'Failed to clear notifications'),
+            backgroundColor: success ? AppColors.success : AppColors.coralBurst,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -182,7 +262,40 @@ class _NotificationHistoryScreenState
                 ),
               ),
             ),
-          const SizedBox(width: AppSizes.space8),
+          if (state.notifications.isNotEmpty)
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: colorScheme.onSurface,
+              ),
+              onSelected: (value) {
+                if (value == 'clear_all') {
+                  _handleClearAll();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'clear_all',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_sweep_rounded,
+                        size: 20,
+                        color: AppColors.coralBurst,
+                      ),
+                      const SizedBox(width: AppSizes.space8),
+                      Text(
+                        'Clear all',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.coralBurst,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(width: AppSizes.space4),
         ],
       ),
       body: RefreshIndicator(
@@ -265,38 +378,68 @@ class _NotificationHistoryScreenState
   }
 
   Widget _buildNotificationsList(NotificationHistoryState state) {
-    return ListView.builder(
+    final groups = state.groupedByDate;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return CustomScrollView(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.space16,
-        vertical: AppSizes.space8,
-      ),
-      itemCount: state.notifications.length + (state.isLoadingMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        // Show loading indicator at the bottom
-        if (index == state.notifications.length) {
-          return const Padding(
-            padding: EdgeInsets.all(AppSizes.space24),
-            child: Center(child: BouncingDotsLoader()),
-          );
-        }
-
-        final notification = state.notifications[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSizes.space12),
-          child: NotificationItem(
-            notification: notification,
-            onTap: () => _handleNotificationTap(notification),
-            onDelete: () => _handleDeleteNotification(notification.id),
-            onMarkAsRead: notification.isRead
-                ? null
-                : () => ref
-                    .read(notificationHistoryProvider.notifier)
-                    .markAsRead(notification.id),
+      slivers: [
+        for (final group in groups) ...[
+          // Section header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.space16,
+                AppSizes.space16,
+                AppSizes.space16,
+                AppSizes.space8,
+              ),
+              child: Text(
+                group.label,
+                style: AppTypography.labelLarge.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
-        );
-      },
+          // Notification items
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final notification = group.notifications[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSizes.space12),
+                    child: NotificationItem(
+                      notification: notification,
+                      onTap: () => _handleNotificationTap(notification),
+                      onDelete: () =>
+                          _handleDeleteNotification(notification.id),
+                      onMarkAsRead: notification.isRead
+                          ? null
+                          : () => ref
+                              .read(notificationHistoryProvider.notifier)
+                              .markAsRead(notification.id),
+                    ),
+                  );
+                },
+                childCount: group.notifications.length,
+              ),
+            ),
+          ),
+        ],
+        // Loading indicator
+        if (state.isLoadingMore)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(AppSizes.space24),
+              child: Center(child: BouncingDotsLoader()),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -6,6 +6,9 @@ import 'logger_service.dart';
 /// Callback type for handling notification taps
 typedef NotificationTapCallback = void Function(Map<String, dynamic> data);
 
+/// Callback type for foreground message events
+typedef ForegroundMessageCallback = void Function();
+
 /// Background message handler - must be a top-level function
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -23,6 +26,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   NotificationTapCallback? _onNotificationTap;
+  ForegroundMessageCallback? _onForegroundMessage;
   bool _initialized = false;
 
   /// Android notification channel
@@ -36,10 +40,14 @@ class NotificationService {
   );
 
   /// Initialize the notification service
-  Future<void> initialize({NotificationTapCallback? onNotificationTap}) async {
+  Future<void> initialize({
+    NotificationTapCallback? onNotificationTap,
+    ForegroundMessageCallback? onForegroundMessage,
+  }) async {
     if (_initialized) return;
 
     _onNotificationTap = onNotificationTap;
+    _onForegroundMessage = onForegroundMessage;
 
     // Set up background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -143,6 +151,9 @@ class NotificationService {
       imageUrl: notification.android?.imageUrl ?? notification.apple?.imageUrl,
       data: message.data,
     );
+
+    // Notify listener that a foreground message arrived (for badge update)
+    _onForegroundMessage?.call();
   }
 
   /// Show a local notification

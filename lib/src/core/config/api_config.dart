@@ -103,6 +103,8 @@ class ApiConfig {
   static const String notifications = '/notifications';
   static const String notificationsUnreadCount = '$notifications/unread-count';
   static const String notificationsReadAll = '$notifications/read-all';
+  static const String notificationsDeleteAll = '$notifications/all';
+  static const String notificationsPreferences = '$notifications/preferences';
   static String notificationMarkRead(String id) => '$notifications/$id/read';
   static String notificationDelete(String id) => '$notifications/$id';
 

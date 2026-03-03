@@ -249,7 +249,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                             },
                             tooltip: 'Notifications',
                           ),
-                          if (unreadCount > 0)
+                          if (unreadCount != null && unreadCount > 0)
                             Positioned(
                               right: 4,
                               top: 4,

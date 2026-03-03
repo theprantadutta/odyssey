@@ -195,6 +195,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: AppSizes.space16),
 
+            // Notifications Section
+            FormSectionCard(
+              title: 'Notifications',
+              icon: Icons.notifications_outlined,
+              iconBackgroundColor: AppColors.sunnyYellow.withValues(alpha: 0.15),
+              iconColor: AppColors.sunnyYellow,
+              children: [
+                SettingsTile(
+                  title: 'Notification Preferences',
+                  subtitle: 'Categories, quiet hours',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.notificationSettings);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space16),
+
             // Appearance Section
             FormSectionCard(
               title: 'Appearance',

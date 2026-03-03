@@ -70,13 +70,17 @@ class Notifications extends _$Notifications {
   }
 
   /// Initialize notifications
-  Future<void> initialize({void Function(Map<String, dynamic>)? onTap}) async {
+  Future<void> initialize({
+    void Function(Map<String, dynamic>)? onTap,
+    void Function()? onForegroundMessage,
+  }) async {
     if (state.isInitialized) return;
 
     try {
       // Initialize notification service
       await _notificationService.initialize(
         onNotificationTap: onTap,
+        onForegroundMessage: onForegroundMessage,
       );
 
       // Request permission

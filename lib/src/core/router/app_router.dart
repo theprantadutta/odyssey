@@ -21,6 +21,7 @@ import '../../features/statistics/presentation/screens/statistics_dashboard_scre
 import '../../features/statistics/presentation/screens/year_in_review_screen.dart';
 import '../../features/map/presentation/screens/world_map_screen.dart';
 import '../../features/notifications/presentation/screens/notification_history_screen.dart';
+import '../../features/notifications/presentation/screens/notification_settings_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/subscription/presentation/screens/subscription_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
   static const String statistics = '/statistics';
   static const String worldMap = '/map';
   static const String notifications = '/notifications';
+  static const String notificationSettings = '/notification-settings';
   static const String settings = '/settings';
   static const String subscription = '/subscription';
 }
@@ -246,6 +248,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationHistoryScreen(),
+      ),
+      // Notification settings route
+      GoRoute(
+        path: AppRoutes.notificationSettings,
+        builder: (context, state) => const NotificationSettingsScreen(),
       ),
       // Settings route
       GoRoute(

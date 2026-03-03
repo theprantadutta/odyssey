@@ -5,6 +5,14 @@ import '../../data/repositories/notification_history_repository.dart';
 
 part 'notification_history_provider.g.dart';
 
+/// A group of notifications with a date label
+class NotificationGroup {
+  final String label;
+  final List<NotificationHistoryModel> notifications;
+
+  const NotificationGroup({required this.label, required this.notifications});
+}
+
 /// Notification history state with pagination support
 class NotificationHistoryState {
   final List<NotificationHistoryModel> notifications;
@@ -33,6 +41,50 @@ class NotificationHistoryState {
 
   /// Check if we can load more notifications
   bool get canLoadMore => hasNextPage && !isLoadingMore;
+
+  /// Group notifications by date buckets
+  List<NotificationGroup> get groupedByDate {
+    if (notifications.isEmpty) return [];
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekAgo = today.subtract(const Duration(days: 7));
+
+    final todayList = <NotificationHistoryModel>[];
+    final yesterdayList = <NotificationHistoryModel>[];
+    final thisWeekList = <NotificationHistoryModel>[];
+    final earlierList = <NotificationHistoryModel>[];
+
+    for (final n in notifications) {
+      final date = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      if (date.isAtSameMomentAs(today) || date.isAfter(today)) {
+        todayList.add(n);
+      } else if (date.isAtSameMomentAs(yesterday)) {
+        yesterdayList.add(n);
+      } else if (date.isAfter(weekAgo)) {
+        thisWeekList.add(n);
+      } else {
+        earlierList.add(n);
+      }
+    }
+
+    final groups = <NotificationGroup>[];
+    if (todayList.isNotEmpty) {
+      groups.add(NotificationGroup(label: 'Today', notifications: todayList));
+    }
+    if (yesterdayList.isNotEmpty) {
+      groups.add(NotificationGroup(label: 'Yesterday', notifications: yesterdayList));
+    }
+    if (thisWeekList.isNotEmpty) {
+      groups.add(NotificationGroup(label: 'This Week', notifications: thisWeekList));
+    }
+    if (earlierList.isNotEmpty) {
+      groups.add(NotificationGroup(label: 'Earlier', notifications: earlierList));
+    }
+
+    return groups;
+  }
 
   NotificationHistoryState copyWith({
     List<NotificationHistoryModel>? notifications,
@@ -139,99 +191,148 @@ class NotificationHistory extends _$NotificationHistory {
   }
 
   /// Mark a single notification as read
-  Future<void> markAsRead(String notificationId) async {
+  /// Returns true on success, false on failure (for UI error feedback)
+  Future<bool> markAsRead(String notificationId) async {
+    // Optimistic update
+    final previousState = state;
+    final updatedNotifications = state.notifications.map((n) {
+      if (n.id == notificationId) {
+        return n.copyWith(isRead: true, readAt: DateTime.now());
+      }
+      return n;
+    }).toList();
+
+    final newUnreadCount = state.unreadCount > 0 ? state.unreadCount - 1 : 0;
+
+    state = state.copyWith(
+      notifications: updatedNotifications,
+      unreadCount: newUnreadCount,
+    );
+    ref.read(unreadNotificationCountProvider.notifier).setCount(newUnreadCount);
+
     try {
       final success = await _repository.markAsRead(notificationId);
-      if (success) {
-        // Update local state
-        final updatedNotifications = state.notifications.map((n) {
-          if (n.id == notificationId) {
-            return n.copyWith(isRead: true, readAt: DateTime.now());
-          }
-          return n;
-        }).toList();
-
-        final newUnreadCount = state.unreadCount > 0 ? state.unreadCount - 1 : 0;
-
-        state = state.copyWith(
-          notifications: updatedNotifications,
-          unreadCount: newUnreadCount,
-        );
-
-        // Update the unread count provider
-        ref.read(unreadNotificationCountProvider.notifier).setCount(newUnreadCount);
+      if (!success) {
+        // Rollback on failure
+        state = previousState;
+        ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+        return false;
       }
+      return true;
     } catch (e) {
-      // Silent failure - the notification will still be marked as read on next refresh
+      // Rollback on error
+      state = previousState;
+      ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+      return false;
     }
   }
 
   /// Mark all notifications as read
-  Future<void> markAllAsRead() async {
+  /// Returns true on success, false on failure
+  Future<bool> markAllAsRead() async {
+    // Optimistic update
+    final previousState = state;
+    final updatedNotifications = state.notifications
+        .map((n) => n.copyWith(isRead: true, readAt: DateTime.now()))
+        .toList();
+
+    state = state.copyWith(
+      notifications: updatedNotifications,
+      unreadCount: 0,
+    );
+    ref.read(unreadNotificationCountProvider.notifier).setCount(0);
+
     try {
       await _repository.markAllAsRead();
-
-      // Update local state
-      final updatedNotifications = state.notifications
-          .map((n) => n.copyWith(isRead: true, readAt: DateTime.now()))
-          .toList();
-
-      state = state.copyWith(
-        notifications: updatedNotifications,
-        unreadCount: 0,
-      );
-
-      // Update the unread count provider
-      ref.read(unreadNotificationCountProvider.notifier).setCount(0);
+      return true;
     } catch (e) {
-      // Silent failure - will sync on next refresh
+      // Rollback on error
+      state = previousState;
+      ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+      return false;
     }
   }
 
   /// Delete a notification
-  Future<void> deleteNotification(String notificationId) async {
+  /// Returns true on success, false on failure
+  Future<bool> deleteNotification(String notificationId) async {
+    // Optimistic update
+    final previousState = state;
+    final deletedNotification = state.notifications
+        .where((n) => n.id == notificationId)
+        .firstOrNull;
+
+    final updatedNotifications = state.notifications
+        .where((n) => n.id != notificationId)
+        .toList();
+
+    int newUnreadCount = state.unreadCount;
+    if (deletedNotification != null && !deletedNotification.isRead) {
+      newUnreadCount = state.unreadCount > 0 ? state.unreadCount - 1 : 0;
+    }
+
+    state = state.copyWith(
+      notifications: updatedNotifications,
+      total: state.total > 0 ? state.total - 1 : 0,
+      unreadCount: newUnreadCount,
+    );
+    ref.read(unreadNotificationCountProvider.notifier).setCount(newUnreadCount);
+
     try {
       final success = await _repository.deleteNotification(notificationId);
-      if (success) {
-        // Find the notification to check if it was unread
-        final deletedNotification = state.notifications
-            .where((n) => n.id == notificationId)
-            .firstOrNull;
-
-        // Update local state
-        final updatedNotifications = state.notifications
-            .where((n) => n.id != notificationId)
-            .toList();
-
-        int newUnreadCount = state.unreadCount;
-        if (deletedNotification != null && !deletedNotification.isRead) {
-          newUnreadCount = state.unreadCount > 0 ? state.unreadCount - 1 : 0;
-        }
-
-        state = state.copyWith(
-          notifications: updatedNotifications,
-          total: state.total > 0 ? state.total - 1 : 0,
-          unreadCount: newUnreadCount,
-        );
-
-        // Update the unread count provider
-        ref.read(unreadNotificationCountProvider.notifier).setCount(newUnreadCount);
+      if (!success) {
+        // Rollback on failure
+        state = previousState;
+        ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+        return false;
       }
+      return true;
     } catch (e) {
-      // Silent failure - will sync on next refresh
+      // Rollback on error
+      state = previousState;
+      ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+      return false;
+    }
+  }
+
+  /// Delete all notifications for the current user
+  /// Returns true on success, false on failure
+  Future<bool> deleteAllNotifications() async {
+    final previousState = state;
+
+    state = state.copyWith(
+      notifications: [],
+      total: 0,
+      unreadCount: 0,
+    );
+    ref.read(unreadNotificationCountProvider.notifier).setCount(0);
+
+    try {
+      final success = await _repository.deleteAllNotifications();
+      if (!success) {
+        state = previousState;
+        ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      state = previousState;
+      ref.read(unreadNotificationCountProvider.notifier).setCount(previousState.unreadCount);
+      return false;
     }
   }
 }
 
 /// Unread notification count provider (for badge display)
+/// Uses nullable int: null = loading, 0 = no unread, >0 = count
 /// This is a separate provider for efficiency - we can update it independently
 @Riverpod(keepAlive: true)
 class UnreadNotificationCount extends _$UnreadNotificationCount {
   @override
-  int build() {
-    // Initially fetch the count
+  int? build() {
+    // Initially fetch the count - return null while loading
     _fetchCount();
-    return 0;
+    return null;
   }
 
   Future<void> _fetchCount() async {
@@ -240,7 +341,8 @@ class UnreadNotificationCount extends _$UnreadNotificationCount {
       final count = await repository.getUnreadCount();
       state = count;
     } catch (e) {
-      // Keep the current count on error
+      // Set to 0 on error to avoid perpetual loading state
+      state ??= 0;
     }
   }
 
@@ -256,13 +358,13 @@ class UnreadNotificationCount extends _$UnreadNotificationCount {
 
   /// Increment count (e.g., when a new notification arrives)
   void increment() {
-    state = state + 1;
+    state = (state ?? 0) + 1;
   }
 
   /// Decrement count (e.g., when a notification is read)
   void decrement() {
-    if (state > 0) {
-      state = state - 1;
+    if (state != null && state! > 0) {
+      state = state! - 1;
     }
   }
 }
