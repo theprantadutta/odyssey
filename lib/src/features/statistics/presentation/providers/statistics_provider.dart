@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/statistics_model.dart';
 import '../../data/repositories/statistics_repository.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
 
 part 'statistics_provider.g.dart';
 
@@ -56,6 +57,16 @@ class Statistics extends _$Statistics {
   }
 
   Future<void> _loadStatistics() async {
+    final isPremium = ref.read(isPremiumProvider);
+    if (!isPremium) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: 'Full Statistics',
+      );
+      return;
+    }
+
     state = state.copyWith(isLoading: true, error: null, isPremiumRequired: false);
 
     try {
