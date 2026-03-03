@@ -7,12 +7,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/document_model.dart';
 import '../../data/repositories/document_repository.dart';
 import '../providers/documents_provider.dart';
 
-/// Maximum number of files per document
-const int _maxFilesPerDocument = 10;
+/// Default maximum number of files per document (used as fallback)
+const int _defaultMaxFilesPerDocument = 10;
 
 /// Maximum file size (10MB)
 const int _maxFileSizeBytes = 10 * 1024 * 1024;
@@ -39,6 +40,10 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   final List<fp.PlatformFile> _selectedFiles = [];
   bool _isLoading = false;
   double _uploadProgress = 0.0;
+
+  /// Dynamic file limit based on user's subscription tier
+  int get _maxFilesPerDocument =>
+      LimitChecker.getFilesPerDocumentLimit(ref) ?? _defaultMaxFilesPerDocument;
 
   @override
   void initState() {
@@ -289,7 +294,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
         const SizedBox(height: AppSizes.space8),
         Text(
-          'PDF, JPG, PNG, WEBP (max 10MB each, up to 10 files)',
+          'PDF, JPG, PNG, WEBP (max 10MB each, up to $_maxFilesPerDocument files)',
           style: AppTypography.caption.copyWith(
             color: theme.hintColor,
           ),
@@ -918,6 +923,16 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   }
 
   Future<void> _uploadDocument() async {
+    // Proactive limit check for new documents
+    final currentCount =
+        ref.read(tripDocumentsProvider(widget.tripId)).documents.length;
+    final canCreate = await LimitChecker.canCreateDocument(
+      context,
+      ref,
+      currentCount: currentCount,
+    );
+    if (!canCreate) return;
+
     if (!_formKey.currentState!.validate()) return;
     if (_selectedFiles.isEmpty) {
       _showError('Please select at least one file');

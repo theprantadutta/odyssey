@@ -95,12 +95,16 @@ class YearInReviewState {
   final int selectedYear;
   final bool isLoading;
   final String? error;
+  final bool isPremiumRequired;
+  final String? premiumFeatureName;
 
   YearInReviewState({
     this.stats,
     int? selectedYear,
     this.isLoading = false,
     this.error,
+    this.isPremiumRequired = false,
+    this.premiumFeatureName,
   }) : selectedYear = selectedYear ?? DateTime.now().year;
 
   YearInReviewState copyWith({
@@ -108,12 +112,16 @@ class YearInReviewState {
     int? selectedYear,
     bool? isLoading,
     String? error,
+    bool? isPremiumRequired,
+    String? premiumFeatureName,
   }) {
     return YearInReviewState(
       stats: stats ?? this.stats,
       selectedYear: selectedYear ?? this.selectedYear,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      isPremiumRequired: isPremiumRequired ?? this.isPremiumRequired,
+      premiumFeatureName: premiumFeatureName ?? this.premiumFeatureName,
     );
   }
 }
@@ -131,11 +139,28 @@ class YearInReview extends _$YearInReview {
   }
 
   Future<void> _loadYearInReview() async {
-    state = state.copyWith(isLoading: true, error: null);
+    final isPremium = ref.read(isPremiumProvider);
+    if (!isPremium) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: 'Year in Review',
+      );
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, error: null, isPremiumRequired: false);
 
     try {
       final stats = await _repository.getYearInReview(year: state.selectedYear);
       state = state.copyWith(stats: stats, isLoading: false);
+    } on PremiumRequiredException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: e.featureName,
+        error: e.message,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -158,6 +183,8 @@ class TimelineState {
   final bool isLoading;
   final bool hasMore;
   final String? error;
+  final bool isPremiumRequired;
+  final String? premiumFeatureName;
 
   const TimelineState({
     this.items = const [],
@@ -165,6 +192,8 @@ class TimelineState {
     this.isLoading = false,
     this.hasMore = true,
     this.error,
+    this.isPremiumRequired = false,
+    this.premiumFeatureName,
   });
 
   TimelineState copyWith({
@@ -173,6 +202,8 @@ class TimelineState {
     bool? isLoading,
     bool? hasMore,
     String? error,
+    bool? isPremiumRequired,
+    String? premiumFeatureName,
   }) {
     return TimelineState(
       items: items ?? this.items,
@@ -180,6 +211,8 @@ class TimelineState {
       isLoading: isLoading ?? this.isLoading,
       hasMore: hasMore ?? this.hasMore,
       error: error,
+      isPremiumRequired: isPremiumRequired ?? this.isPremiumRequired,
+      premiumFeatureName: premiumFeatureName ?? this.premiumFeatureName,
     );
   }
 }
@@ -197,7 +230,17 @@ class TravelTimelineNotifier extends _$TravelTimelineNotifier {
   }
 
   Future<void> _loadTimeline() async {
-    state = state.copyWith(isLoading: true, error: null);
+    final isPremium = ref.read(isPremiumProvider);
+    if (!isPremium) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: 'Travel Timeline',
+      );
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, error: null, isPremiumRequired: false);
 
     try {
       final timeline = await _repository.getTravelTimeline();
@@ -206,6 +249,13 @@ class TravelTimelineNotifier extends _$TravelTimelineNotifier {
         totalTrips: timeline.totalTrips,
         isLoading: false,
         hasMore: timeline.items.length < timeline.totalTrips,
+      );
+    } on PremiumRequiredException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        isPremiumRequired: true,
+        premiumFeatureName: e.featureName,
+        error: e.message,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

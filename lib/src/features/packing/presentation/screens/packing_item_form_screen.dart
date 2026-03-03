@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/packing_model.dart';
 import '../providers/packing_provider.dart';
 
@@ -483,6 +484,18 @@ class _PackingItemFormScreenState extends ConsumerState<PackingItemFormScreen> {
   }
 
   Future<void> _saveItem() async {
+    // Proactive limit check for new packing items only
+    if (!_isEditing) {
+      final currentCount =
+          ref.read(tripPackingProvider(widget.tripId)).items.length;
+      final canCreate = await LimitChecker.canCreatePackingItem(
+        context,
+        ref,
+        currentCount: currentCount,
+      );
+      if (!canCreate) return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     HapticFeedback.mediumImpact();

@@ -7,6 +7,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/form_section_card.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expenses_provider.dart';
 
@@ -520,6 +521,18 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    // Proactive limit check for new expenses only
+    if (!_isEditing) {
+      final currentCount =
+          ref.read(tripExpensesProvider(widget.tripId)).expenses.length;
+      final canCreate = await LimitChecker.canCreateExpense(
+        context,
+        ref,
+        currentCount: currentCount,
+      );
+      if (!canCreate) return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     HapticFeedback.mediumImpact();

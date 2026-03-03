@@ -10,6 +10,7 @@ import '../../../../common/utils/validators.dart';
 import '../../../../common/widgets/app_text_field.dart';
 import '../../../../common/widgets/form_section_card.dart';
 import '../../../../common/widgets/location_picker_button.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/activity_model.dart';
 import '../providers/activities_provider.dart';
 
@@ -142,6 +143,18 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    // Proactive limit check for new activities only
+    if (widget.activity == null) {
+      final currentCount =
+          ref.read(tripActivitiesProvider(widget.tripId)).activities.length;
+      final canCreate = await LimitChecker.canCreateActivity(
+        context,
+        ref,
+        currentCount: currentCount,
+      );
+      if (!canCreate) return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       HapticFeedback.heavyImpact();
       return;

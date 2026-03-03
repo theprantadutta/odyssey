@@ -9,6 +9,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/location_picker_button.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/repositories/memory_repository.dart';
 import '../providers/memories_provider.dart';
 
@@ -18,8 +19,8 @@ const int _maxPhotoSizeBytes = 10 * 1024 * 1024;
 /// Maximum file size for videos (100MB)
 const int _maxVideoSizeBytes = 100 * 1024 * 1024;
 
-/// Maximum number of media files per memory
-const int _maxMediaFiles = 10;
+/// Default maximum number of media files per memory (used as fallback)
+const int _defaultMaxMediaFiles = 10;
 
 /// Represents a selected media item (photo or video)
 class _SelectedMedia {
@@ -63,6 +64,10 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   DateTime? _takenAt;
   TimeOfDay? _takenAtTime;
   bool _showGpsFields = false;
+
+  /// Dynamic media limit based on user's subscription tier
+  int get _maxMediaFiles =>
+      LimitChecker.getMediaPerMemoryLimit(ref) ?? _defaultMaxMediaFiles;
 
   @override
   void initState() {
@@ -1209,6 +1214,16 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
   }
 
   Future<void> _handleUpload() async {
+    // Proactive limit check for new memories
+    final currentMemoryCount =
+        ref.read(tripMemoriesProvider(widget.tripId)).memories.length;
+    final canCreate = await LimitChecker.canCreateMemory(
+      context,
+      ref,
+      currentCount: currentMemoryCount,
+    );
+    if (!canCreate) return;
+
     if (!_formKey.currentState!.validate()) return;
 
     final hasMedia = _selectedMedia.isNotEmpty;

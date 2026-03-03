@@ -13,6 +13,7 @@ import '../../../../common/widgets/form_section_card.dart';
 import '../../../../common/animations/animated_widgets/animated_button.dart';
 import '../../../../common/utils/validators.dart';
 import '../../../../core/services/file_upload_service.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 
@@ -140,6 +141,12 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    // Proactive limit check for new trips only
+    if (widget.trip == null) {
+      final canCreate = await LimitChecker.canCreateTrip(context, ref);
+      if (!canCreate) return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       HapticFeedback.heavyImpact();
       return;

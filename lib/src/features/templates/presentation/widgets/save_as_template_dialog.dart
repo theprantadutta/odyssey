@@ -4,6 +4,7 @@ import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
 import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
+import 'package:odyssey/src/features/subscription/presentation/utils/limit_checker.dart';
 import 'package:odyssey/src/features/templates/data/models/template_model.dart';
 import 'package:odyssey/src/features/templates/presentation/providers/templates_provider.dart';
 
@@ -63,6 +64,16 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
   }
 
   Future<void> _saveTemplate() async {
+    // Proactive limit check for new templates
+    final currentCount =
+        ref.read(myTemplatesProvider).templates.length;
+    final canCreate = await LimitChecker.canCreateTemplate(
+      context,
+      ref,
+      currentCount: currentCount,
+    );
+    if (!canCreate) return;
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
