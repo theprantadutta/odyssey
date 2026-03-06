@@ -8,8 +8,12 @@ part 'analytics_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 AnalyticsFacade analyticsService(Ref ref) {
+  if (kDebugMode) {
+    FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
+  }
+
   final clients = <AnalyticsClient>[
-    FirebaseAnalyticsClient(FirebaseAnalytics.instance),
+    if (!kDebugMode) FirebaseAnalyticsClient(FirebaseAnalytics.instance),
     if (kDebugMode) LoggerAnalyticsClient(),
   ];
   return AnalyticsFacade(clients);

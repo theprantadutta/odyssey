@@ -91,208 +91,216 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
 
   final FirebaseAnalytics _analytics;
 
+  Future<void> _safeLog(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (e, st) {
+      AppLogger.error('Firebase Analytics error', e, st);
+    }
+  }
+
   // Auth
   @override
   Future<void> trackIntroSeen() =>
-      _analytics.logEvent(name: 'intro_seen');
+      _safeLog(() => _analytics.logEvent(name: 'intro_seen'));
 
   @override
   Future<void> trackTermsAccepted() =>
-      _analytics.logEvent(name: 'terms_accepted');
+      _safeLog(() => _analytics.logEvent(name: 'terms_accepted'));
 
   @override
   Future<void> trackSignUp({required String method}) =>
-      _analytics.logSignUp(signUpMethod: method);
+      _safeLog(() => _analytics.logSignUp(signUpMethod: method));
 
   @override
   Future<void> trackLogin({required String method}) =>
-      _analytics.logLogin(loginMethod: method);
+      _safeLog(() => _analytics.logLogin(loginMethod: method));
 
   @override
   Future<void> trackOnboardingCompleted({required bool addedDemoTrips}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'onboarding_completed',
         parameters: {'added_demo_trips': addedDemoTrips},
-      );
+      ));
 
   @override
   Future<void> trackAccountLinked() =>
-      _analytics.logEvent(name: 'account_linked');
+      _safeLog(() => _analytics.logEvent(name: 'account_linked'));
 
   @override
   Future<void> trackLogout() =>
-      _analytics.logEvent(name: 'logout');
+      _safeLog(() => _analytics.logEvent(name: 'logout'));
 
   // Trips
   @override
   Future<void> trackTripCreated({required String source}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'trip_created',
         parameters: {'source': source},
-      );
+      ));
 
   @override
   Future<void> trackTripUpdated() =>
-      _analytics.logEvent(name: 'trip_updated');
+      _safeLog(() => _analytics.logEvent(name: 'trip_updated'));
 
   @override
   Future<void> trackTripDeleted() =>
-      _analytics.logEvent(name: 'trip_deleted');
+      _safeLog(() => _analytics.logEvent(name: 'trip_deleted'));
 
   @override
   Future<void> trackTripSearch({required bool hasResults}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'trip_search',
         parameters: {'has_results': hasResults},
-      );
+      ));
 
   @override
   Future<void> trackTripFilterApplied({required String filterType}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'trip_filter_applied',
         parameters: {'filter_type': filterType},
-      );
+      ));
 
   // Content
   @override
   Future<void> trackActivityCreated({required String category}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'activity_created',
         parameters: {'category': category},
-      );
+      ));
 
   @override
   Future<void> trackExpenseCreated({
     required String category,
     required String currency,
   }) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'expense_created',
         parameters: {'category': category, 'currency': currency},
-      );
+      ));
 
   @override
   Future<void> trackMemoryUploaded({required String mediaType}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'memory_uploaded',
         parameters: {'media_type': mediaType},
-      );
+      ));
 
   @override
   Future<void> trackDocumentUploaded({required String type}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'document_uploaded',
         parameters: {'type': type},
-      );
+      ));
 
   @override
   Future<void> trackPackingItemCreated({required String category}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'packing_item_created',
         parameters: {'category': category},
-      );
+      ));
 
   @override
   Future<void> trackPackingItemToggled({required bool packed}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'packing_item_toggled',
         parameters: {'packed': packed},
-      );
+      ));
 
   // Templates
   @override
   Future<void> trackTemplateCreated({required String source}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'template_created',
         parameters: {'source': source},
-      );
+      ));
 
   @override
   Future<void> trackTemplateUsed({
     required String templateId,
     required bool isPublic,
   }) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'template_used',
         parameters: {'template_id': templateId, 'is_public': isPublic},
-      );
+      ));
 
   @override
   Future<void> trackTemplateForked({required String templateId}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'template_forked',
         parameters: {'template_id': templateId},
-      );
+      ));
 
   @override
   Future<void> trackTemplateGallerySearched({required String category}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'template_gallery_searched',
         parameters: {'category': category},
-      );
+      ));
 
   // Sharing
   @override
   Future<void> trackTripShared({required String permission}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'trip_shared',
         parameters: {'permission': permission},
-      );
+      ));
 
   @override
   Future<void> trackSharePermissionChanged({required String newPermission}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'share_permission_changed',
         parameters: {'new_permission': newPermission},
-      );
+      ));
 
   @override
   Future<void> trackShareRevoked() =>
-      _analytics.logEvent(name: 'share_revoked');
+      _safeLog(() => _analytics.logEvent(name: 'share_revoked'));
 
   @override
   Future<void> trackInviteAccepted() =>
-      _analytics.logEvent(name: 'invite_accepted');
+      _safeLog(() => _analytics.logEvent(name: 'invite_accepted'));
 
   @override
   Future<void> trackInviteDeclined() =>
-      _analytics.logEvent(name: 'invite_declined');
+      _safeLog(() => _analytics.logEvent(name: 'invite_declined'));
 
   // Subscription
   @override
   Future<void> trackPaywallShown({required String featureName}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'paywall_shown',
         parameters: {'feature_name': featureName},
-      );
+      ));
 
   @override
   Future<void> trackPurchaseInitiated({required String plan}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'purchase_initiated',
         parameters: {'plan': plan},
-      );
+      ));
 
   @override
   Future<void> trackPurchaseCompleted({required String plan}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'purchase_completed',
         parameters: {'plan': plan},
-      );
+      ));
 
   @override
   Future<void> trackPurchaseFailed({
     required String plan,
     required String error,
   }) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'purchase_failed',
         parameters: {'plan': plan, 'error': error},
-      );
+      ));
 
   @override
   Future<void> trackRestoreInitiated() =>
-      _analytics.logEvent(name: 'restore_initiated');
+      _safeLog(() => _analytics.logEvent(name: 'restore_initiated'));
 
   // Achievements
   @override
@@ -300,53 +308,54 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String achievementId,
     required String type,
   }) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'achievement_earned',
         parameters: {'achievement_id': achievementId, 'type': type},
-      );
+      ));
 
   @override
   Future<void> trackAchievementsViewed() =>
-      _analytics.logEvent(name: 'achievements_viewed');
+      _safeLog(() => _analytics.logEvent(name: 'achievements_viewed'));
 
   @override
   Future<void> trackLeaderboardViewed() =>
-      _analytics.logEvent(name: 'leaderboard_viewed');
+      _safeLog(() => _analytics.logEvent(name: 'leaderboard_viewed'));
 
   // Statistics
   @override
   Future<void> trackStatisticsViewed() =>
-      _analytics.logEvent(name: 'statistics_viewed');
+      _safeLog(() => _analytics.logEvent(name: 'statistics_viewed'));
 
   @override
   Future<void> trackYearInReviewViewed({required int year}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'year_in_review_viewed',
         parameters: {'year': year},
-      );
+      ));
 
   // Settings
   @override
   Future<void> trackDarkModeToggled({required bool enabled}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'dark_mode_toggled',
         parameters: {'enabled': enabled},
-      );
+      ));
 
   @override
   Future<void> trackNotificationPermission({required bool granted}) =>
-      _analytics.logEvent(
+      _safeLog(() => _analytics.logEvent(
         name: 'notification_permission',
         parameters: {'granted': granted},
-      );
+      ));
 
   // User properties
   @override
-  Future<void> setUserId(String? id) => _analytics.setUserId(id: id);
+  Future<void> setUserId(String? id) =>
+      _safeLog(() => _analytics.setUserId(id: id));
 
   @override
   Future<void> setUserProperty({required String name, required String? value}) =>
-      _analytics.setUserProperty(name: name, value: value);
+      _safeLog(() => _analytics.setUserProperty(name: name, value: value));
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -553,7 +562,15 @@ class AnalyticsFacade implements AnalyticsClient {
 
   void _dispatch(Future<void> Function(AnalyticsClient c) action) {
     for (final client in _clients) {
-      unawaited(action(client));
+      unawaited(
+        action(client).catchError((Object e, StackTrace st) {
+          AppLogger.error(
+            'Analytics dispatch error for ${client.runtimeType}',
+            e,
+            st,
+          );
+        }),
+      );
     }
   }
 
