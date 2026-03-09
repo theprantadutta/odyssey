@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../common/animations/loading/bouncing_dots_loader.dart';
@@ -301,6 +303,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
+            if (kDebugMode) ...[
+              const SizedBox(height: AppSizes.space16),
+              FormSectionCard(
+                title: 'Debug',
+                icon: Icons.bug_report_outlined,
+                iconBackgroundColor: AppColors.warning.withValues(alpha: 0.15),
+                iconColor: AppColors.warning,
+                children: [
+                  SettingsTile(
+                    title: 'Test Crash',
+                    subtitle: 'Throws a test exception for Crashlytics',
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      throw Exception('Test crash from Odyssey settings');
+                    },
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppSizes.space32),
 
             // Sign Out Button

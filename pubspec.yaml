@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.10.0
@@ -29,10 +29,11 @@ dependencies:
   firebase_auth: ^6.1.3
   firebase_analytics: ^12.1.2
   firebase_messaging: ^16.1.0
+  firebase_crashlytics: ^5.0.7
   google_sign_in: ^7.2.0
 
   # Local Notifications
-  flutter_local_notifications: ^20.0.0
+  flutter_local_notifications: ^21.0.0
 
   # Navigation
   go_router: ^17.0.1
