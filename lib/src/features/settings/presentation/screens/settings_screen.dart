@@ -313,10 +313,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   SettingsTile(
                     title: 'Test Crash',
-                    subtitle: 'Throws a test exception for Crashlytics',
+                    subtitle: 'Records a non-fatal test exception',
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      throw Exception('Test crash from Odyssey settings');
+                      FirebaseCrashlytics.instance.recordError(
+                        Exception('Test crash from Odyssey settings'),
+                        StackTrace.current,
+                        reason: 'manual test from settings',
+                      );
                     },
                   ),
                 ],
