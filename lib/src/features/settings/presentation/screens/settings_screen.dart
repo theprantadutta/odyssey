@@ -17,6 +17,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../widgets/about_dialog.dart';
 import '../widgets/legal_document_viewer.dart';
 import '../widgets/settings_tile.dart';
@@ -290,6 +291,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     size: 20,
                     color: isOnline ? AppColors.oceanTeal : colorScheme.onSurfaceVariant,
                   ),
+                ),
+                SettingsTile(
+                  title: 'Replay Walkthrough',
+                  subtitle: 'See the guided tour again',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    ref.read(walkthroughProvider.notifier).resetAll();
+                    context.go(AppRoutes.home);
+                  },
                 ),
                 SettingsTile(
                   title: 'App Version',

@@ -146,6 +146,44 @@ class StorageService {
     return token != null && token.isNotEmpty;
   }
 
+  // Walkthrough flags
+  static const String _walkthroughDashboardKey = 'walkthrough_dashboard_completed';
+  static const String _walkthroughTripDetailKey = 'walkthrough_trip_detail_completed';
+  static const String _walkthroughTripCreationKey = 'walkthrough_trip_creation_completed';
+
+  Future<void> setDashboardWalkthroughCompleted(bool completed) async {
+    await _storage.write(key: _walkthroughDashboardKey, value: completed.toString());
+  }
+
+  Future<bool> isDashboardWalkthroughCompleted() async {
+    final value = await _storage.read(key: _walkthroughDashboardKey);
+    return value == 'true';
+  }
+
+  Future<void> setTripDetailWalkthroughCompleted(bool completed) async {
+    await _storage.write(key: _walkthroughTripDetailKey, value: completed.toString());
+  }
+
+  Future<bool> isTripDetailWalkthroughCompleted() async {
+    final value = await _storage.read(key: _walkthroughTripDetailKey);
+    return value == 'true';
+  }
+
+  Future<void> setTripCreationWalkthroughCompleted(bool completed) async {
+    await _storage.write(key: _walkthroughTripCreationKey, value: completed.toString());
+  }
+
+  Future<bool> isTripCreationWalkthroughCompleted() async {
+    final value = await _storage.read(key: _walkthroughTripCreationKey);
+    return value == 'true';
+  }
+
+  Future<void> resetAllWalkthroughs() async {
+    await _storage.delete(key: _walkthroughDashboardKey);
+    await _storage.delete(key: _walkthroughTripDetailKey);
+    await _storage.delete(key: _walkthroughTripCreationKey);
+  }
+
   // Theme Mode
   static const String _themeModeKey = 'theme_mode_dark';
 

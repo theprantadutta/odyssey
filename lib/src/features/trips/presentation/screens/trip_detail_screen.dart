@@ -12,6 +12,9 @@ import '../../../../common/widgets/pill_tab_bar.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
+import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
+import '../../../walkthrough/presentation/steps/trip_detail_walkthrough_steps.dart';
+import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
 import '../widgets/trip_overview_tab.dart';
 import '../widgets/trip_activities_tab.dart';
 import '../widgets/trip_packing_tab.dart';
@@ -45,6 +48,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   TripModel? _currentTrip;
   int _selectedTabIndex = 0;
 
+  // Walkthrough GlobalKeys
+  final _heroHeaderKey = GlobalKey();
+  final _shareButtonKey = GlobalKey();
+  final _moreOptionsKey = GlobalKey();
+  final _tabBarKey = GlobalKey();
+  final _tabContentKey = GlobalKey();
+
   // Tab items with icons
   static const List<PillTabItem> _tabItems = [
     PillTabItem(label: 'Overview', icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard),
@@ -62,6 +72,24 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     _scrollController.addListener(_onScroll);
     // Use initial trip data immediately for Hero animation
     _currentTrip = widget.initialTrip;
+
+    // Trigger walkthrough after screen settles
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          ref.read(walkthroughProvider.notifier).startIfNeeded(
+            'trip_detail',
+            TripDetailWalkthroughSteps.build(
+              heroHeaderKey: _heroHeaderKey,
+              shareButtonKey: _shareButtonKey,
+              moreOptionsKey: _moreOptionsKey,
+              tabBarKey: _tabBarKey,
+              tabContentKey: _tabContentKey,
+            ),
+          );
+        }
+      });
+    });
   }
 
   @override
@@ -164,7 +192,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final endDate = DateTime.parse(trip.endDate);
     final duration = endDate.difference(startDate).inDays + 1;
 
-    return PopScope(
+    final detail = PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
@@ -238,6 +266,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       _showShareDialog(context, trip);
                     },
                     child: Container(
+                      key: _shareButtonKey,
                       padding: const EdgeInsets.all(AppSizes.space8),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -273,6 +302,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       _showOptionsMenu(context, trip);
                     },
                     child: Container(
+                      key: _moreOptionsKey,
                       padding: const EdgeInsets.all(AppSizes.space8),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
@@ -303,7 +333,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                         ),
                       )
                     : null,
-                background: Stack(
+                background: KeyedSubtree(
+                  key: _heroHeaderKey,
+                  child: Stack(
                   fit: StackFit.expand,
                   children: [
                     // Cover Image with Hero
@@ -391,10 +423,12 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                       ),
                   ],
                 ),
+                ),
               ),
             ),
             // Pill Tab Bar
             SliverPillTabBar(
+              key: _tabBarKey,
               tabs: _tabItems,
               selectedIndex: _selectedTabIndex,
               onTabSelected: (index) {
@@ -408,7 +442,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             ),
           ];
         },
-        body: PageView(
+        body: KeyedSubtree(
+          key: _tabContentKey,
+          child: PageView(
           controller: _pageController,
           onPageChanged: (index) {
             setState(() => _selectedTabIndex = index);
@@ -423,8 +459,30 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             TripMapTab(tripId: trip.id),
           ],
         ),
+        ),
       ),
       ),
+    );
+
+    return Stack(
+      children: [
+        detail,
+        Consumer(
+          builder: (context, ref, _) {
+            final wtState = ref.watch(walkthroughProvider);
+            if (!wtState.isActive || wtState.activeSegmentId != 'trip_detail') {
+              return const SizedBox.shrink();
+            }
+            return WalkthroughOverlay(
+              steps: wtState.steps,
+              currentIndex: wtState.currentStepIndex,
+              onNext: () => ref.read(walkthroughProvider.notifier).next(),
+              onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
+              onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
+            );
+          },
+        ),
+      ],
     );
   }
 

@@ -16,6 +16,9 @@ import '../../../../core/services/file_upload_service.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
+import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
+import '../../../walkthrough/presentation/steps/trip_creation_walkthrough_steps.dart';
+import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
 
 class TripFormScreen extends ConsumerStatefulWidget {
   final TripModel? trip;
@@ -47,11 +50,36 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   bool _isUploading = false;
   String _displayCurrency = 'USD';
 
+  // Walkthrough GlobalKeys
+  final _basicInfoKey = GlobalKey();
+  final _coverImageKey = GlobalKey();
+  final _datesKey = GlobalKey();
+  final _budgetKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     if (widget.trip != null) {
       _initializeWithTrip(widget.trip!);
+    }
+
+    // Only trigger walkthrough for trip creation, not editing
+    if (widget.trip == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            ref.read(walkthroughProvider.notifier).startIfNeeded(
+              'trip_creation',
+              TripCreationWalkthroughSteps.build(
+                basicInfoKey: _basicInfoKey,
+                coverImageKey: _coverImageKey,
+                datesKey: _datesKey,
+                budgetKey: _budgetKey,
+              ),
+            );
+          }
+        });
+      });
     }
   }
 
@@ -301,7 +329,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -330,6 +358,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
             children: [
               // Basic Info Card
               FormSectionCard(
+                key: _basicInfoKey,
                 title: 'Basic Info',
                 icon: Icons.info_outline_rounded,
                 children: [
@@ -357,6 +386,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
               // Cover Image Card
               FormSectionCard(
+                key: _coverImageKey,
                 title: 'Cover Image',
                 icon: Icons.image_rounded,
                 children: [
@@ -396,6 +426,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
               // Dates Card
               FormSectionCard(
+                key: _datesKey,
                 title: 'Trip Dates',
                 icon: Icons.calendar_today_rounded,
                 children: [
@@ -487,6 +518,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
 
               // Budget Card
               FormSectionCard(
+                key: _budgetKey,
                 title: 'Budget (Optional)',
                 icon: Icons.account_balance_wallet_rounded,
                 children: [
@@ -605,6 +637,28 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
           ),
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        scaffold,
+        if (widget.trip == null)
+          Consumer(
+            builder: (context, ref, _) {
+              final wtState = ref.watch(walkthroughProvider);
+              if (!wtState.isActive || wtState.activeSegmentId != 'trip_creation') {
+                return const SizedBox.shrink();
+              }
+              return WalkthroughOverlay(
+                steps: wtState.steps,
+                currentIndex: wtState.currentStepIndex,
+                onNext: () => ref.read(walkthroughProvider.notifier).next(),
+                onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
+                onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
+              );
+            },
+          ),
+      ],
     );
   }
 

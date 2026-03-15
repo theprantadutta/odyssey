@@ -14,6 +14,9 @@ import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/widgets/notification_badge.dart';
+import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
+import '../../../walkthrough/presentation/steps/dashboard_walkthrough_steps.dart';
+import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 import '../widgets/trip_card.dart';
@@ -31,10 +34,37 @@ class TripsDashboardScreen extends ConsumerStatefulWidget {
 class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   final ScrollController _scrollController = ScrollController();
 
+  // Walkthrough GlobalKeys
+  final _headerKey = GlobalKey();
+  final _notificationKey = GlobalKey();
+  final _moreMenuKey = GlobalKey();
+  final _searchBarKey = GlobalKey();
+  final _quickFiltersKey = GlobalKey();
+  final _fabKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    // Trigger walkthrough after screen settles
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          ref.read(walkthroughProvider.notifier).startIfNeeded(
+            'dashboard',
+            DashboardWalkthroughSteps.build(
+              headerKey: _headerKey,
+              notificationKey: _notificationKey,
+              moreMenuKey: _moreMenuKey,
+              searchBarKey: _searchBarKey,
+              quickFiltersKey: _quickFiltersKey,
+              fabKey: _fabKey,
+            ),
+          );
+        }
+      });
+    });
   }
 
   @override
@@ -193,7 +223,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return LoadingOverlay(
+    final scaffold = LoadingOverlay(
       isLoading: authState.isLoading,
       message: 'Signing out...',
       child: Scaffold(
@@ -214,10 +244,14 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               toolbarHeight: 80,
               centerTitle: false,
               titleSpacing: AppSizes.space16,
-              title: _buildHeader(authState),
+              title: KeyedSubtree(
+                key: _headerKey,
+                child: _buildHeader(authState),
+              ),
               actions: [
                 // Notification bell button
                 Container(
+                  key: _notificationKey,
                   margin: const EdgeInsets.only(right: AppSizes.space8),
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
@@ -288,6 +322,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 ),
                 // More menu
                 Container(
+                  key: _moreMenuKey,
                   margin: const EdgeInsets.only(right: AppSizes.space16),
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
@@ -433,22 +468,28 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                   AppSizes.space16,
                   AppSizes.space8,
                 ),
-                child: TripSearchBar(
-                  initialValue: tripsState.filters.search,
-                  onSearch: _handleSearch,
-                  onFilterTap: _openFilterSheet,
-                  activeFilterCount: tripsState.filters.activeFilterCount,
+                child: KeyedSubtree(
+                  key: _searchBarKey,
+                  child: TripSearchBar(
+                    initialValue: tripsState.filters.search,
+                    onSearch: _handleSearch,
+                    onFilterTap: _openFilterSheet,
+                    activeFilterCount: tripsState.filters.activeFilterCount,
+                  ),
                 ),
               ),
             ),
 
             // Quick Filters
             SliverToBoxAdapter(
-              child: TripQuickFilters(
-                filters: tripsState.filters,
-                onFilterChanged: (filters) {
-                  ref.read(tripsProvider.notifier).updateFilters(filters);
-                },
+              child: KeyedSubtree(
+                key: _quickFiltersKey,
+                child: TripQuickFilters(
+                  filters: tripsState.filters,
+                  onFilterChanged: (filters) {
+                    ref.read(tripsProvider.notifier).updateFilters(filters);
+                  },
+                ),
               ),
             ),
 
@@ -478,12 +519,36 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
           ],
         ),
       ),
-      floatingActionButton: GoldFAB(
-        icon: Icons.add_rounded,
-        label: 'New Trip',
-        onPressed: _handleCreateTrip,
+      floatingActionButton: KeyedSubtree(
+        key: _fabKey,
+        child: GoldFAB(
+          icon: Icons.add_rounded,
+          label: 'New Trip',
+          onPressed: _handleCreateTrip,
+        ),
       ),
     ),
+  );
+
+  return Stack(
+    children: [
+      scaffold,
+      Consumer(
+        builder: (context, ref, _) {
+          final wtState = ref.watch(walkthroughProvider);
+          if (!wtState.isActive || wtState.activeSegmentId != 'dashboard') {
+            return const SizedBox.shrink();
+          }
+          return WalkthroughOverlay(
+            steps: wtState.steps,
+            currentIndex: wtState.currentStepIndex,
+            onNext: () => ref.read(walkthroughProvider.notifier).next(),
+            onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
+            onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
+          );
+        },
+      ),
+    ],
   );
 }
 
