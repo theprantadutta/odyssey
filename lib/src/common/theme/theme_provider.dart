@@ -12,29 +12,42 @@ part 'theme_provider.g.dart';
 class AppThemeMode extends _$AppThemeMode {
   @override
   ThemeMode build() {
-    // Load theme preference after initialization
     Future.microtask(() => _loadTheme());
-    return ThemeMode.light; // Default
+    return ThemeMode.system;
   }
 
   Future<void> _loadTheme() async {
     final storage = StorageService();
-    final isDark = await storage.getThemeMode();
-    state = isDark ? ThemeMode.dark : ThemeMode.light;
+    final value = await storage.getThemeModeValue();
+    state = _parseThemeMode(value);
+  }
+
+  Future<void> setMode(ThemeMode mode) async {
+    state = mode;
+    await StorageService().setThemeModeValue(_themeModeToString(mode));
+    final analytics = ref.read(analyticsServiceProvider);
+    final modeStr = _themeModeToString(mode);
+    unawaited(analytics.setUserProperty(name: 'theme_mode', value: modeStr));
   }
 
   Future<void> toggle() async {
-    final newMode = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    state = newMode;
-    await StorageService().setThemeMode(newMode == ThemeMode.dark);
-    final isDark = newMode == ThemeMode.dark;
-    final analytics = ref.read(analyticsServiceProvider);
-    unawaited(analytics.trackDarkModeToggled(enabled: isDark));
-    unawaited(analytics.setUserProperty(name: 'theme_mode', value: isDark ? 'dark' : 'light'));
+    final next = switch (state) {
+      ThemeMode.system => ThemeMode.light,
+      ThemeMode.light => ThemeMode.dark,
+      ThemeMode.dark => ThemeMode.system,
+    };
+    await setMode(next);
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
-    state = mode;
-    await StorageService().setThemeMode(mode == ThemeMode.dark);
-  }
+  ThemeMode _parseThemeMode(String value) => switch (value) {
+    'dark' => ThemeMode.dark,
+    'light' => ThemeMode.light,
+    _ => ThemeMode.system,
+  };
+
+  String _themeModeToString(ThemeMode mode) => switch (mode) {
+    ThemeMode.dark => 'dark',
+    ThemeMode.light => 'light',
+    ThemeMode.system => 'system',
+  };
 }

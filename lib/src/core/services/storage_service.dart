@@ -185,14 +185,30 @@ class StorageService {
   }
 
   // Theme Mode
-  static const String _themeModeKey = 'theme_mode_dark';
+  static const String _themeModeKey = 'theme_mode';
+  static const String _legacyThemeModeKey = 'theme_mode_dark';
 
-  Future<void> setThemeMode(bool isDark) async {
-    await _storage.write(key: _themeModeKey, value: isDark.toString());
+  Future<void> setThemeModeValue(String mode) async {
+    await _storage.write(key: _themeModeKey, value: mode); // 'light', 'dark', 'system'
   }
 
-  Future<bool> getThemeMode() async {
+  Future<String> getThemeModeValue() async {
     final value = await _storage.read(key: _themeModeKey);
-    return value == 'true';
+    if (value != null) return value;
+    // Migrate from legacy bool key
+    final legacy = await _storage.read(key: _legacyThemeModeKey);
+    if (legacy == 'true') return 'dark';
+    return 'light';
+  }
+
+  @Deprecated('Use setThemeModeValue instead')
+  Future<void> setThemeMode(bool isDark) async {
+    await setThemeModeValue(isDark ? 'dark' : 'light');
+  }
+
+  @Deprecated('Use getThemeModeValue instead')
+  Future<bool> getThemeMode() async {
+    final value = await getThemeModeValue();
+    return value == 'dark';
   }
 }

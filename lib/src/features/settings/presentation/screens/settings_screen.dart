@@ -94,10 +94,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _handleToggleTheme() {
-    HapticFeedback.lightImpact();
-    ref.read(appThemeModeProvider.notifier).toggle();
-  }
+  String _getThemeLabel(ThemeMode mode) => switch (mode) {
+    ThemeMode.system => 'Follows device settings',
+    ThemeMode.light => 'Light',
+    ThemeMode.dark => 'Dark',
+  };
 
   String _getTierDisplayName(SubscriptionTier tier) {
     switch (tier) {
@@ -113,7 +114,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final authState = ref.watch(authProvider);
     final subscriptionState = ref.watch(subscriptionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
-    final isDarkMode = themeMode == ThemeMode.dark;
     final isOnline = ref.watch(connectivityProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -225,16 +225,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               iconColor: AppColors.oceanTeal,
               children: [
                 SettingsTile(
-                  title: 'Dark Mode',
-                  subtitle: isDarkMode ? 'On' : 'Off',
+                  title: 'Theme',
+                  subtitle: _getThemeLabel(themeMode),
                   showChevron: false,
-                  trailing: Switch(
-                    value: isDarkMode,
-                    onChanged: (_) => _handleToggleTheme(),
-                    activeThumbColor: AppColors.sunnyYellow,
-                    activeTrackColor: AppColors.lemonLight,
+                ),
+                const SizedBox(height: AppSizes.space8),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: ThemeMode.system, label: Text('System')),
+                      ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+                      ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                    ],
+                    selected: {themeMode},
+                    onSelectionChanged: (selected) {
+                      HapticFeedback.lightImpact();
+                      ref.read(appThemeModeProvider.notifier).setMode(selected.first);
+                    },
                   ),
-                  onTap: _handleToggleTheme,
                 ),
               ],
             ),
