@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import '../../../../core/services/logger_service.dart';
 import '../repositories/subscription_repository.dart';
 
@@ -186,15 +187,23 @@ class PurchaseService {
     try {
       AppLogger.info('Verifying purchase: ${purchase.productID}');
 
-      // Get verification data from the purchase
-      final receiptData = purchase.verificationData.serverVerificationData;
+      // Extract the purchase token based on platform
+      // On Android, we need the actual purchaseToken from BillingClient for server verification
+      // On iOS, we use the serverVerificationData (App Store receipt)
+      String purchaseToken;
+      if (Platform.isAndroid && purchase is GooglePlayPurchaseDetails) {
+        purchaseToken = purchase.billingClientPurchase.purchaseToken;
+      } else {
+        purchaseToken = purchase.verificationData.serverVerificationData;
+      }
+
       final localData = purchase.verificationData.localVerificationData;
       final platform = Platform.isIOS ? 'ios' : 'android';
 
       // Verify with backend
       final result = await _subscriptionRepository.verifyPurchase(
         productId: purchase.productID,
-        receiptData: receiptData,
+        receiptData: purchaseToken,
         signature: localData, // On Android, this contains the signature
         platform: platform,
       );
