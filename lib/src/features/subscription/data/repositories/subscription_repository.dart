@@ -187,7 +187,7 @@ class SubscriptionRepository {
     return status;
   }
 
-  void _refreshStatus() async {
+  Future<void> _refreshStatus() async {
     try {
       final response = await _dioClient.get('$_basePath/status');
       await _db.subscriptionCacheDao.setSubscriptionStatus(jsonEncode(response.data));
@@ -203,7 +203,7 @@ class SubscriptionRepository {
     return usage;
   }
 
-  void _refreshUsage() async {
+  Future<void> _refreshUsage() async {
     try {
       final response = await _dioClient.get('$_basePath/usage');
       await _db.subscriptionCacheDao.setUsageInfo(jsonEncode(response.data));
@@ -219,7 +219,7 @@ class SubscriptionRepository {
     return limits;
   }
 
-  void _refreshLimits() async {
+  Future<void> _refreshLimits() async {
     try {
       final response = await _dioClient.get('$_basePath/limits');
       await _db.subscriptionCacheDao.setLimits(jsonEncode(response.data));

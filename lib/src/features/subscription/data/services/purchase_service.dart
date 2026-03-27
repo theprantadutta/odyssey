@@ -222,7 +222,7 @@ class PurchaseService {
         receiptData: purchaseToken,
         signature: localData,
         platform: platform,
-      );
+      ).timeout(BillingConfig.verificationTimeout);
 
       return result;
     } catch (e) {
