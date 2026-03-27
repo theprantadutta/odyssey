@@ -6,6 +6,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/providers/analytics_provider.dart';
+import '../mixins/subscription_lifecycle_mixin.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/subscription_provider.dart' show SubscriptionState, subscriptionProvider, isPremiumProvider;
 
@@ -28,7 +29,8 @@ class PaywallScreen extends ConsumerStatefulWidget {
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-class _PaywallScreenState extends ConsumerState<PaywallScreen> {
+class _PaywallScreenState extends ConsumerState<PaywallScreen>
+    with WidgetsBindingObserver, SubscriptionLifecycleMixin {
   @override
   void initState() {
     super.initState();

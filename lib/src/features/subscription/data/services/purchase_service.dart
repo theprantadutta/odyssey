@@ -1,28 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+
 import '../../../../core/services/logger_service.dart';
+import '../constants/billing_config.dart';
 import '../repositories/subscription_repository.dart';
-
-/// Product IDs for different subscription tiers
-/// These must match the IDs configured in App Store Connect and Google Play Console
-class ProductIds {
-  static const String monthlySubscription = 'odyssey_premium_monthly';
-  static const String yearlySubscription = 'odyssey_premium_yearly';
-  static const String lifetimePurchase = 'odyssey_premium_lifetime';
-
-  static const Set<String> all = {
-    monthlySubscription,
-    yearlySubscription,
-    lifetimePurchase,
-  };
-
-  static const Set<String> subscriptions = {
-    monthlySubscription,
-    yearlySubscription,
-  };
-}
 
 /// Result of a purchase operation
 class PurchaseResult {
@@ -54,10 +39,12 @@ class PurchaseService {
   PurchaseService._internal();
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
-  final SubscriptionRepository _subscriptionRepository = SubscriptionRepository();
+  final SubscriptionRepository _subscriptionRepository =
+      SubscriptionRepository();
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   List<ProductDetails> _products = [];
+  List<PurchaseDetails> _purchases = [];
   bool _isAvailable = false;
   bool _isInitialized = false;
 
@@ -65,6 +52,7 @@ class PurchaseService {
   Function(PurchaseResult)? onPurchaseComplete;
   Function(String)? onPurchaseError;
   Function()? onPurchasePending;
+  Function(PurchaseResult)? onPurchaseRestored;
 
   /// Check if store is available
   bool get isAvailable => _isAvailable;
@@ -81,8 +69,9 @@ class PurchaseService {
       .firstOrNull;
 
   /// Get yearly product
-  ProductDetails? get yearlyProduct =>
-      _products.where((p) => p.id == ProductIds.yearlySubscription).firstOrNull;
+  ProductDetails? get yearlyProduct => _products
+      .where((p) => p.id == ProductIds.yearlySubscription)
+      .firstOrNull;
 
   /// Get lifetime product
   ProductDetails? get lifetimeProduct =>
@@ -102,8 +91,6 @@ class PurchaseService {
       return;
     }
 
-    // Platform-specific configuration is handled by the in_app_purchase package
-
     // Listen to purchase updates
     _subscription = _inAppPurchase.purchaseStream.listen(
       _handlePurchaseUpdate,
@@ -113,42 +100,56 @@ class PurchaseService {
       },
     );
 
-    // Load products
+    // Load products with retry
     await _loadProducts();
 
     _isInitialized = true;
     AppLogger.info('PurchaseService initialized. Available: $_isAvailable');
   }
 
-  /// Load available products from the store
+  /// Load available products from the store with retry logic
   Future<void> _loadProducts() async {
-    try {
-      final response = await _inAppPurchase.queryProductDetails(ProductIds.all);
+    for (var attempt = 1; attempt <= BillingConfig.maxRetryAttempts; attempt++) {
+      try {
+        final productIds = BillingConfig.getProductIds();
+        final response = await _inAppPurchase.queryProductDetails(productIds);
 
-      if (response.notFoundIDs.isNotEmpty) {
-        AppLogger.warning('Products not found: ${response.notFoundIDs}');
+        if (response.notFoundIDs.isNotEmpty) {
+          AppLogger.warning('Products not found: ${response.notFoundIDs}');
+        }
+
+        if (response.error != null) {
+          AppLogger.error(
+              'Error loading products (attempt $attempt): ${response.error}');
+          if (attempt < BillingConfig.maxRetryAttempts) {
+            await Future.delayed(BillingConfig.retryDelay);
+            continue;
+          }
+          return;
+        }
+
+        _products = response.productDetails;
+        AppLogger.info('Loaded ${_products.length} products');
+
+        for (final product in _products) {
+          AppLogger.debug('Product: ${product.id} - ${product.price}');
+        }
+        return; // Success, exit retry loop
+      } catch (e) {
+        AppLogger.error(
+            'Failed to load products (attempt $attempt): $e');
+        if (attempt < BillingConfig.maxRetryAttempts) {
+          await Future.delayed(BillingConfig.retryDelay);
+        }
       }
-
-      if (response.error != null) {
-        AppLogger.error('Error loading products: ${response.error}');
-        return;
-      }
-
-      _products = response.productDetails;
-      AppLogger.info('Loaded ${_products.length} products');
-
-      for (final product in _products) {
-        AppLogger.debug('Product: ${product.id} - ${product.price}');
-      }
-    } catch (e) {
-      AppLogger.error('Failed to load products: $e');
     }
   }
 
   /// Handle purchase updates from the store
   Future<void> _handlePurchaseUpdate(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
-      AppLogger.info('Purchase update: ${purchase.productID} - ${purchase.status}');
+      AppLogger.info(
+          'Purchase update: ${purchase.productID} - ${purchase.status}');
 
       switch (purchase.status) {
         case PurchaseStatus.pending:
@@ -160,25 +161,42 @@ class PurchaseService {
           final verified = await _verifyPurchase(purchase);
           if (verified) {
             await _deliverProduct(purchase);
-            onPurchaseComplete?.call(PurchaseResult.success(purchase.productID));
+            if (purchase.status == PurchaseStatus.restored) {
+              onPurchaseRestored
+                  ?.call(PurchaseResult.success(purchase.productID));
+            } else {
+              onPurchaseComplete
+                  ?.call(PurchaseResult.success(purchase.productID));
+            }
           } else {
             onPurchaseError?.call('Purchase verification failed');
+          }
+
+          if (purchase.pendingCompletePurchase) {
+            await _inAppPurchase.completePurchase(purchase);
           }
           break;
 
         case PurchaseStatus.error:
           onPurchaseError?.call(purchase.error?.message ?? 'Purchase failed');
+          if (purchase.pendingCompletePurchase) {
+            await _inAppPurchase.completePurchase(purchase);
+          }
           break;
 
         case PurchaseStatus.canceled:
           onPurchaseError?.call('Purchase was canceled');
+          if (purchase.pendingCompletePurchase) {
+            await _inAppPurchase.completePurchase(purchase);
+          }
           break;
       }
 
-      // Complete the purchase
-      if (purchase.pendingCompletePurchase) {
-        await _inAppPurchase.completePurchase(purchase);
-      }
+      // Track purchases for subscription change support
+      _purchases = [
+        ..._purchases.where((p) => p.productID != purchase.productID),
+        purchase
+      ];
     }
   }
 
@@ -188,8 +206,6 @@ class PurchaseService {
       AppLogger.info('Verifying purchase: ${purchase.productID}');
 
       // Extract the purchase token based on platform
-      // On Android, we need the actual purchaseToken from BillingClient for server verification
-      // On iOS, we use the serverVerificationData (App Store receipt)
       String purchaseToken;
       if (Platform.isAndroid && purchase is GooglePlayPurchaseDetails) {
         purchaseToken = purchase.billingClientPurchase.purchaseToken;
@@ -204,7 +220,7 @@ class PurchaseService {
       final result = await _subscriptionRepository.verifyPurchase(
         productId: purchase.productID,
         receiptData: purchaseToken,
-        signature: localData, // On Android, this contains the signature
+        signature: localData,
         platform: platform,
       );
 
@@ -219,7 +235,6 @@ class PurchaseService {
   Future<void> _deliverProduct(PurchaseDetails purchase) async {
     AppLogger.info('Delivering product: ${purchase.productID}');
     // The backend already updated the subscription during verification
-    // We just log this for tracking
   }
 
   /// Purchase a product
@@ -234,7 +249,8 @@ class PurchaseService {
       final purchaseParam = PurchaseParam(productDetails: product);
 
       // All our products are non-consumable (subscriptions and lifetime)
-      final success = await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+      final success =
+          await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
 
       if (!success) {
         return PurchaseResult.failure('Failed to initiate purchase');
@@ -246,6 +262,64 @@ class PurchaseService {
       AppLogger.error('Purchase failed: $e');
       return PurchaseResult.failure(e.toString());
     }
+  }
+
+  /// Change an existing subscription (upgrade/downgrade).
+  /// On iOS, delegates to regular purchase (iOS handles it automatically).
+  /// On Android, uses ChangeSubscriptionParam with proration.
+  Future<PurchaseResult> changeSubscription(ProductDetails newProduct) async {
+    if (!_isAvailable) {
+      return PurchaseResult.failure('Store not available');
+    }
+
+    if (!Platform.isAndroid) {
+      // iOS handles upgrades/downgrades automatically
+      return purchase(newProduct);
+    }
+
+    final existingPurchase = getExistingSubscription();
+    if (existingPurchase == null) {
+      // No existing subscription, just purchase normally
+      return purchase(newProduct);
+    }
+
+    try {
+      AppLogger.info(
+          'Changing subscription to: ${newProduct.id}');
+
+      final purchaseParam = GooglePlayPurchaseParam(
+        productDetails: newProduct,
+        changeSubscriptionParam: ChangeSubscriptionParam(
+          oldPurchaseDetails: existingPurchase,
+          replacementMode: ReplacementMode.withTimeProration,
+        ),
+      );
+
+      final success =
+          await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+
+      if (!success) {
+        return PurchaseResult.failure('Failed to initiate subscription change');
+      }
+
+      return PurchaseResult(success: true, productId: newProduct.id);
+    } catch (e) {
+      AppLogger.error('Subscription change failed: $e');
+      return PurchaseResult.failure(e.toString());
+    }
+  }
+
+  /// Get existing active subscription for Android upgrade/downgrade
+  GooglePlayPurchaseDetails? getExistingSubscription() {
+    try {
+      for (final purchase in _purchases) {
+        if (purchase.status == PurchaseStatus.purchased &&
+            purchase is GooglePlayPurchaseDetails) {
+          return purchase;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Restore previous purchases
