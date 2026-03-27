@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'firebase_options.dart';
 import 'src/common/theme/app_theme.dart';
 import 'src/common/theme/theme_provider.dart';
@@ -67,11 +68,49 @@ Future<void> main() async {
   );
 }
 
-class OdysseyApp extends ConsumerWidget {
+class OdysseyApp extends ConsumerStatefulWidget {
   const OdysseyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OdysseyApp> createState() => _OdysseyAppState();
+}
+
+class _OdysseyAppState extends ConsumerState<OdysseyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForAppUpdate();
+    });
+  }
+
+  Future<void> _checkForAppUpdate() async {
+    if (!mounted) return;
+
+    try {
+      final updateInfo = await InAppUpdate.checkForUpdate();
+
+      AppLogger.info(
+        'Update check: availability=${updateInfo.updateAvailability}, '
+        'immediate=${updateInfo.immediateUpdateAllowed}, '
+        'flexible=${updateInfo.flexibleUpdateAllowed}',
+      );
+
+      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
+        if (updateInfo.immediateUpdateAllowed) {
+          await InAppUpdate.performImmediateUpdate();
+        } else if (updateInfo.flexibleUpdateAllowed) {
+          await InAppUpdate.startFlexibleUpdate();
+          await InAppUpdate.completeFlexibleUpdate();
+        }
+      }
+    } catch (e) {
+      AppLogger.debug('App update check failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(appThemeModeProvider);
 
