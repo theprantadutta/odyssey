@@ -178,6 +178,21 @@ class SubscriptionRepository {
     }
   }
 
+  /// Force-fetch status from server, bypassing cache. Used after purchase.
+  Future<SubscriptionStatus> getStatusFresh() async {
+    return _fetchStatus();
+  }
+
+  /// Force-fetch usage from server, bypassing cache.
+  Future<UsageInfo> getUsageFresh() async {
+    return _fetchUsage();
+  }
+
+  /// Force-fetch limits from server, bypassing cache.
+  Future<SubscriptionLimits> getLimitsFresh() async {
+    return _fetchLimits();
+  }
+
   // --- Private Methods ---
 
   Future<SubscriptionStatus> _fetchStatus() async {

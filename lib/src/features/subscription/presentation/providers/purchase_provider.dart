@@ -123,8 +123,8 @@ class Purchase extends _$Purchase {
       clearActiveProduct: true,
     );
 
-    // Refresh subscription status
-    ref.read(subscriptionProvider.notifier).refresh();
+    // Force refresh from server to get updated Premium status immediately
+    ref.read(subscriptionProvider.notifier).forceRefresh();
   }
 
   void _onPurchaseRestored(PurchaseResult result) {
@@ -136,7 +136,7 @@ class Purchase extends _$Purchase {
       clearActiveProduct: true,
     );
 
-    ref.read(subscriptionProvider.notifier).refresh();
+    ref.read(subscriptionProvider.notifier).forceRefresh();
   }
 
   void _onPurchaseError(String error) {
@@ -279,8 +279,8 @@ class Purchase extends _$Purchase {
 
     state = state.copyWith(isPurchasing: false);
 
-    // Refresh subscription status
-    ref.read(subscriptionProvider.notifier).refresh();
+    // Force refresh from server to get updated status immediately
+    ref.read(subscriptionProvider.notifier).forceRefresh();
   }
 
   /// Clear error message
