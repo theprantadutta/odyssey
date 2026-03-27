@@ -37,14 +37,73 @@ RTDN uses Google Cloud Pub/Sub to push subscription events to your backend.
    - Under "Real-time developer notifications", enter the full Pub/Sub topic name:
      `projects/your-project-id/topics/odyssey-play-billing`
 
-### 3. Google Cloud Service Account
+### 3. Enable Google Play Developer API
 
-1. Go to **Google Cloud Console** > **IAM & Admin** > **Service Accounts**
-2. Create a service account (e.g., `odyssey-play-billing@your-project.iam.gserviceaccount.com`)
-3. Grant the role: **Android Publisher** (or custom role with `androidpublisher.purchases.*`)
-4. Create and download a JSON key file
-5. Place the key file as `google-play-service-account.json` in your backend deployment
-6. In **Google Play Console** > **Settings** > **API Access**, grant the service account access
+1. Go to **Google Cloud Console** > [APIs & Services](https://console.cloud.google.com/apis/library)
+2. Search for **"Google Play Android Developer API"**
+3. Click on it and press **Enable**
+4. Wait for it to finish enabling (takes a few seconds)
+
+> **Important:** This must be enabled in the **same Google Cloud project** that is linked to your Google Play Console developer account.
+
+### 4. Create a Service Account
+
+1. Go to **Google Cloud Console** > [IAM & Admin > Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
+2. Click **"+ Create Service Account"** at the top
+3. Fill in:
+   - **Service account name:** `odyssey-play-billing`
+   - **Service account ID:** will auto-fill as `odyssey-play-billing@your-project.iam.gserviceaccount.com`
+   - **Description:** `Service account for Odyssey Google Play purchase verification and RTDN`
+4. Click **"Create and Continue"**
+5. **Skip the "Grant this service account access to project" step** — click **Continue** (permissions are granted in Google Play Console, not here)
+6. **Skip the "Grant users access" step** — click **Done**
+
+### 5. Create and Download the JSON Key
+
+1. In the Service Accounts list, click on the service account you just created (`odyssey-play-billing@...`)
+2. Go to the **"Keys"** tab
+3. Click **"Add Key"** > **"Create new key"**
+4. Select **JSON** format
+5. Click **Create** — the JSON key file will download automatically
+6. Rename it to `google-play-service-account.json`
+7. Place it in your backend deployment directory (where your `.env` file is)
+8. **Never commit this file to git** — add it to `.gitignore`
+
+### 6. Link Google Cloud Project to Google Play Console
+
+1. Go to **Google Play Console** > [Setup > API access](https://play.google.com/console/developers/api-access)
+2. If you see "Link a Google Cloud project", click **"Link"** and select the Google Cloud project where you created the service account
+3. If already linked, verify it shows the correct project name
+
+### 7. Grant Service Account Permissions in Google Play Console
+
+This is the critical step — the service account needs permissions **in Google Play Console**, not just in Google Cloud.
+
+1. Go to **Google Play Console** > [Setup > API access](https://play.google.com/console/developers/api-access)
+2. Scroll down to **"Service accounts"** section
+3. Find your `odyssey-play-billing@...` service account and click **"Manage Play Console permissions"** (or "Grant access" if it's new)
+4. On the permissions page:
+   - **Account permissions tab:** You can leave defaults
+   - **App permissions tab:** Click **"Add app"** and select the Odyssey app
+5. Under the app permissions, enable these:
+   - **"View financial data, orders, and cancellation survey responses"** — required to read subscription status
+   - **"Manage orders and subscriptions"** — required to verify purchases via the API
+6. Click **"Invite user"** / **"Save changes"**
+7. **Wait 24-48 hours** — Google Play Console permissions can take time to propagate. Purchase verification may fail until then.
+
+### 8. Grant Pub/Sub Publish Permission (for RTDN)
+
+Google Play needs permission to publish to your Pub/Sub topic.
+
+1. Go to **Google Cloud Console** > [Pub/Sub > Topics](https://console.cloud.google.com/cloudpubsub/topic/list)
+2. Click on your `odyssey-play-billing` topic
+3. In the info panel on the right, click **"View Permissions"** (or go to the **Permissions** tab)
+4. Click **"Add Principal"**
+5. Add the principal: `google-play-developer-notifications@system.gserviceaccount.com`
+6. Assign the role: **Pub/Sub Publisher**
+7. Click **Save**
+
+> This is a Google-managed service account that Google Play uses to send RTDN notifications to your topic.
 
 ## Environment Variables
 
@@ -81,10 +140,19 @@ GRACE_PERIOD_DAYS=3
 - Check Pub/Sub dead-letter queue for failed deliveries
 
 ### Purchase verification failing
+- **Wait 24-48 hours** after granting Play Console permissions — they take time to propagate
 - Verify the service account JSON file exists at the configured path
-- Check that the service account has `androidpublisher.purchases.get` permission
-- Ensure the package name matches exactly
+- Verify the **Google Play Android Developer API** is enabled in Google Cloud Console
+- Check that the service account has **"View financial data"** and **"Manage orders and subscriptions"** permissions in **Google Play Console** (not just Google Cloud IAM)
+- Ensure the Google Cloud project linked in Play Console is the same one where the service account lives
+- Ensure the package name matches exactly (`com.pranta.odyssey`)
 - Check backend logs for detailed error messages
+
+### RTDN notifications not arriving
+- Verify `google-play-developer-notifications@system.gserviceaccount.com` has **Pub/Sub Publisher** role on your topic
+- Verify the Pub/Sub push subscription endpoint URL is publicly accessible (HTTPS required)
+- Check the Pub/Sub subscription in Google Cloud Console for undelivered messages or errors
+- Verify the topic name in Google Play Console matches exactly: `projects/YOUR_PROJECT_ID/topics/odyssey-play-billing`
 
 ### User not found for purchase token
 - The user must complete a purchase through the app first (which stores `GooglePlayPurchaseToken`)
