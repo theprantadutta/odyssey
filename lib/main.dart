@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:in_app_update/in_app_update.dart';
 import 'firebase_options.dart';
 import 'src/common/theme/app_theme.dart';
 import 'src/common/theme/theme_provider.dart';
@@ -67,11 +68,64 @@ Future<void> main() async {
   );
 }
 
-class OdysseyApp extends ConsumerWidget {
+class OdysseyApp extends ConsumerStatefulWidget {
   const OdysseyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OdysseyApp> createState() => _OdysseyAppState();
+}
+
+class _OdysseyAppState extends ConsumerState<OdysseyApp> {
+  /// Check for app updates and perform immediate update if available
+  Future<void> checkForAppUpdate() async {
+    AppLogger.info('Checking for app update...');
+
+    if (!mounted) return;
+
+    try {
+      final AppUpdateInfo updateInfo = await InAppUpdate.checkForUpdate();
+
+      AppLogger.info('Update availability: ${updateInfo.updateAvailability}');
+      AppLogger.info(
+        'Immediate update allowed: ${updateInfo.immediateUpdateAllowed}',
+      );
+      AppLogger.info(
+        'Flexible update allowed: ${updateInfo.flexibleUpdateAllowed}',
+      );
+
+      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
+        AppLogger.info('Update available! Starting immediate update flow.');
+
+        if (updateInfo.immediateUpdateAllowed) {
+          await InAppUpdate.performImmediateUpdate();
+          AppLogger.info('Immediate update completed.');
+        } else if (updateInfo.flexibleUpdateAllowed) {
+          AppLogger.info(
+            'Immediate update not allowed, falling back to flexible update.',
+          );
+          await InAppUpdate.startFlexibleUpdate();
+          await InAppUpdate.completeFlexibleUpdate();
+          AppLogger.info('Flexible update completed.');
+        }
+      } else {
+        AppLogger.info('No update available.');
+      }
+    } catch (e) {
+      AppLogger.error('Error checking for app update', e);
+      // Silently fail - don't block the user if update check fails
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkForAppUpdate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(appThemeModeProvider);
 

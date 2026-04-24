@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   sdk: ^3.10.0
@@ -93,6 +93,9 @@ dependencies:
 
   # Markdown Rendering
   flutter_markdown: ^0.7.6
+
+  # In-App Updates (Google Play Store)
+  in_app_update: ^4.2.3
 
   cupertino_icons: ^1.0.8
 
