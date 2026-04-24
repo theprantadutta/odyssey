@@ -1,61 +1,147 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../data/models/subscription_model.dart';
+import '../mixins/subscription_lifecycle_mixin.dart';
+import '../providers/purchase_provider.dart';
 import '../providers/subscription_provider.dart';
 
 /// Subscription management screen showing current plan and upgrade options
-class SubscriptionScreen extends ConsumerWidget {
+class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen>
+    with WidgetsBindingObserver, SubscriptionLifecycleMixin {
+  @override
+  Widget build(BuildContext context) {
     final subscription = ref.watch(subscriptionProvider);
+    final purchaseState = ref.watch(purchaseProvider);
+
+    // Listen for purchase success/error
+    ref.listen(purchaseProvider, (prev, next) {
+      if (next.successMessage != null && prev?.successMessage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.successMessage!),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        ref.read(purchaseProvider.notifier).clearSuccess();
+      }
+      if (next.error != null && prev?.error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        ref.read(purchaseProvider.notifier).clearError();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Subscription'),
       ),
-      body: subscription.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => ref.read(subscriptionProvider.notifier).refresh(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSizes.space16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Current Plan Card
-                    _CurrentPlanCard(
-                      status: subscription.status,
-                      usage: subscription.usage,
+      body: Stack(
+        children: [
+          subscription.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(subscriptionProvider.notifier).refresh(),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSizes.space16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Current Plan Card
+                        _CurrentPlanCard(
+                          status: subscription.status,
+                          usage: subscription.usage,
+                        ),
+
+                        const SizedBox(height: AppSizes.space24),
+
+                        // Usage Stats
+                        if (subscription.usage != null)
+                          _UsageSection(usage: subscription.usage!),
+
+                        const SizedBox(height: AppSizes.space24),
+
+                        // Upgrade Section (for free users)
+                        if (subscription.status?.isPremium != true)
+                          _UpgradeSection(
+                            pricing: subscription.pricing,
+                            purchaseState: purchaseState,
+                            onPurchaseMonthly: () => ref
+                                .read(purchaseProvider.notifier)
+                                .purchaseMonthly(),
+                            onPurchaseYearly: () => ref
+                                .read(purchaseProvider.notifier)
+                                .purchaseYearly(),
+                            onPurchaseLifetime: () => ref
+                                .read(purchaseProvider.notifier)
+                                .purchaseLifetime(),
+                          ),
+
+                        // Features comparison
+                        const SizedBox(height: AppSizes.space24),
+                        _FeaturesComparison(
+                          limits: subscription.limits,
+                          isPremium: subscription.isPremium,
+                        ),
+
+                        const SizedBox(height: AppSizes.space16),
+
+                        // Restore Purchases
+                        if (subscription.status?.isPremium != true)
+                          TextButton.icon(
+                            onPressed: purchaseState.isPurchasing
+                                ? null
+                                : () => ref
+                                    .read(purchaseProvider.notifier)
+                                    .restorePurchases(),
+                            icon: const Icon(Icons.restore),
+                            label: const Text('Restore Purchases'),
+                          ),
+
+                        const SizedBox(height: AppSizes.space16),
+                      ],
                     ),
+                  ),
+                ),
 
-                    const SizedBox(height: AppSizes.space24),
-
-                    // Usage Stats
-                    if (subscription.usage != null)
-                      _UsageSection(usage: subscription.usage!),
-
-                    const SizedBox(height: AppSizes.space24),
-
-                    // Upgrade Section (for free users)
-                    if (subscription.status?.isPremium != true)
-                      _UpgradeSection(pricing: subscription.pricing),
-
-                    // Features comparison
-                    const SizedBox(height: AppSizes.space24),
-                    _FeaturesComparison(
-                      limits: subscription.limits,
-                      isPremium: subscription.isPremium,
+          // Loading overlay during purchase
+          if (purchaseState.isPurchasing)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSizes.space24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: AppSizes.space16),
+                        Text('Processing purchase...'),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
+        ],
+      ),
     );
   }
 }
@@ -85,8 +171,9 @@ class _CurrentPlanCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: (isPremium ? AppColors.sunnyYellow : colorScheme.onSurface)
-                .withValues(alpha: 0.1),
+            color:
+                (isPremium ? AppColors.sunnyYellow : colorScheme.onSurface)
+                    .withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -99,7 +186,9 @@ class _CurrentPlanCard extends StatelessWidget {
             children: [
               Icon(
                 isPremium ? Icons.workspace_premium : Icons.person_outline,
-                color: isPremium ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                color: isPremium
+                    ? colorScheme.onSurface
+                    : colorScheme.onSurfaceVariant,
                 size: 28,
               ),
               const SizedBox(width: AppSizes.space12),
@@ -113,11 +202,14 @@ class _CurrentPlanCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (status?.plan != null && status!.plan != SubscriptionPlan.free)
+                  if (status?.plan != null &&
+                      status!.plan != SubscriptionPlan.free)
                     Text(
                       _getPlanLabel(status!.plan),
                       style: AppTypography.bodySmall.copyWith(
-                        color: isPremium ? colorScheme.onSurface.withValues(alpha: 0.7) : colorScheme.onSurfaceVariant,
+                        color: isPremium
+                            ? colorScheme.onSurface.withValues(alpha: 0.7)
+                            : colorScheme.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -131,7 +223,8 @@ class _CurrentPlanCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: colorScheme.onSurface.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                    borderRadius:
+                        BorderRadius.circular(AppSizes.radiusFull),
                   ),
                   child: Text(
                     'Active',
@@ -143,12 +236,15 @@ class _CurrentPlanCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (status?.expiresAt != null && status!.plan != SubscriptionPlan.lifetime) ...[
+          if (status?.expiresAt != null &&
+              status!.plan != SubscriptionPlan.lifetime) ...[
             const SizedBox(height: AppSizes.space12),
             Text(
               'Renews on ${_formatDate(status!.expiresAt!)}',
               style: AppTypography.bodySmall.copyWith(
-                color: isPremium ? colorScheme.onSurface.withValues(alpha: 0.7) : colorScheme.onSurfaceVariant,
+                color: isPremium
+                    ? colorScheme.onSurface.withValues(alpha: 0.7)
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -220,10 +316,13 @@ class _UsageSection extends StatelessWidget {
             _UsageBar(
               label: 'Active Trips',
               used: usage.activeTripCount.toString(),
-              limit: usage.isUnlimitedTrips ? 'Unlimited' : usage.activeTripLimit.toString(),
+              limit: usage.isUnlimitedTrips
+                  ? 'Unlimited'
+                  : usage.activeTripLimit.toString(),
               percentage: usage.isUnlimitedTrips
                   ? 0
-                  : (usage.activeTripCount / usage.activeTripLimit * 100).clamp(0, 100),
+                  : (usage.activeTripCount / usage.activeTripLimit * 100)
+                      .clamp(0, 100),
               color: AppColors.coralBurst,
             ),
 
@@ -233,10 +332,13 @@ class _UsageSection extends StatelessWidget {
             _UsageBar(
               label: 'Templates',
               used: usage.templateCount.toString(),
-              limit: usage.isUnlimitedTemplates ? 'Unlimited' : usage.templateLimit.toString(),
+              limit: usage.isUnlimitedTemplates
+                  ? 'Unlimited'
+                  : usage.templateLimit.toString(),
               percentage: usage.isUnlimitedTemplates
                   ? 0
-                  : (usage.templateCount / usage.templateLimit * 100).clamp(0, 100),
+                  : (usage.templateCount / usage.templateLimit * 100)
+                      .clamp(0, 100),
               color: AppColors.lavenderDream,
             ),
           ],
@@ -276,7 +378,9 @@ class _UsageBar extends StatelessWidget {
             Text(
               '$used / $limit',
               style: AppTypography.bodySmall.copyWith(
-                color: isWarning ? AppColors.error : colorScheme.onSurfaceVariant,
+                color: isWarning
+                    ? AppColors.error
+                    : colorScheme.onSurfaceVariant,
                 fontWeight: isWarning ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -301,14 +405,32 @@ class _UsageBar extends StatelessWidget {
 
 class _UpgradeSection extends StatelessWidget {
   final PricingInfo? pricing;
+  final PurchaseState purchaseState;
+  final VoidCallback onPurchaseMonthly;
+  final VoidCallback onPurchaseYearly;
+  final VoidCallback onPurchaseLifetime;
 
-  const _UpgradeSection({this.pricing});
+  const _UpgradeSection({
+    this.pricing,
+    required this.purchaseState,
+    required this.onPurchaseMonthly,
+    required this.onPurchaseYearly,
+    required this.onPurchaseLifetime,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (pricing == null) return const SizedBox.shrink();
+
+    // Prefer store prices, fall back to backend pricing
+    final monthlyPrice =
+        purchaseState.monthlyProduct?.price ?? pricing!.formattedMonthly;
+    final yearlyPrice =
+        purchaseState.yearlyProduct?.price ?? pricing!.formattedYearly;
+    final lifetimePrice =
+        purchaseState.lifetimeProduct?.price ?? pricing!.formattedLifetime;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -331,35 +453,34 @@ class _UpgradeSection extends StatelessWidget {
         // Pricing options
         _PricingOption(
           title: 'Monthly',
-          price: pricing!.formattedMonthly,
+          price: monthlyPrice,
           isPopular: false,
-          onTap: () {
-            // TODO: Open payment sheet
-          },
+          isLoading: purchaseState.activeProductId == 'odyssey_premium_monthly',
+          onTap: onPurchaseMonthly,
         ),
 
         const SizedBox(height: AppSizes.space12),
 
         _PricingOption(
           title: 'Yearly',
-          price: pricing!.formattedYearly,
-          subtitle: 'Save ${pricing!.yearlySavingsPercent}% (${pricing!.formattedYearlyMonthly})',
+          price: yearlyPrice,
+          subtitle:
+              'Save ${pricing!.yearlySavingsPercent}% (${pricing!.formattedYearlyMonthly})',
           isPopular: true,
-          onTap: () {
-            // TODO: Open payment sheet
-          },
+          isLoading: purchaseState.activeProductId == 'odyssey_premium_yearly',
+          onTap: onPurchaseYearly,
         ),
 
         const SizedBox(height: AppSizes.space12),
 
         _PricingOption(
           title: 'Lifetime',
-          price: pricing!.formattedLifetime,
+          price: lifetimePrice,
           subtitle: 'One-time payment, forever access',
           isPopular: false,
-          onTap: () {
-            // TODO: Open payment sheet
-          },
+          isLoading:
+              purchaseState.activeProductId == 'odyssey_premium_lifetime',
+          onTap: onPurchaseLifetime,
         ),
       ],
     );
@@ -371,6 +492,7 @@ class _PricingOption extends StatelessWidget {
   final String price;
   final String? subtitle;
   final bool isPopular;
+  final bool isLoading;
   final VoidCallback onTap;
 
   const _PricingOption({
@@ -378,6 +500,7 @@ class _PricingOption extends StatelessWidget {
     required this.price,
     this.subtitle,
     required this.isPopular,
+    this.isLoading = false,
     required this.onTap,
   });
 
@@ -386,74 +509,89 @@ class _PricingOption extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return InkWell(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.space16),
-        decoration: BoxDecoration(
-          color: isPopular ? AppColors.sunnyYellow.withValues(alpha: 0.1) : colorScheme.surface,
-          border: Border.all(
-            color: isPopular ? AppColors.sunnyYellow : colorScheme.surfaceContainerHighest,
-            width: isPopular ? 2 : 1,
+      child: Opacity(
+        opacity: isLoading ? 0.6 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.all(AppSizes.space16),
+          decoration: BoxDecoration(
+            color: isPopular
+                ? AppColors.sunnyYellow.withValues(alpha: 0.1)
+                : colorScheme.surface,
+            border: Border.all(
+              color: isPopular
+                  ? AppColors.sunnyYellow
+                  : colorScheme.surfaceContainerHighest,
+              width: isPopular ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
           ),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w600,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      if (isPopular) ...[
-                        const SizedBox(width: AppSizes.space8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSizes.space8,
-                            vertical: AppSizes.space4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.sunnyYellow,
-                            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                          ),
-                          child: Text(
-                            'Best Value',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
+                        if (isPopular) ...[
+                          const SizedBox(width: AppSizes.space8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSizes.space8,
+                              vertical: AppSizes.space4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.sunnyYellow,
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusSm),
+                            ),
+                            child: Text(
+                              'Best Value',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: AppSizes.space4),
-                    Text(
-                      subtitle!,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: AppSizes.space4),
+                      Text(
+                        subtitle!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            Text(
-              price,
-              style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ],
+              if (isLoading)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Text(
+                  price,
+                  style: AppTypography.titleLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -488,7 +626,6 @@ class _FeaturesComparison extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSizes.space16),
-
             _FeatureRow(
               feature: 'Active Trips',
               free: _formatLimit(freeLimits?.activeTrips ?? 5),
@@ -516,19 +653,22 @@ class _FeaturesComparison extends StatelessWidget {
             _FeatureRow(
               feature: 'Year in Review',
               free: _formatBoolLimit(freeLimits?.allowYearInReview ?? false),
-              premium: _formatBoolLimit(premiumLimits?.allowYearInReview ?? true),
+              premium:
+                  _formatBoolLimit(premiumLimits?.allowYearInReview ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Full Statistics',
               free: _formatBoolLimit(freeLimits?.allowFullStatistics ?? false),
-              premium: _formatBoolLimit(premiumLimits?.allowFullStatistics ?? true),
+              premium:
+                  _formatBoolLimit(premiumLimits?.allowFullStatistics ?? true),
               hasFeature: isPremium,
             ),
             _FeatureRow(
               feature: 'Edit Collaboration',
               free: _formatBoolLimit(freeLimits?.allowEditSharing ?? false),
-              premium: _formatBoolLimit(premiumLimits?.allowEditSharing ?? true),
+              premium:
+                  _formatBoolLimit(premiumLimits?.allowEditSharing ?? true),
               hasFeature: isPremium,
             ),
           ],
@@ -582,14 +722,18 @@ class _FeatureRow extends StatelessWidget {
                 if (premium == 'Yes')
                   Icon(
                     Icons.check_circle,
-                    color: hasFeature ? AppColors.success : AppColors.sunnyYellow,
+                    color: hasFeature
+                        ? AppColors.success
+                        : AppColors.sunnyYellow,
                     size: 20,
                   )
                 else
                   Text(
                     premium,
                     style: AppTypography.bodySmall.copyWith(
-                      color: hasFeature ? AppColors.success : AppColors.sunnyYellow,
+                      color: hasFeature
+                          ? AppColors.success
+                          : AppColors.sunnyYellow,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

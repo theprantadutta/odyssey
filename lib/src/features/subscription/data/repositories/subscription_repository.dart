@@ -178,6 +178,21 @@ class SubscriptionRepository {
     }
   }
 
+  /// Force-fetch status from server, bypassing cache. Used after purchase.
+  Future<SubscriptionStatus> getStatusFresh() async {
+    return _fetchStatus();
+  }
+
+  /// Force-fetch usage from server, bypassing cache.
+  Future<UsageInfo> getUsageFresh() async {
+    return _fetchUsage();
+  }
+
+  /// Force-fetch limits from server, bypassing cache.
+  Future<SubscriptionLimits> getLimitsFresh() async {
+    return _fetchLimits();
+  }
+
   // --- Private Methods ---
 
   Future<SubscriptionStatus> _fetchStatus() async {
@@ -187,7 +202,7 @@ class SubscriptionRepository {
     return status;
   }
 
-  void _refreshStatus() async {
+  Future<void> _refreshStatus() async {
     try {
       final response = await _dioClient.get('$_basePath/status');
       await _db.subscriptionCacheDao.setSubscriptionStatus(jsonEncode(response.data));
@@ -203,7 +218,7 @@ class SubscriptionRepository {
     return usage;
   }
 
-  void _refreshUsage() async {
+  Future<void> _refreshUsage() async {
     try {
       final response = await _dioClient.get('$_basePath/usage');
       await _db.subscriptionCacheDao.setUsageInfo(jsonEncode(response.data));
@@ -219,7 +234,7 @@ class SubscriptionRepository {
     return limits;
   }
 
-  void _refreshLimits() async {
+  Future<void> _refreshLimits() async {
     try {
       final response = await _dioClient.get('$_basePath/limits');
       await _db.subscriptionCacheDao.setLimits(jsonEncode(response.data));

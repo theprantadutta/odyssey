@@ -76,52 +76,37 @@ class OdysseyApp extends ConsumerStatefulWidget {
 }
 
 class _OdysseyAppState extends ConsumerState<OdysseyApp> {
-  /// Check for app updates and perform immediate update if available
-  Future<void> checkForAppUpdate() async {
-    AppLogger.info('Checking for app update...');
-
-    if (!mounted) return;
-
-    try {
-      final AppUpdateInfo updateInfo = await InAppUpdate.checkForUpdate();
-
-      AppLogger.info('Update availability: ${updateInfo.updateAvailability}');
-      AppLogger.info(
-        'Immediate update allowed: ${updateInfo.immediateUpdateAllowed}',
-      );
-      AppLogger.info(
-        'Flexible update allowed: ${updateInfo.flexibleUpdateAllowed}',
-      );
-
-      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
-        AppLogger.info('Update available! Starting immediate update flow.');
-
-        if (updateInfo.immediateUpdateAllowed) {
-          await InAppUpdate.performImmediateUpdate();
-          AppLogger.info('Immediate update completed.');
-        } else if (updateInfo.flexibleUpdateAllowed) {
-          AppLogger.info(
-            'Immediate update not allowed, falling back to flexible update.',
-          );
-          await InAppUpdate.startFlexibleUpdate();
-          await InAppUpdate.completeFlexibleUpdate();
-          AppLogger.info('Flexible update completed.');
-        }
-      } else {
-        AppLogger.info('No update available.');
-      }
-    } catch (e) {
-      AppLogger.error('Error checking for app update', e);
-      // Silently fail - don't block the user if update check fails
-    }
-  }
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      checkForAppUpdate();
+      _checkForAppUpdate();
     });
+  }
+
+  Future<void> _checkForAppUpdate() async {
+    if (!mounted) return;
+
+    try {
+      final updateInfo = await InAppUpdate.checkForUpdate();
+
+      AppLogger.info(
+        'Update check: availability=${updateInfo.updateAvailability}, '
+        'immediate=${updateInfo.immediateUpdateAllowed}, '
+        'flexible=${updateInfo.flexibleUpdateAllowed}',
+      );
+
+      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
+        if (updateInfo.immediateUpdateAllowed) {
+          await InAppUpdate.performImmediateUpdate();
+        } else if (updateInfo.flexibleUpdateAllowed) {
+          await InAppUpdate.startFlexibleUpdate();
+          await InAppUpdate.completeFlexibleUpdate();
+        }
+      }
+    } catch (e) {
+      AppLogger.debug('App update check failed: $e');
+    }
   }
 
   @override

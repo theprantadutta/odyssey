@@ -102,6 +102,38 @@ class Subscription extends _$Subscription {
     }
   }
 
+  /// Force refresh from server, bypassing cache. Used after purchase/restore.
+  Future<void> forceRefresh() async {
+    AppLogger.info('Force-refreshing subscription data from server...');
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final results = await Future.wait([
+        _repository.getStatusFresh(),
+        _repository.getUsageFresh(),
+        _repository.getLimitsFresh(),
+        _repository.getPricing(),
+      ]);
+
+      state = state.copyWith(
+        status: results[0] as SubscriptionStatus,
+        usage: results[1] as UsageInfo,
+        limits: results[2] as SubscriptionLimits,
+        pricing: results[3] as PricingInfo,
+        isLoading: false,
+      );
+
+      AppLogger.info('Subscription data force-refreshed: ${state.status?.tier}');
+      unawaited(ref.read(analyticsServiceProvider).setUserProperty(
+        name: 'subscription_tier',
+        value: state.tier.name,
+      ));
+    } catch (e) {
+      AppLogger.error('Failed to force-refresh subscription data: $e');
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
   /// Refresh just usage info (for after uploads)
   Future<void> refreshUsage() async {
     try {
