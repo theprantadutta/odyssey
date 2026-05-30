@@ -3,10 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../ads/presentation/providers/ads_providers.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/statistics_provider.dart';
 import '../../data/models/statistics_model.dart';
+
+/// Session-scoped flag: set to true after a free user watches a rewarded ad to
+/// preview Year in Review. Resets on app restart (and is irrelevant once the
+/// user upgrades, since premium bypasses the paywall entirely).
+final yearInReviewPreviewUnlockedProvider =
+    NotifierProvider<YearInReviewPreviewUnlock, bool>(
+  YearInReviewPreviewUnlock.new,
+);
+
+class YearInReviewPreviewUnlock extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void unlock() => state = true;
+}
 
 class YearInReviewScreen extends ConsumerWidget {
   const YearInReviewScreen({super.key});
@@ -14,10 +30,12 @@ class YearInReviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPremium = ref.watch(isPremiumProvider);
+    final previewUnlocked = ref.watch(yearInReviewPreviewUnlockedProvider);
 
-    // Show paywall for non-premium users
-    if (!isPremium) {
-      return _buildPaywallScreen(context);
+    // Show paywall for non-premium users (unless they unlocked a preview via
+    // a rewarded ad this session).
+    if (!isPremium && !previewUnlocked) {
+      return _buildPaywallScreen(context, ref);
     }
 
     final reviewState = ref.watch(yearInReviewProvider);
@@ -564,8 +582,9 @@ class YearInReviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPaywallScreen(BuildContext context) {
+  Widget _buildPaywallScreen(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final adsEnabled = ref.watch(adsEnabledProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Year in Review'),
@@ -643,10 +662,51 @@ class YearInReviewScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              // Free users can watch a rewarded ad to preview this feature once.
+              if (adsEnabled) ...[
+                const SizedBox(height: AppSizes.space12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _watchAdToPreview(context, ref),
+                    icon: const Icon(Icons.play_circle_outline, size: 20),
+                    label: const Text(
+                      'Watch a short ad to preview',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.onSurface,
+                      side: BorderSide(
+                        color: colorScheme.onSurface.withValues(alpha: 0.2),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSizes.space16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _watchAdToPreview(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final earned = await ref.read(rewardedAdManagerProvider).showRewarded();
+    if (earned) {
+      ref.read(yearInReviewPreviewUnlockedProvider.notifier).unlock();
+    } else {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Ad not ready yet — please try again in a moment.'),
+        ),
+      );
+    }
   }
 }

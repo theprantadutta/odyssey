@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 1.0.7+8
+version: 2.0.0+9
 
 environment:
   sdk: ^3.10.0
@@ -97,6 +97,9 @@ dependencies:
 
   # Markdown Rendering
   flutter_markdown: ^0.7.6
+
+  # Ads (free users only; gated by isPremiumProvider). Bundles the UMP consent SDK.
+  google_mobile_ads: ^8.0.0
 
   cupertino_icons: ^1.0.8
 

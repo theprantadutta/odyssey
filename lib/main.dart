@@ -7,7 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:in_app_update/in_app_update.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
+import 'src/core/config/admob_config.dart';
+import 'src/features/ads/presentation/providers/ads_providers.dart';
 import 'src/common/theme/app_theme.dart';
 import 'src/common/theme/theme_provider.dart';
 import 'src/core/database/database_service.dart';
@@ -24,6 +27,21 @@ Future<void> main() async {
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
+
+  // Initialize the Google Mobile Ads SDK (ads are shown to free users only;
+  // every ad surface is gated behind adsEnabledProvider). Failures are
+  // swallowed so ad infrastructure can never block app startup.
+  if (AdMobConfig.isSupportedPlatform) {
+    try {
+      await MobileAds.instance.initialize();
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(testDeviceIds: AdMobConfig.testDeviceIds),
+      );
+      AppLogger.info('Google Mobile Ads initialized');
+    } catch (e) {
+      AppLogger.error('Failed to initialize Google Mobile Ads', e);
+    }
+  }
 
   // Initialize Firebase
   try {
@@ -113,6 +131,14 @@ class _OdysseyAppState extends ConsumerState<OdysseyApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(appThemeModeProvider);
+
+    // Bootstrap ad infrastructure for the session. These are no-ops for premium
+    // users and unsupported platforms; the consent flow runs in the background
+    // and the app-open manager begins observing the app lifecycle.
+    ref.watch(adConsentProvider);
+    ref.watch(appOpenAdManagerProvider);
+    ref.watch(interstitialAdManagerProvider);
+    ref.watch(rewardedAdManagerProvider);
 
     return MaterialApp.router(
       title: 'Odyssey',
