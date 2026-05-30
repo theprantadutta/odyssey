@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/logger_service.dart';
+import '../../features/ads/presentation/observers/interstitial_route_observer.dart';
+import '../../features/ads/presentation/providers/ads_providers.dart';
 import '../../features/auth/presentation/screens/intro_screen.dart';
 import '../../features/auth/presentation/screens/legal_agreement_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -90,6 +92,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authNotifier,
     observers: [
       FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      // Surfaces an interstitial ad on every Nth navigation (free users only;
+      // the manager itself enforces cadence, cooldown and premium gating).
+      InterstitialRouteObserver(
+        () => ref.read(interstitialAdManagerProvider).onNavigation(),
+      ),
     ],
     redirect: (context, state) {
       // Read current auth state (don't watch - we use refreshListenable instead)
