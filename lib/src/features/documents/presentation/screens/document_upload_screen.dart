@@ -861,10 +861,11 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      final result = await fp.FilePicker.platform.pickFiles(
+      // file_picker 12.x: methods are static on FilePicker and pickFiles
+      // defaults to multiple selection.
+      final result = await fp.FilePicker.pickFiles(
         type: fp.FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
-        allowMultiple: true,
       );
 
       if (result != null && result.files.isNotEmpty) {

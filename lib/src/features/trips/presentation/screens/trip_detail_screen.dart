@@ -26,6 +26,7 @@ import 'trip_form_screen.dart';
 import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
 import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
 import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -210,6 +211,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        bottomNavigationBar: const BannerAdWidget(),
         body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {

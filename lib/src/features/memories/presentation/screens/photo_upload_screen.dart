@@ -7,7 +7,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/location_picker_button.dart';
-import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/repositories/memory_repository.dart';
@@ -1054,14 +1054,16 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
     try {
       // Check if user is trying to pick video and is not premium
       if (isVideo) {
-        final isPremium = ref.read(isPremiumProvider);
-        if (!isPremium) {
+        final hasAccess =
+            ref.read(featureAccessProvider(PremiumFeature.videoUpload));
+        if (!hasAccess) {
           if (mounted) {
             PaywallUtils.showPaywall(
               context,
               featureName: 'Video Uploads',
               customDescription: 'Upload videos to your memories with Premium',
               featureIcon: Icons.videocam,
+              unlockableFeature: PremiumFeature.videoUpload,
             );
           }
           return;

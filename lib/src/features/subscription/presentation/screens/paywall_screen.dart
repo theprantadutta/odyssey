@@ -6,7 +6,9 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/providers/analytics_provider.dart';
+import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../mixins/subscription_lifecycle_mixin.dart';
+import '../providers/feature_access_provider.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/subscription_provider.dart' show SubscriptionState, subscriptionProvider, isPremiumProvider;
 
@@ -17,12 +19,17 @@ class PaywallScreen extends ConsumerStatefulWidget {
   final String? customDescription;
   final IconData? featureIcon;
 
+  /// When set, free users are offered a "watch an ad to unlock for 24h" option
+  /// in addition to upgrading.
+  final PremiumFeature? unlockableFeature;
+
   const PaywallScreen({
     super.key,
     this.featureName,
     this.customTitle,
     this.customDescription,
     this.featureIcon,
+    this.unlockableFeature,
   });
 
   @override
@@ -167,6 +174,22 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
                   // Pricing Options - Use store prices if available, fallback to backend
                   _buildPricingOptions(subscription, purchaseState),
+
+                  // Free alternative: watch a rewarded ad to unlock for 24h.
+                  if (widget.unlockableFeature != null) ...[
+                    const SizedBox(height: AppSizes.space16),
+                    Text(
+                      'Not ready to upgrade?',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.space8),
+                    WatchAdToUnlockButton(
+                      feature: widget.unlockableFeature!,
+                      onUnlocked: () => Navigator.of(context).pop(true),
+                    ),
+                  ],
 
                   const SizedBox(height: AppSizes.space24),
 
@@ -475,23 +498,27 @@ class _PricingCard extends StatelessWidget {
 class PaywallDialog extends StatelessWidget {
   final String? featureName;
   final VoidCallback? onUpgrade;
+  final PremiumFeature? unlockableFeature;
 
   const PaywallDialog({
     super.key,
     this.featureName,
     this.onUpgrade,
+    this.unlockableFeature,
   });
 
   static Future<void> show(
     BuildContext context, {
     String? featureName,
     VoidCallback? onUpgrade,
+    PremiumFeature? unlockableFeature,
   }) {
     return showDialog(
       context: context,
       builder: (context) => PaywallDialog(
         featureName: featureName,
         onUpgrade: onUpgrade,
+        unlockableFeature: unlockableFeature,
       ),
     );
   }
@@ -566,6 +593,13 @@ class PaywallDialog extends StatelessWidget {
                 ),
               ),
             ),
+            if (unlockableFeature != null) ...[
+              const SizedBox(height: AppSizes.space8),
+              WatchAdToUnlockButton(
+                feature: unlockableFeature!,
+                onUnlocked: () => Navigator.of(context).pop(),
+              ),
+            ],
             const SizedBox(height: AppSizes.space8),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -592,6 +626,7 @@ class PaywallUtils {
     String? customTitle,
     String? customDescription,
     IconData? featureIcon,
+    PremiumFeature? unlockableFeature,
   }) {
     return Navigator.of(context).push(
       MaterialPageRoute(
@@ -601,6 +636,7 @@ class PaywallUtils {
           customTitle: customTitle,
           customDescription: customDescription,
           featureIcon: featureIcon,
+          unlockableFeature: unlockableFeature,
         ),
       ),
     );
@@ -611,11 +647,13 @@ class PaywallUtils {
     BuildContext context, {
     String? featureName,
     VoidCallback? onUpgrade,
+    PremiumFeature? unlockableFeature,
   }) {
     return PaywallDialog.show(
       context,
       featureName: featureName,
       onUpgrade: onUpgrade,
+      unlockableFeature: unlockableFeature,
     );
   }
 

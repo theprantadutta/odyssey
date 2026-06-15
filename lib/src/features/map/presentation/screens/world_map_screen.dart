@@ -7,7 +7,8 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/map_provider.dart';
 import '../widgets/trip_marker.dart';
@@ -28,10 +29,11 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mapState = ref.watch(mapTripsProvider);
-    final isPremium = ref.watch(isPremiumProvider);
+    final hasAccess =
+        ref.watch(featureAccessProvider(PremiumFeature.worldMap));
 
-    // Show paywall for non-premium users
-    if (!isPremium) {
+    // Show paywall for users without access (free + no active rewarded unlock).
+    if (!hasAccess) {
       return _buildPaywallScreen(context);
     }
 
@@ -443,6 +445,9 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: AppSizes.space12),
+                  // Free alternative: watch a rewarded ad for 24h access.
+                  const WatchAdToUnlockButton(feature: PremiumFeature.worldMap),
                 ],
               ),
             ),

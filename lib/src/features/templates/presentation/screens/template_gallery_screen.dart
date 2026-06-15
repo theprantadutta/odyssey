@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../ads/native_ad_slots.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
+import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
 import '../widgets/template_card.dart';
@@ -43,6 +46,7 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
@@ -281,27 +285,37 @@ class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
                           onRefresh: () => ref
                               .read(templateGalleryProvider.notifier)
                               .refresh(),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.space16,
-                            ),
-                            itemCount: galleryState.templates.length,
-                            itemBuilder: (context, index) {
-                              final template = galleryState.templates[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: AppSizes.space16),
-                                child: TemplateCard(
-                                  template: template,
-                                  onTap: () =>
-                                      _showTemplateDetails(context, template),
-                                  onUse: () =>
-                                      _useTemplate(context, ref, template),
-                                  onFork: () =>
-                                      _forkTemplate(context, ref, template),
-                                  showActions: true,
-                                  showForkButton: true,
+                          child: Builder(
+                            builder: (context) {
+                              final slots = NativeAdSlots(
+                                  galleryState.templates.length);
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSizes.space16,
                                 ),
+                                itemCount: slots.totalCount,
+                                itemBuilder: (context, index) {
+                                  if (slots.isAdAt(index)) {
+                                    return const NativeAdListTile();
+                                  }
+                                  final template = galleryState
+                                      .templates[slots.realIndexAt(index)];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: AppSizes.space16),
+                                    child: TemplateCard(
+                                      template: template,
+                                      onTap: () => _showTemplateDetails(
+                                          context, template),
+                                      onUse: () =>
+                                          _useTemplate(context, ref, template),
+                                      onFork: () =>
+                                          _forkTemplate(context, ref, template),
+                                      showActions: true,
+                                      showForkButton: true,
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -530,20 +544,27 @@ class _MyTemplatesTab extends ConsumerWidget {
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
       onRefresh: () => ref.read(myTemplatesProvider.notifier).refresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppSizes.space16),
-        itemCount: myTemplatesState.templates.length,
-        itemBuilder: (context, index) {
-          final template = myTemplatesState.templates[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppSizes.space16),
-            child: TemplateCard(
-              template: template,
-              onTap: () => _showTemplateDetails(context, template),
-              onUse: () => _useTemplate(context, ref, template),
-              onDelete: () => _deleteTemplate(context, ref, template),
-              showActions: true,
-            ),
+      child: Builder(
+        builder: (context) {
+          final slots = NativeAdSlots(myTemplatesState.templates.length);
+          return ListView.builder(
+            padding: const EdgeInsets.all(AppSizes.space16),
+            itemCount: slots.totalCount,
+            itemBuilder: (context, index) {
+              if (slots.isAdAt(index)) return const NativeAdListTile();
+              final template =
+                  myTemplatesState.templates[slots.realIndexAt(index)];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSizes.space16),
+                child: TemplateCard(
+                  template: template,
+                  onTap: () => _showTemplateDetails(context, template),
+                  onUse: () => _useTemplate(context, ref, template),
+                  onDelete: () => _deleteTemplate(context, ref, template),
+                  showActions: true,
+                ),
+              );
+            },
           );
         },
       ),

@@ -5,6 +5,7 @@ import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
 import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
+import 'package:odyssey/src/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:odyssey/src/features/sharing/presentation/widgets/collaboration_indicator.dart';
 import 'package:odyssey/src/features/sharing/presentation/widgets/share_trip_dialog.dart';
 
@@ -23,6 +24,7 @@ class ManageSharesScreen extends ConsumerWidget {
     final sharesState = ref.watch(tripSharesProvider(tripId));
 
     return Scaffold(
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         title: const Text('Manage Sharing'),
         actions: [

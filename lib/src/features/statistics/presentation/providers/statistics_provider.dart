@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../data/models/statistics_model.dart';
 import '../../data/repositories/statistics_repository.dart';
-import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
 
 part 'statistics_provider.g.dart';
 
@@ -60,8 +60,9 @@ class Statistics extends _$Statistics {
   }
 
   Future<void> _loadStatistics() async {
-    final isPremium = ref.read(isPremiumProvider);
-    if (!isPremium) {
+    final hasAccess =
+        ref.read(featureAccessProvider(PremiumFeature.fullStatistics));
+    if (!hasAccess) {
       state = state.copyWith(
         isLoading: false,
         isPremiumRequired: true,
@@ -143,8 +144,9 @@ class YearInReview extends _$YearInReview {
   }
 
   Future<void> _loadYearInReview() async {
-    final isPremium = ref.read(isPremiumProvider);
-    if (!isPremium) {
+    final hasAccess =
+        ref.read(featureAccessProvider(PremiumFeature.yearInReview));
+    if (!hasAccess) {
       state = state.copyWith(
         isLoading: false,
         isPremiumRequired: true,
@@ -235,8 +237,9 @@ class TravelTimelineNotifier extends _$TravelTimelineNotifier {
   }
 
   Future<void> _loadTimeline() async {
-    final isPremium = ref.read(isPremiumProvider);
-    if (!isPremium) {
+    final hasAccess =
+        ref.read(featureAccessProvider(PremiumFeature.fullStatistics));
+    if (!hasAccess) {
       state = state.copyWith(
         isLoading: false,
         isPremiumRequired: true,

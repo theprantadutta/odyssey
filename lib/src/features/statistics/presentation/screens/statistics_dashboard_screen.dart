@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,8 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../../../subscription/presentation/widgets/upgrade_banner.dart';
@@ -22,6 +25,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
@@ -81,14 +85,8 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               ),
               onPressed: () {
                 HapticFeedback.lightImpact();
-                if (!isPremium) {
-                  PaywallUtils.showPaywall(
-                    context,
-                    featureName: 'Year in Review',
-                    featureIcon: Icons.calendar_month,
-                  );
-                  return;
-                }
+                // Year in Review self-gates (and offers a watch-ad unlock) on
+                // its own screen, so just navigate there.
                 context.push('${AppRoutes.statistics}/year-review');
               },
               tooltip: 'Year in Review',
@@ -123,7 +121,7 @@ class StatisticsDashboardScreen extends ConsumerWidget {
               ),
             )
           : statsState.isPremiumRequired && statsState.statistics == null
-              ? _buildPremiumGate(context, statsState.premiumFeatureName ?? 'Full Statistics')
+              ? _buildPremiumGate(context, ref, statsState.premiumFeatureName ?? 'Full Statistics')
               : statsState.error != null && statsState.statistics == null
                   ? _buildErrorState(context, ref, statsState.error!)
                   : statsState.statistics != null
@@ -132,7 +130,11 @@ class StatisticsDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPremiumGate(BuildContext context, String featureName) {
+  Widget _buildPremiumGate(
+    BuildContext context,
+    WidgetRef ref,
+    String featureName,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
@@ -205,6 +207,13 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                 elevation: 4,
                 shadowColor: AppColors.sunnyYellow.withValues(alpha: 0.4),
               ),
+            ),
+            const SizedBox(height: AppSizes.space12),
+            // Free alternative: watch a rewarded ad for 24h access, then reload.
+            WatchAdToUnlockButton(
+              feature: PremiumFeature.fullStatistics,
+              onUnlocked: () =>
+                  ref.read(statisticsProvider.notifier).refresh(),
             ),
             const SizedBox(height: AppSizes.space16),
             TextButton(

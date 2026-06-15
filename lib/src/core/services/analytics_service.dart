@@ -73,6 +73,19 @@ abstract class AnalyticsClient {
   Future<void> trackStatisticsViewed();
   Future<void> trackYearInReviewViewed({required int year});
 
+  // Ads
+  Future<void> trackRewardedEarned({required String featureName});
+  Future<void> trackTemporaryUnlock({
+    required String featureName,
+    required int hours,
+  });
+  Future<void> trackAdRevenue({
+    required String format,
+    required double valueMicros,
+    required String currency,
+    required int precision,
+  });
+
   // Settings
   Future<void> trackDarkModeToggled({required bool enabled});
   Future<void> trackNotificationPermission({required bool granted});
@@ -333,6 +346,43 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
         parameters: {'year': year},
       ));
 
+  // Ads
+  @override
+  Future<void> trackRewardedEarned({required String featureName}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'rewarded_earned',
+        parameters: {'feature_name': featureName},
+      ));
+
+  @override
+  Future<void> trackTemporaryUnlock({
+    required String featureName,
+    required int hours,
+  }) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'temporary_unlock',
+        parameters: {'feature_name': featureName, 'hours': hours},
+      ));
+
+  @override
+  Future<void> trackAdRevenue({
+    required String format,
+    required double valueMicros,
+    required String currency,
+    required int precision,
+  }) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'ad_revenue',
+        parameters: {
+          'format': format,
+          // Firebase stores value in standard currency units; AdMob reports micros.
+          'value': valueMicros / 1000000.0,
+          'value_micros': valueMicros,
+          'currency': currency,
+          'precision': precision,
+        },
+      ));
+
   // Settings
   @override
   Future<void> trackDarkModeToggled({required bool enabled}) =>
@@ -528,6 +578,32 @@ class LoggerAnalyticsClient implements AnalyticsClient {
   @override
   Future<void> trackYearInReviewViewed({required int year}) async =>
       _log('year_in_review_viewed', {'year': year});
+
+  // Ads
+  @override
+  Future<void> trackRewardedEarned({required String featureName}) async =>
+      _log('rewarded_earned', {'feature_name': featureName});
+
+  @override
+  Future<void> trackTemporaryUnlock({
+    required String featureName,
+    required int hours,
+  }) async =>
+      _log('temporary_unlock', {'feature_name': featureName, 'hours': hours});
+
+  @override
+  Future<void> trackAdRevenue({
+    required String format,
+    required double valueMicros,
+    required String currency,
+    required int precision,
+  }) async =>
+      _log('ad_revenue', {
+        'format': format,
+        'value': valueMicros / 1000000.0,
+        'currency': currency,
+        'precision': precision,
+      });
 
   // Settings
   @override
@@ -754,6 +830,36 @@ class AnalyticsFacade implements AnalyticsClient {
   @override
   Future<void> trackYearInReviewViewed({required int year}) async =>
       _dispatch((c) => c.trackYearInReviewViewed(year: year));
+
+  // Ads
+  @override
+  Future<void> trackRewardedEarned({required String featureName}) async =>
+      _dispatch((c) => c.trackRewardedEarned(featureName: featureName));
+
+  @override
+  Future<void> trackTemporaryUnlock({
+    required String featureName,
+    required int hours,
+  }) async =>
+      _dispatch(
+        (c) => c.trackTemporaryUnlock(featureName: featureName, hours: hours),
+      );
+
+  @override
+  Future<void> trackAdRevenue({
+    required String format,
+    required double valueMicros,
+    required String currency,
+    required int precision,
+  }) async =>
+      _dispatch(
+        (c) => c.trackAdRevenue(
+          format: format,
+          valueMicros: valueMicros,
+          currency: currency,
+          precision: precision,
+        ),
+      );
 
   // Settings
   @override

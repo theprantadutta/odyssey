@@ -11,6 +11,9 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/empty_state.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../ads/ad_constants.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
+import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/widgets/notification_badge.dart';
@@ -519,6 +522,8 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
           ],
         ),
       ),
+      // Anchored banner ad for free users (collapses to nothing for premium).
+      bottomNavigationBar: const BannerAdWidget(),
       floatingActionButton: KeyedSubtree(
         key: _fabKey,
         child: GoldFAB(
@@ -704,6 +709,16 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   }
 
   Widget _buildTripsList(TripsState state) {
+    final tripCount = state.trips.length;
+
+    // Inject a native ad after every Nth trip (free users only — the ad tile
+    // itself renders nothing for premium users). Disabled for short lists.
+    const n = AdConstants.nativeAdEveryNItems;
+    final showAds = tripCount >= AdConstants.nativeAdMinItemsBeforeFirst;
+    final adCount = showAds ? tripCount ~/ n : 0;
+    final totalCount = tripCount + adCount;
+    final block = n + 1; // n trips followed by 1 ad
+
     return SliverPadding(
       padding: const EdgeInsets.only(
         top: AppSizes.space8,
@@ -711,15 +726,26 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final trip = state.trips[index];
+          if (showAds && index % block == n) {
+            return NativeAdListTile(
+              key: ValueKey('dashboard_native_ad_$index'),
+              margin: const EdgeInsets.symmetric(
+                horizontal: AppSizes.space16,
+                vertical: AppSizes.space8,
+              ),
+            );
+          }
+          // Map the interleaved index back to the real trip index.
+          final tripIndex = index - (index ~/ block);
+          final trip = state.trips[tripIndex];
           return TripCard(
             trip: trip,
-            staggerIndex: index,
+            staggerIndex: tripIndex,
             onTap: () => _handleTripTap(trip),
             onEdit: () => _handleEditTrip(trip.id),
             onDelete: () => _handleDeleteTrip(trip.id, trip.title),
           );
-        }, childCount: state.trips.length),
+        }, childCount: totalCount),
       ),
     );
   }

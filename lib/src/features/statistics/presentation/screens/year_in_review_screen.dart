@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
+import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/statistics_provider.dart';
 import '../../data/models/statistics_model.dart';
@@ -13,17 +15,19 @@ class YearInReviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPremium = ref.watch(isPremiumProvider);
+    final hasAccess =
+        ref.watch(featureAccessProvider(PremiumFeature.yearInReview));
 
-    // Show paywall for non-premium users
-    if (!isPremium) {
-      return _buildPaywallScreen(context);
+    // Show paywall for users without access (free + no active rewarded unlock).
+    if (!hasAccess) {
+      return _buildPaywallScreen(context, ref);
     }
 
     final reviewState = ref.watch(yearInReviewProvider);
     final currentYear = DateTime.now().year;
 
     return Scaffold(
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         title: const Text('Year in Review'),
         actions: [
@@ -564,7 +568,7 @@ class YearInReviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPaywallScreen(BuildContext context) {
+  Widget _buildPaywallScreen(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -642,6 +646,13 @@ class YearInReviewScreen extends ConsumerWidget {
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
+              ),
+              // Free users can watch a rewarded ad for 24h access, then reload.
+              const SizedBox(height: AppSizes.space12),
+              WatchAdToUnlockButton(
+                feature: PremiumFeature.yearInReview,
+                onUnlocked: () =>
+                    ref.read(yearInReviewProvider.notifier).refresh(),
               ),
             ],
           ),

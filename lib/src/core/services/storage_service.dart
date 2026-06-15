@@ -211,4 +211,28 @@ class StorageService {
     final value = await getThemeModeValue();
     return value == 'dark';
   }
+
+  // Temporary feature unlocks (free users who watched a rewarded ad).
+  // Stored as an expiry timestamp per feature key; the unlock is valid while
+  // now < expiry. Mirrors the access-token-expiry storage pattern above.
+  static String _featureUnlockKey(String featureKey) =>
+      'feature_unlock_$featureKey';
+
+  Future<void> saveFeatureUnlockExpiry(
+    String featureKey,
+    DateTime expiry,
+  ) async {
+    await _storage.write(
+      key: _featureUnlockKey(featureKey),
+      value: expiry.millisecondsSinceEpoch.toString(),
+    );
+  }
+
+  Future<DateTime?> getFeatureUnlockExpiry(String featureKey) async {
+    final value = await _storage.read(key: _featureUnlockKey(featureKey));
+    if (value == null) return null;
+    final millis = int.tryParse(value);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
 }

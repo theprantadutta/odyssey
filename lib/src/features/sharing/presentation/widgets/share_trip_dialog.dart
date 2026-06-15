@@ -5,7 +5,7 @@ import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
 import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
-import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
+import 'package:odyssey/src/features/subscription/presentation/providers/feature_access_provider.dart';
 import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
 
 class ShareTripDialog extends ConsumerStatefulWidget {
@@ -78,13 +78,15 @@ class _ShareTripDialogState extends ConsumerState<ShareTripDialog> {
 
   void _onPermissionChanged(SharePermission permission) {
     if (permission == SharePermission.edit) {
-      final isPremium = ref.read(isPremiumProvider);
-      if (!isPremium) {
+      final hasAccess =
+          ref.read(featureAccessProvider(PremiumFeature.editSharing));
+      if (!hasAccess) {
         PaywallUtils.showPaywall(
           context,
           featureName: 'Edit Sharing',
           customDescription: 'Allow collaborators to edit your trips with Premium',
           featureIcon: Icons.edit,
+          unlockableFeature: PremiumFeature.editSharing,
         );
         return;
       }

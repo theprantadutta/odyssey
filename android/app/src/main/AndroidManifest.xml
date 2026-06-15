@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- AdMob: required to access the advertising ID for ad serving (Android 13+ / target SDK 33+) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
     <application
         android:label="Odyssey"
         android:name="${applicationName}"
@@ -39,6 +42,21 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Google AdMob App ID (Odyssey, Android). Not a secret — it ships in
+             the APK. Debug/profile builds still use Google test AD UNITS via
+             AdMobConfig, so this only serves real ads in release builds. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9242904787767394~5341675793" />
+
+        <!-- AdMob startup/loading optimizations (avoid blocking the main thread on init) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION"
+            android:value="true" />
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING"
+            android:value="true" />
 
         <!-- Firebase Cloud Messaging default notification channel -->
         <meta-data
