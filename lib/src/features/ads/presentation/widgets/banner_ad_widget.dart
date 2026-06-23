@@ -42,27 +42,19 @@ class _BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
     super.dispose();
   }
 
-  Future<void> _load(double width, Orientation orientation) async {
+  void _load() {
     if (_loading || _loaded || _failed || !AdMobConfig.isSupportedPlatform) {
       return;
     }
     _loading = true;
     _attempts++;
 
-    final size =
-        await AdSize.getLargeAnchoredAdaptiveBannerAdSizeWithOrientation(
-      orientation,
-      width.truncate(),
-    );
-    if (size == null || !mounted) {
-      _loading = false;
-      if (size == null) _failed = true; // can't size → don't keep retrying
-      return;
-    }
-
+    // Standard 320x50 banner — compact and predictable. (The adaptive sizes in
+    // google_mobile_ads 9.x are the tall "Large" anchored format, which eats too
+    // much vertical space at the bottom of a screen.)
     final banner = BannerAd(
       adUnitId: AdMobConfig.bannerAdUnitId,
-      size: size,
+      size: AdSize.banner,
       request: _request,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
@@ -92,7 +84,7 @@ class _BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
         },
       ),
     );
-    await banner.load();
+    banner.load();
   }
 
   void _teardown() {
@@ -119,11 +111,8 @@ class _BannerAdWidgetState extends ConsumerState<BannerAdWidget> {
     }
 
     if (!_loaded && !_loading && !_failed) {
-      final mq = MediaQuery.of(context);
-      final width = mq.size.width;
-      final orientation = mq.orientation;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _load(width, orientation);
+        if (mounted) _load();
       });
     }
 
