@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** February 28, 2026
+**Last updated:** July 10, 2026
 
 **Odyssey** ("we," "our," or "us") is operated by Pranta Dutta. This Privacy Policy explains how we collect, use, and protect your information when you use the Odyssey mobile application ("App").
 
@@ -37,6 +37,18 @@ By using the App, you agree to the collection and use of information in accordan
 - Device type and operating system
 - App version
 - Push notification tokens
+- Device or other identifiers (including the **Advertising ID**, app instance identifiers, and crash-related device identifiers) collected automatically by the third-party services listed in Section 5
+
+### Advertising Data
+For users on the free tier, the App displays advertisements served by Google AdMob. In connection with advertising, the following may be collected and shared:
+- **Advertising ID** and related device identifiers
+- Ad interaction data (impressions, clicks)
+
+Premium/subscribed users are not shown ads. You can reset or limit your Advertising ID at any time through your device settings (Android: **Settings → Privacy → Ads**).
+
+### Analytics & Diagnostics Data
+- App usage and interaction events (via Firebase Analytics)
+- Crash reports, stack traces, and diagnostic device information (via Firebase Crashlytics)
 
 ### Purchase Data
 - Subscription status and type
@@ -72,7 +84,8 @@ We use the collected information to:
 We do **not** sell your personal information. We may share data only in the following cases:
 
 - **With other users:** When you explicitly share trips or accept collaboration invitations
-- **Service providers:** Firebase (authentication, push notifications), cloud hosting providers
+- **Service providers:** Firebase (authentication, push notifications, analytics, crash reporting), cloud hosting providers
+- **Advertising partners:** For free-tier users, we share the **Advertising ID** and related device identifiers with **Google AdMob** to serve and measure advertisements
 - **Legal requirements:** When required by law or to protect our rights
 
 ---
@@ -81,11 +94,19 @@ We do **not** sell your personal information. We may share data only in the foll
 
 The App integrates with the following third-party services:
 
-- **Firebase** (Google) - Authentication, push notifications, and analytics
+- **Firebase Authentication** (Google) - Account sign-in and identity
+- **Firebase Cloud Messaging** (Google) - Push notifications
+- **Firebase Analytics** (Google) - App usage analytics
+- **Firebase Crashlytics** (Google) - Crash reporting and diagnostics
+- **Google AdMob** (Google) - Advertising for free-tier users (collects and shares the Advertising ID)
 - **Google Sign-In** - Optional social login
 - **Apple App Store / Google Play Store** - In-app purchases and subscriptions
 
-Each third-party service has its own privacy policy. We encourage you to review them.
+Each third-party service has its own privacy policy. We encourage you to review them. For advertising, see Google's policies at https://policies.google.com/technologies/ads.
+
+### Consent (EEA / UK)
+
+Where required by law, the App uses Google's User Messaging Platform (UMP) to obtain your consent before serving personalized advertisements. You may withdraw or change your consent at any time from within the App.
 
 ---
 

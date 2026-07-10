@@ -88,16 +88,33 @@ class StorageService {
     return value == 'true';
   }
 
-  // Terms & Conditions (legal agreement acceptance)
-  static const String _termsAcceptedKey = 'terms_accepted';
+  // Terms & Conditions / Privacy Policy (legal agreement acceptance)
+  //
+  // Bump this whenever privacy.md or terms.md change materially. Users who
+  // accepted an older version (or never had a version recorded) are re-prompted
+  // with the legal agreement screen on their next launch.
+  //
+  // v2 (2026-07-10): privacy policy updated to disclose AdMob advertising and
+  //   sharing of the Advertising ID / device identifiers with Google.
+  static const int currentLegalVersion = 2;
 
-  Future<void> setTermsAccepted(bool accepted) async {
-    await _storage.write(key: _termsAcceptedKey, value: accepted.toString());
+  static const String _acceptedLegalVersionKey = 'accepted_legal_version';
+
+  /// Records that the user accepted the current legal documents.
+  Future<void> setTermsAccepted() async {
+    await _storage.write(
+      key: _acceptedLegalVersionKey,
+      value: currentLegalVersion.toString(),
+    );
   }
 
+  /// Returns true only if the user has accepted the current (or a newer) legal
+  /// version. A missing or stale acceptance returns false so the agreement
+  /// screen is shown again after the documents change.
   Future<bool> hasAcceptedTerms() async {
-    final value = await _storage.read(key: _termsAcceptedKey);
-    return value == 'true';
+    final value = await _storage.read(key: _acceptedLegalVersionKey);
+    final acceptedVersion = int.tryParse(value ?? '') ?? 0;
+    return acceptedVersion >= currentLegalVersion;
   }
 
   // Onboarding (post-authentication)

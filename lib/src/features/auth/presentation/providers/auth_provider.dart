@@ -595,9 +595,9 @@ class Auth extends _$Auth {
     unawaited(ref.read(analyticsServiceProvider).trackIntroSeen());
   }
 
-  /// Mark terms as accepted (updates both storage and state)
+  /// Mark the current legal documents as accepted (updates both storage and state)
   Future<void> setTermsAccepted() async {
-    await StorageService().setTermsAccepted(true);
+    await StorageService().setTermsAccepted();
     state = state.copyWith(hasAcceptedTerms: true);
     unawaited(ref.read(analyticsServiceProvider).trackTermsAccepted());
   }
