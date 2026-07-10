@@ -44,7 +44,7 @@ For users on the free tier, the App displays advertisements served by Google AdM
 - **Advertising ID** and related device identifiers
 - Ad interaction data (impressions, clicks)
 
-Premium/subscribed users are not shown ads. You can reset or limit your Advertising ID at any time through your device settings (Android: **Settings → Privacy → Ads**).
+Premium/subscribed users are not shown ads. You can reset or limit your Advertising ID at any time through your device's privacy settings.
 
 ### Analytics & Diagnostics Data
 - App usage and interaction events (via Firebase Analytics)
@@ -52,7 +52,7 @@ Premium/subscribed users are not shown ads. You can reset or limit your Advertis
 
 ### Purchase Data
 - Subscription status and type
-- In-app purchase history (processed through Apple App Store / Google Play Store)
+- In-app purchase history (processed through the app store from which you downloaded the App)
 
 ---
 
@@ -100,7 +100,7 @@ The App integrates with the following third-party services:
 - **Firebase Crashlytics** (Google) - Crash reporting and diagnostics
 - **Google AdMob** (Google) - Advertising for free-tier users (collects and shares the Advertising ID)
 - **Google Sign-In** - Optional social login
-- **Apple App Store / Google Play Store** - In-app purchases and subscriptions
+- **App store billing** - In-app purchases and subscriptions are processed by the app store from which you downloaded the App
 
 Each third-party service has its own privacy policy. We encourage you to review them. For advertising, see Google's policies at https://policies.google.com/technologies/ads.
 

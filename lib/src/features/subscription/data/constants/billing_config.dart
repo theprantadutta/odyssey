@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Product IDs for Odyssey subscription plans.
-/// Must match the IDs configured in App Store Connect and Google Play Console.
+/// Must match the product IDs configured in each app store's console.
 class ProductIds {
   static const String monthlySubscription = 'odyssey_premium_monthly';
   static const String yearlySubscription = 'odyssey_premium_yearly';
@@ -18,7 +18,7 @@ class ProductIds {
     yearlySubscription,
   };
 
-  // Google Play test product IDs
+  // Reserved test product IDs — used only in non-release (debug) builds.
   static const String testPurchased = 'android.test.purchased';
   static const String testCanceled = 'android.test.canceled';
   static const String testRefunded = 'android.test.refunded';

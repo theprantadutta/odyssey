@@ -25,6 +25,7 @@ class AuthState {
   final UserModel? user;
   final bool isLoading;
   final bool isGoogleLoading;
+  final bool isAppleLoading;
   final String? error;
   final bool isAuthenticated;
   final bool hasSeenIntro;
@@ -37,6 +38,7 @@ class AuthState {
     this.user,
     this.isLoading = false,
     this.isGoogleLoading = false,
+    this.isAppleLoading = false,
     this.error,
     this.isAuthenticated = false,
     this.hasSeenIntro = true, // Default to true to avoid flash
@@ -50,6 +52,7 @@ class AuthState {
     UserModel? user,
     bool? isLoading,
     bool? isGoogleLoading,
+    bool? isAppleLoading,
     String? error,
     bool? isAuthenticated,
     bool? hasSeenIntro,
@@ -62,6 +65,7 @@ class AuthState {
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
       isGoogleLoading: isGoogleLoading ?? this.isGoogleLoading,
+      isAppleLoading: isAppleLoading ?? this.isAppleLoading,
       error: error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
@@ -411,6 +415,36 @@ class Auth extends _$Auth {
     }
   }
 
+  /// Permanently delete the current user's account and all their data.
+  ///
+  /// On success the user is fully signed out and local data is wiped.
+  Future<void> deleteAccount() async {
+    AppLogger.auth('Deleting account');
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      // Unregister device from push notifications before the account is gone.
+      await _unregisterDeviceForNotifications();
+
+      await _authRepository.deleteAccount();
+
+      // Clear local database and reset sync.
+      await DatabaseService().clearAllData();
+      SyncService().dispose();
+      SyncService().initialize();
+
+      AppLogger.auth('Account deleted');
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackLogout());
+      unawaited(analytics.setUserId(null));
+
+      state = const AuthState(isAuthenticated: false, isLoading: false);
+    } catch (e) {
+      AppLogger.auth('Account deletion failed: $e', isError: true);
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
   /// Clear error
   void clearError() {
     state = state.copyWith(error: null);
@@ -482,6 +516,66 @@ class Auth extends _$Auth {
     } catch (e) {
       AppLogger.auth('Google Sign-In failed: $e', isError: true);
       state = state.copyWith(isGoogleLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  /// Sign in with Apple
+  ///
+  /// Returns true if account linking is required
+  Future<bool> signInWithApple() async {
+    AppLogger.auth('Starting Sign in with Apple');
+    state = state.copyWith(isAppleLoading: true, error: null);
+
+    try {
+      final response = await _authRepository.signInWithApple();
+
+      if (response == null) {
+        // User cancelled
+        AppLogger.auth('Sign in with Apple cancelled by user');
+        state = state.copyWith(isAppleLoading: false);
+        return false;
+      }
+
+      // Fetch user details
+      final user = await _authRepository.getCurrentUser();
+      await StorageService().saveUserData(jsonEncode(user.toJson()));
+      AppLogger.auth('Sign in with Apple successful: ${user.email}');
+
+      // Check if onboarding was completed
+      final hasCompletedOnboarding = await StorageService()
+          .isOnboardingCompleted();
+
+      state = state.copyWith(
+        user: user,
+        isAuthenticated: true,
+        isAppleLoading: false,
+        needsOnboarding: !hasCompletedOnboarding,
+      );
+
+      final analytics = ref.read(analyticsServiceProvider);
+      unawaited(analytics.trackLogin(method: 'apple'));
+      unawaited(analytics.setUserId(user.id));
+
+      // Register device for push notifications
+      _registerDeviceForNotifications();
+
+      // Trigger initial sync
+      _triggerInitialSync();
+
+      return false;
+    } on AccountLinkingRequiredException catch (e) {
+      AppLogger.auth('Account linking required: ${e.message}');
+      state = state.copyWith(
+        isAppleLoading: false,
+        needsAccountLinking: true,
+        pendingFirebaseToken: e.firebaseToken,
+        error: e.message,
+      );
+      return true;
+    } catch (e) {
+      AppLogger.auth('Sign in with Apple failed: $e', isError: true);
+      state = state.copyWith(isAppleLoading: false, error: e.toString());
       rethrow;
     }
   }

@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
+import '../../../settings/presentation/widgets/legal_document_viewer.dart';
 import '../mixins/subscription_lifecycle_mixin.dart';
 import '../providers/feature_access_provider.dart';
 import '../providers/purchase_provider.dart';
@@ -51,6 +53,16 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         _showSuccessAndClose();
       }
     });
+  }
+
+  void _openLegalDocument(String title, String assetPath) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LegalDocumentViewer(
+        title: title,
+        assetPath: assetPath,
+      ),
+    ));
   }
 
   void _showSuccessAndClose() {
@@ -217,6 +229,50 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                       fontSize: 10,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: AppSizes.space8),
+
+                  // Legal links required at point of purchase (App Store Guideline 3.1.2)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _openLegalDocument(
+                          'Terms of Use',
+                          'assets/legal/terms.md',
+                        ),
+                        child: Text(
+                          'Terms of Use (EULA)',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '  ·  ',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: theme.hintColor,
+                          fontSize: 11,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _openLegalDocument(
+                          'Privacy Policy',
+                          'assets/legal/privacy.md',
+                        ),
+                        child: Text(
+                          'Privacy Policy',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

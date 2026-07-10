@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -118,7 +119,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     }
   }
 
-  void _showAccountLinkingDialog() {
+  Future<void> _handleAppleSignIn() async {
+    try {
+      final needsLinking = await ref.read(authProvider.notifier).signInWithApple();
+      if (needsLinking && mounted) {
+        _showAccountLinkingDialog(providerName: 'Apple');
+      }
+    } catch (e) {
+      if (mounted) {
+        HapticFeedback.heavyImpact();
+        _showErrorSnackBar(e.toString());
+      }
+    }
+  }
+
+  /// Sign in with Apple is only offered on Apple platforms.
+  bool get _showAppleButton =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  void _showAccountLinkingDialog({String providerName = 'Google'}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -149,7 +170,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ],
         ),
         content: Text(
-          'An account with this email already exists. Would you like to link your Google account to it?',
+          'An account with this email already exists. Would you like to link your $providerName account to it?',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.slate,
           ),
@@ -233,7 +254,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isAuthLoading = authState.isLoading || authState.isGoogleLoading;
+    final isAuthLoading =
+        authState.isLoading || authState.isGoogleLoading || authState.isAppleLoading;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -380,7 +402,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // Register Button
                               AnimatedButton(
                                 text: 'Create Account',
-                                onPressed: (authState.isLoading || authState.isGoogleLoading)
+                                onPressed: (authState.isLoading || authState.isGoogleLoading || authState.isAppleLoading)
                                     ? null
                                     : _handleRegister,
                                 isLoading: authState.isLoading,
@@ -421,6 +443,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                               // Google Sign-In Button
                               _buildGoogleSignInButton(authState),
+
+                              // Apple Sign-In Button (iOS/macOS only)
+                              if (_showAppleButton) ...[
+                                const SizedBox(height: AppSizes.space12),
+                                _buildAppleSignInButton(authState),
+                              ],
                             ],
                           ),
                         ),
@@ -646,6 +674,53 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     'Continue with Google',
                     style: AppTypography.labelLarge.copyWith(
                       color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildAppleSignInButton(AuthState authState) {
+    final isLoading = authState.isAppleLoading;
+    final isDisabled = authState.isLoading || authState.isAppleLoading;
+
+    return SizedBox(
+      height: AppSizes.buttonHeightLg,
+      child: FilledButton(
+        onPressed: isDisabled ? null : _handleAppleSignIn,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.black.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.space16,
+            vertical: AppSizes.space12,
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.apple, color: Colors.white, size: 24),
+                  const SizedBox(width: AppSizes.space12),
+                  Text(
+                    'Continue with Apple',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

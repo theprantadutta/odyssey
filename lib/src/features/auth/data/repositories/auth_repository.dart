@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/google_sign_in_service.dart';
+import '../../../../core/services/apple_sign_in_service.dart';
 import '../../../../core/config/api_config.dart';
 import '../models/user_model.dart';
 
@@ -24,6 +26,7 @@ class AuthRepository {
   final DioClient _dioClient = DioClient();
   final StorageService _storageService = StorageService();
   final GoogleSignInService _googleSignInService = GoogleSignInService();
+  final AppleSignInService _appleSignInService = AppleSignInService();
 
   /// Save all auth tokens and user ID from response
   Future<void> _saveAuthTokens(AuthResponse response) async {
@@ -143,6 +146,25 @@ class AuthRepository {
     return await _storageService.isAuthenticated();
   }
 
+  /// Permanently delete the current user's account and all associated data.
+  ///
+  /// Calls the backend, then clears all local auth/session state. Also signs
+  /// out of Firebase/Google so a stale social session can't re-authenticate.
+  Future<void> deleteAccount() async {
+    try {
+      await _dioClient.delete(ApiConfig.deleteAccount);
+    } on DioException catch (e) {
+      // Server-side deletion failed; keep the local session intact.
+      throw _handleError(e);
+    }
+
+    // Deletion succeeded — clear all local state and any social session.
+    try {
+      await _googleSignInService.signOut();
+    } catch (_) {}
+    await _storageService.clearAuthData();
+  }
+
   /// Sign in with Google
   ///
   /// Returns AuthResponse on success
@@ -174,6 +196,42 @@ class AuthRepository {
       // Sign out from Google if backend auth failed
       await _googleSignInService.signOut();
       rethrow;
+    }
+  }
+
+  /// Sign in with Apple
+  ///
+  /// Returns AuthResponse on success.
+  /// Throws AccountLinkingRequiredException if account linking is needed.
+  /// Returns null if the user cancelled.
+  Future<AuthResponse?> signInWithApple() async {
+    try {
+      // Step 1: Sign in with Apple via Firebase
+      final userCredential = await _appleSignInService.signInWithApple();
+
+      if (userCredential == null) {
+        return null; // Cancelled or unavailable
+      }
+
+      // Step 2: Get Firebase ID token
+      final firebaseToken = await _appleSignInService.getFirebaseIdToken();
+
+      if (firebaseToken == null) {
+        throw Exception('Failed to get Firebase token');
+      }
+
+      // Step 3: Authenticate with backend (same Firebase flow as Google)
+      return await _authenticateWithFirebaseToken(firebaseToken);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      // User cancelled the native Apple sheet -> treat as no-op.
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return null;
+      }
+      rethrow;
+    } on AccountLinkingRequiredException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
   }
 

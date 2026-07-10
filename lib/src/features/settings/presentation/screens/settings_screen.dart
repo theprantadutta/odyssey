@@ -81,6 +81,110 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _handleDeleteAccount() async {
+    HapticFeedback.lightImpact();
+    final colorScheme = Theme.of(context).colorScheme;
+    final controller = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final canDelete = controller.text.trim().toUpperCase() == 'DELETE';
+          return AlertDialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+            ),
+            title: Text(
+              'Delete Account',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppColors.coralBurst,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This permanently deletes your account and all your trips, '
+                  'memories, documents, and photos. This cannot be undone.',
+                  style: AppTypography.bodyMedium
+                      .copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: AppSizes.space16),
+                Text(
+                  'Type DELETE to confirm.',
+                  style: AppTypography.bodySmall
+                      .copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: AppSizes.space8),
+                TextField(
+                  controller: controller,
+                  autocorrect: false,
+                  textCapitalization: TextCapitalization.characters,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'DELETE',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: AppTypography.labelLarge
+                      .copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+              TextButton(
+                onPressed:
+                    canDelete ? () => Navigator.of(context).pop(true) : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.coralBurst,
+                ),
+                child: Text(
+                  'Delete Account',
+                  style: AppTypography.labelLarge.copyWith(
+                    color: canDelete
+                        ? AppColors.coralBurst
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    controller.dispose();
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(authProvider.notifier).deleteAccount();
+        // Auth state becomes unauthenticated -> router redirects to login.
+      } catch (e) {
+        if (mounted) {
+          HapticFeedback.heavyImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete account: $e'),
+              backgroundColor: AppColors.coralBurst,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _handleManageSubscription() {
     HapticFeedback.lightImpact();
     context.push(AppRoutes.subscription);
@@ -163,6 +267,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     subtitle: authState.user!.displayName,
                     showChevron: false,
                   ),
+                SettingsTile(
+                  title: 'Delete Account',
+                  subtitle: 'Permanently delete your account and data',
+                  isDestructive: true,
+                  onTap: _handleDeleteAccount,
+                ),
               ],
             ),
             const SizedBox(height: AppSizes.space16),

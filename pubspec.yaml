@@ -32,6 +32,9 @@ dependencies:
   firebase_crashlytics: ^5.0.7
   firebase_remote_config: ^6.0.0
   google_sign_in: ^7.2.0
+  # Sign in with Apple (required by App Store Guideline 4.8; flows into Firebase Auth)
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.3
 
   # Local Notifications
   flutter_local_notifications: ^22.0.1
@@ -93,7 +96,7 @@ dependencies:
   in_app_purchase: ^3.2.3
   in_app_purchase_android: ^0.5.1
 
-  # In-App Update (Google Play)
+  # In-App Update (Android only; no-op on iOS)
   in_app_update: ^4.2.3
 
   # Markdown Rendering
@@ -101,6 +104,9 @@ dependencies:
 
   # Ads (free users only; gated by isPremiumProvider). Bundles the UMP consent SDK.
   google_mobile_ads: ^9.0.0
+
+  # iOS App Tracking Transparency prompt (required before personalized ads on iOS)
+  app_tracking_transparency: ^2.0.6
 
   cupertino_icons: ^1.0.8
 

@@ -85,6 +85,7 @@ class ApiConfig {
   static const String logout = '$auth/logout';
   static const String refresh = '$auth/refresh';
   static const String logoutAll = '$auth/logout-all';
+  static const String deleteAccount = '$auth/account';
 
   // Google Auth endpoints
   static const String googleAuth = '$auth/google';

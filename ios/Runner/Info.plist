@@ -48,6 +48,16 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Odyssey needs your location to automatically fill in GPS coordinates for your activities and memories.</string>
 
+	<!-- Photo library + camera: image_picker uses these to attach photos to memories and documents. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Odyssey needs camera access so you can take photos and videos to add to your trip memories and documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Odyssey needs access to your photo library so you can attach existing photos and videos to your trip memories and documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Odyssey needs permission to save photos to your library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Odyssey needs microphone access to record audio when you capture videos for your trip memories.</string>
+
 	<!-- ===== Google AdMob ===== -->
 	<!-- AdMob App ID (Odyssey, iOS). Not a secret — it ships in the app bundle.
 	     Debug/profile builds still use Google test AD UNITS via AdMobConfig. -->

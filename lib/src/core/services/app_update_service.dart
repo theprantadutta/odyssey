@@ -6,17 +6,17 @@ import 'package:in_app_update/in_app_update.dart';
 
 import 'logger_service.dart';
 
-/// Wraps Google Play In-App Updates with a policy-correct flow:
+/// Wraps the Android in-app update flow with a policy-correct approach:
 ///
 ///  * **Immediate** (blocking, full-screen) updates only for high-priority or
-///    very stale versions — per Google's guidance, NOT for every release.
+///    very stale versions — NOT for every release.
 ///  * **Flexible** (background download) updates otherwise, installed only after
 ///    the user accepts a non-disruptive "Restart to update" prompt.
 ///  * **Resumes** an interrupted immediate update on the next launch.
 ///
-/// Play In-App Updates is Android-only and requires a Play-Store install, so
-/// this is a no-op on iOS/web and silently no-ops in debug/sideloaded builds
-/// (where `checkForUpdate` throws ERROR_APP_NOT_OWNED etc.).
+/// This feature is Android-only and requires a store install, so it is a no-op
+/// on iOS/web and silently no-ops in debug/sideloaded builds (where
+/// `checkForUpdate` throws ERROR_APP_NOT_OWNED etc.).
 class AppUpdateService {
   AppUpdateService._();
   static final AppUpdateService instance = AppUpdateService._();
@@ -38,7 +38,7 @@ class AppUpdateService {
   /// Checks for an update and drives the appropriate flow. Safe to call on every
   /// app start / resume; re-entrant calls are ignored.
   Future<void> checkForUpdate() async {
-    // Play In-App Updates is Android-only.
+    // In-app updates are Android-only.
     if (kIsWeb || !Platform.isAndroid) return;
     if (_checking) return;
     _checking = true;
@@ -73,7 +73,7 @@ class AppUpdateService {
         await _runFlexibleUpdate();
       }
     } catch (e) {
-      // Expected off the Play Store (debug/sideload) and on transient failures.
+      // Expected outside a store install (debug/sideload) and on transient failures.
       AppLogger.debug('App update check failed: $e');
     } finally {
       _checking = false;

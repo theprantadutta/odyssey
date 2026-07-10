@@ -55,7 +55,7 @@ You agree **not** to:
 ## 6. Subscriptions & In-App Purchases
 
 - The App may offer premium features through subscriptions or one-time purchases
-- Purchases are processed through Apple App Store or Google Play Store
+- Purchases are processed securely through the app store from which you downloaded the App
 - Subscription terms, pricing, and renewal policies are displayed before purchase
 - Refunds are handled according to the respective app store's refund policy
 - We reserve the right to modify pricing with reasonable notice
