@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../ads/native_ad_slots.dart';
 import '../../../ads/presentation/widgets/banner_ad_widget.dart';
+import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
@@ -371,15 +373,26 @@ class _InProgressTab extends StatelessWidget {
       );
     }
 
+    // Interleave inline native ads after every Nth achievement (free users
+    // only — the tile renders nothing for premium users). Disabled for short
+    // lists via NativeAdSlots' minimum-items guard.
+    final slots = NativeAdSlots(achievements.length);
+
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
       onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
-        itemCount: achievements.length,
+        itemCount: slots.totalCount,
         itemBuilder: (context, index) {
-          final ua = achievements[index];
+          if (slots.isAdAt(index)) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: AppSizes.space12),
+              child: NativeAdListTile(),
+            );
+          }
+          final ua = achievements[slots.realIndexAt(index)];
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSizes.space12),
             child: AchievementCard(

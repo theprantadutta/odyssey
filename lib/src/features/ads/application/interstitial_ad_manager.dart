@@ -22,6 +22,7 @@ class InterstitialAdManager {
   bool _isLoading = false;
   bool _enabled = false;
   int _navCount = 0;
+  int _shownThisSession = 0;
   DateTime? _lastShownAt;
 
   static final AdRequest _request = AdRequest(
@@ -36,13 +37,18 @@ class InterstitialAdManager {
       _preload();
     } else {
       _navCount = 0;
+      _shownThisSession = 0;
       _disposeAd();
     }
   }
 
-  /// Call on every route push. Shows an ad every Nth qualifying navigation.
+  /// Call on every route push. Shows an ad every Nth qualifying navigation,
+  /// until the per-session cap is reached.
   void onNavigation() {
     if (!_enabled || !AdMobConfig.isSupportedPlatform) return;
+    // Session cap reached: stop counting and stop preloading so we don't burn
+    // ad requests we'll never show.
+    if (_shownThisSession >= AdConstants.interstitialMaxPerSession) return;
     _navCount++;
     if (_navCount % AdConstants.interstitialEveryNNavigations != 0) {
       // Keep one warm for the next trigger.
@@ -90,6 +96,8 @@ class InterstitialAdManager {
       return;
     }
 
+    if (_shownThisSession >= AdConstants.interstitialMaxPerSession) return;
+
     final last = _lastShownAt;
     final cooledDown = last == null ||
         DateTime.now().difference(last) >= AdConstants.interstitialCooldown;
@@ -114,6 +122,7 @@ class InterstitialAdManager {
 
     _ad = null;
     _lastShownAt = DateTime.now();
+    _shownThisSession++;
     ad.show();
   }
 

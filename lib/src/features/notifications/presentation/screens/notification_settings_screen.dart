@@ -8,7 +8,6 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/form_section_card.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../settings/presentation/widgets/settings_tile.dart';
 import '../../data/models/notification_preference_model.dart';
 import '../providers/notification_preference_provider.dart';
@@ -104,7 +103,6 @@ class _NotificationSettingsScreenState
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,

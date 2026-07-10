@@ -713,7 +713,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
     // Inject a native ad after every Nth trip (free users only — the ad tile
     // itself renders nothing for premium users). Disabled for short lists.
-    const n = AdConstants.nativeAdEveryNItems;
+    final n = AdConstants.nativeAdEveryNItems;
     final showAds = tripCount >= AdConstants.nativeAdMinItemsBeforeFirst;
     final adCount = showAds ? tripCount ~/ n : 0;
     final totalCount = tripCount + adCount;
