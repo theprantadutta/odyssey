@@ -4,7 +4,7 @@ import Firebase
 import FirebaseMessaging
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -21,8 +21,16 @@ import FirebaseMessaging
     // Set Firebase Messaging delegate
     Messaging.messaging().delegate = self
 
-    GeneratedPluginRegistrant.register(with: self)
+    // Plugin registration moved to didInitializeImplicitFlutterEngine
+    // for the UIScene lifecycle (see flutter.dev/to/uiscene-migration).
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Register plugins once the implicit Flutter engine is ready. Under the
+  // UIScene lifecycle, plugin registration must happen here rather than in
+  // application(_:didFinishLaunchingWithOptions:).
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
   // Handle registration for remote notifications

@@ -99,9 +99,20 @@ odyssey/
 
 ### Prerequisites
 
-- Flutter SDK 3.10+
+- Flutter SDK 3.38+ (required for the iOS UIScene lifecycle; developed on 3.44)
 - Dart SDK 3.10+
 - Backend API running (see [odyssey_backend](../odyssey_backend))
+
+### Platform Requirements
+
+- **iOS 15.0+** — minimum deployment target. Required by the Firebase iOS SDKs
+  (analytics, auth, messaging, crashlytics, remote config). This also means iOS
+  always uses StoreKit 2, so in-app purchase receipts are JWS-verified server-side.
+- **Android** — as configured in `android/app/build.gradle`.
+
+The iOS app uses the **UIScene lifecycle** (`UIApplicationSceneManifest` in
+`ios/Runner/Info.plist` + `FlutterImplicitEngineDelegate` in `AppDelegate.swift`),
+required by Apple for upcoming iOS versions.
 
 ### Installation
 
