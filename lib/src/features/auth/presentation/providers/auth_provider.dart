@@ -451,11 +451,11 @@ class Auth extends _$Auth {
   }
 
   /// Complete onboarding (mark as done and update state)
-  Future<void> completeOnboarding() async {
+  Future<void> completeOnboarding({bool addedDemoTrips = false}) async {
     await StorageService().setOnboardingCompleted(true);
     state = state.copyWith(needsOnboarding: false);
     final analytics = ref.read(analyticsServiceProvider);
-    unawaited(analytics.trackOnboardingCompleted(addedDemoTrips: false));
+    unawaited(analytics.trackOnboardingCompleted(addedDemoTrips: addedDemoTrips));
     unawaited(analytics.setUserProperty(name: 'has_completed_onboarding', value: 'true'));
   }
 

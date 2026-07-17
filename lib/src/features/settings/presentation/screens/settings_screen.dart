@@ -16,6 +16,8 @@ import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
+import '../../../trips/data/models/default_trips_eligibility.dart';
+import '../../../trips/presentation/providers/trips_provider.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../widgets/about_dialog.dart';
@@ -31,6 +33,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const String _appVersion = '1.0.0';
+
+  bool _isAddingSampleTrips = false;
 
   Future<void> _handleSignOut() async {
     HapticFeedback.lightImpact();
@@ -185,6 +189,132 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  /// The tile stays visible once used, but goes inert - sample trips are a
+  /// one-time-per-account action, so there is nothing left to tap.
+  bool _canAddSampleTrips(AsyncValue<DefaultTripsEligibility> eligibility) {
+    // While loading, or if the check itself failed, let the user try. The backend
+    // is the real gate, so the worst case is a clear "already added" message.
+    return eligibility.asData?.value.canAdd ?? true;
+  }
+
+  String _sampleTripsSubtitle(AsyncValue<DefaultTripsEligibility> eligibility) {
+    final value = eligibility.asData?.value;
+    if (value == null) return 'Fill your journal with demo trips to explore';
+    if (!value.canAdd) return 'Already added to this account';
+    return 'Fill your journal with demo trips to explore';
+  }
+
+  Future<void> _handleAddSampleTrips() async {
+    HapticFeedback.lightImpact();
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasExistingTrips =
+        ref.read(defaultTripsEligibilityProvider).asData?.value.hasExistingTrips ??
+            ref.read(tripsProvider).trips.isNotEmpty;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Add Sample Trips',
+          style: AppTypography.headlineSmall.copyWith(color: colorScheme.onSurface),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This adds four demo trips - Paris, Tokyo, Bali and New York - '
+              'complete with activities, packing lists, expenses and memories.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (hasExistingTrips) ...[
+              const SizedBox(height: AppSizes.space12),
+              Text(
+                'Your existing trips are not touched - the sample trips are added '
+                'alongside them. You can delete any of them afterwards.',
+                style: AppTypography.bodyMedium.copyWith(color: AppColors.warning),
+              ),
+            ],
+            const SizedBox(height: AppSizes.space12),
+            Text(
+              'Sample trips can only be added once.',
+              style: AppTypography.bodySmall.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Add Trips',
+              style: AppTypography.labelLarge.copyWith(color: AppColors.oceanTeal),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isAddingSampleTrips = true);
+
+    try {
+      final count = await ref.read(tripsProvider.notifier).addSampleTrips();
+      if (!mounted) return;
+
+      // Whether it succeeded or was already used, the server's answer changed.
+      ref.invalidate(defaultTripsEligibilityProvider);
+
+      if (count == null) {
+        HapticFeedback.heavyImpact();
+        _showSampleTripsMessage(
+          'Sample trips have already been added to this account.',
+          AppColors.warning,
+        );
+        return;
+      }
+
+      HapticFeedback.mediumImpact();
+      _showSampleTripsMessage(
+        '$count sample trips added to your journal.',
+        AppColors.oceanTeal,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      _showSampleTripsMessage('Failed to add sample trips: $e', AppColors.error);
+    } finally {
+      if (mounted) setState(() => _isAddingSampleTrips = false);
+    }
+  }
+
+  void _showSampleTripsMessage(String message, Color background) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: background,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _handleManageSubscription() {
     HapticFeedback.lightImpact();
     context.push(AppRoutes.subscription);
@@ -216,6 +346,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final eligibility = ref.watch(defaultTripsEligibilityProvider);
     final subscriptionState = ref.watch(subscriptionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     final isOnline = ref.watch(connectivityProvider);
@@ -223,8 +354,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final colorScheme = theme.colorScheme;
 
     return LoadingOverlay(
-      isLoading: authState.isLoading,
-      message: 'Signing out...',
+      isLoading: authState.isLoading || _isAddingSampleTrips,
+      message: _isAddingSampleTrips ? 'Adding sample trips...' : 'Signing out...',
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
@@ -272,6 +403,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   subtitle: 'Permanently delete your account and data',
                   isDestructive: true,
                   onTap: _handleDeleteAccount,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space16),
+
+            // Trips Section
+            FormSectionCard(
+              title: 'Trips',
+              icon: Icons.luggage_outlined,
+              iconBackgroundColor: AppColors.oceanTeal.withValues(alpha: 0.15),
+              iconColor: AppColors.oceanTeal,
+              children: [
+                SettingsTile(
+                  title: 'Add Sample Trips',
+                  subtitle: _sampleTripsSubtitle(eligibility),
+                  onTap: _canAddSampleTrips(eligibility) ? _handleAddSampleTrips : null,
+                  showChevron: _canAddSampleTrips(eligibility),
                 ),
               ],
             ),

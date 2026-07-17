@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
+import '../../data/models/default_trips_eligibility.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/models/trip_filter_model.dart';
 import '../../data/repositories/trip_repository.dart';
@@ -249,6 +250,32 @@ class Trips extends _$Trips {
     }
   }
 
+  /// Add the sample trips to this account. Returns the number created, or null
+  /// if the one-time allowance was already used.
+  Future<int?> addSampleTrips() async {
+    AppLogger.action('Adding sample trips');
+    try {
+      final created = await _tripRepository.createDefaultTrips();
+
+      if (created == null) {
+        AppLogger.info('Sample trips already added to this account');
+        return null;
+      }
+
+      AppLogger.info('Sample trips created: ${created.length}');
+
+      // The repository already wrote them to the local DB, so this reads them back
+      // through the same filter/sort/pagination path as every other trip.
+      await _loadTrips();
+      _loadAvailableTags();
+
+      return created.length;
+    } catch (e) {
+      AppLogger.error('Failed to add sample trips: $e');
+      rethrow;
+    }
+  }
+
   /// Update trip
   Future<void> updateTrip(String id, Map<String, dynamic> updates) async {
     AppLogger.action('Updating trip: $id');
@@ -289,6 +316,12 @@ class Trips extends _$Trips {
   void clearError() {
     state = state.copyWith(error: null);
   }
+}
+
+/// Whether this account can still add the sample trips.
+@riverpod
+Future<DefaultTripsEligibility> defaultTripsEligibility(Ref ref) async {
+  return ref.read(tripRepositoryProvider).getDefaultTripsEligibility();
 }
 
 /// Single trip provider (for detail view)

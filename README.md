@@ -303,7 +303,8 @@ The app connects to the Odyssey Backend API:
 | `POST /auth/login` | Login and get JWT |
 | `GET /trips` | List user's trips |
 | `POST /trips` | Create trip |
-| `POST /trips/default-trips` | Create demo trips |
+| `POST /trips/default-trips` | Create demo trips (once per account) |
+| `GET /trips/default-trips/eligibility` | Whether demo trips can still be added |
 | `GET /activities` | List trip activities |
 | `GET /memories` | List trip memories |
 

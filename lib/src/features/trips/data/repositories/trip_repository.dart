@@ -12,6 +12,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../models/default_trips_eligibility.dart';
 import '../models/trip_model.dart';
 import '../models/trip_filter_model.dart';
 
@@ -221,13 +222,36 @@ class TripRepository {
     }
   }
 
-  /// Create default trips for new user
-  Future<bool> createDefaultTrips() async {
+  /// Whether the sample trips can still be added to this account (once per account).
+  Future<DefaultTripsEligibility> getDefaultTripsEligibility() async {
     try {
-      await _dioClient.post(ApiConfig.defaultTrips);
-      return true;
+      final response = await _dioClient.get(ApiConfig.defaultTripsEligibility);
+      return DefaultTripsEligibility.fromJson(response.data);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 409) return false;
+      throw _handleError(e);
+    }
+  }
+
+  /// Create the sample trips. Returns the created trips, or null if the account
+  /// has already used its one-time allowance (409).
+  Future<List<TripModel>?> createDefaultTrips() async {
+    try {
+      final response = await _dioClient.post(ApiConfig.defaultTrips);
+
+      final created = (response.data as List<dynamic>)
+          .map((json) => TripModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      // Write straight into the local DB. getTrips() is local-first and only
+      // awaits the API when local is empty, so without this the new trips would
+      // not surface until some later background refresh.
+      for (final trip in created) {
+        await _db.tripsDao.upsert(tripToLocal(trip));
+      }
+
+      return created;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) return null;
       throw _handleError(e);
     }
   }

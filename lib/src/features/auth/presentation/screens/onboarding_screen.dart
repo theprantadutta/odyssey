@@ -66,22 +66,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   Future<void> _handleContinue() async {
     setState(() => _isLoading = true);
     HapticFeedback.mediumImpact();
+    var addedDemoTrips = false;
 
     try {
       if (!_keepClean) {
         AppLogger.action('User chose to add demo trips');
         final tripRepository = TripRepository();
         final created = await tripRepository.createDefaultTrips();
-        if (created) {
-          AppLogger.info('Demo trips created successfully');
+        addedDemoTrips = created != null;
+        if (created != null) {
+          AppLogger.info('Demo trips created successfully: ${created.length}');
         } else {
-          AppLogger.info('User already has trips, skipping demo trip creation');
+          AppLogger.info('Demo trips already added to this account, skipping');
         }
       } else {
         AppLogger.action('User chose to start fresh (no demo trips)');
       }
 
-      await ref.read(authProvider.notifier).completeOnboarding();
+      await ref.read(authProvider.notifier).completeOnboarding(addedDemoTrips: addedDemoTrips);
       AppLogger.lifecycle('Onboarding completed');
 
       if (mounted) {
