@@ -12,6 +12,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/theme_provider.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/form_section_card.dart';
+import '../../../../core/providers/app_version_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -32,7 +33,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  static const String _appVersion = '1.0.0';
+  /// Shown for the blink before the bundle's version resolves.
+  static const String _versionPlaceholder = '…';
 
   bool _isAddingSampleTrips = false;
   bool _isRemovingSampleTrips = false;
@@ -420,7 +422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     HapticFeedback.lightImpact();
     showAboutOdysseyDialog(
       context: context,
-      appVersion: _appVersion,
+      appVersion: ref.read(appVersionProvider).asData?.value ?? _versionPlaceholder,
     );
   }
 
@@ -442,6 +444,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final appVersion = ref.watch(appVersionProvider);
     final eligibility = ref.watch(defaultTripsEligibilityProvider);
     final subscriptionState = ref.watch(subscriptionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
@@ -678,7 +681,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 SettingsTile(
                   title: 'App Version',
-                  subtitle: _appVersion,
+                  subtitle: appVersion.asData?.value ?? _versionPlaceholder,
                   onTap: _handleShowAbout,
                 ),
                 SettingsTile(
