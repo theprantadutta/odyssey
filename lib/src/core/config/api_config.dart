@@ -112,6 +112,7 @@ class ApiConfig {
   // Trip endpoints
   static const String defaultTrips = '$trips/default-trips';
   static const String defaultTripsEligibility = '$trips/default-trips/eligibility';
+  static const String deleteDemoTrips = defaultTrips;
 
   // Sync endpoints
   static const String sync = '/sync';

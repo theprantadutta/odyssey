@@ -256,6 +256,26 @@ class TripRepository {
     }
   }
 
+  /// Remove every demo trip from this account. Returns how many were deleted.
+  Future<int> deleteDemoTrips() async {
+    try {
+      final response = await _dioClient.delete(ApiConfig.deleteDemoTrips);
+      final deletedIds = (response.data['deleted_trip_ids'] as List<dynamic>? ?? [])
+          .map((id) => id as String);
+
+      // Drop the same rows from the local mirror - getTrips() is local-first and would
+      // otherwise keep serving them from Drift. hardDelete, not softDelete: the server
+      // has already done the deletion, so there is nothing left to sync back.
+      for (final id in deletedIds) {
+        await _db.tripsDao.hardDelete(id);
+      }
+
+      return (response.data['deleted_count'] as num?)?.toInt() ?? 0;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // ─── Private Methods ──────────────────────────────────────────
 
   Future<TripsResponse> _fetchFromApi({

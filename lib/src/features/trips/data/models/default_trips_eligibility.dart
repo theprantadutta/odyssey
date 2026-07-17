@@ -15,10 +15,14 @@ class DefaultTripsEligibility extends Equatable {
   @JsonKey(name: 'has_existing_trips')
   final bool hasExistingTrips;
 
+  @JsonKey(name: 'has_demo_trips')
+  final bool hasDemoTrips;
+
   const DefaultTripsEligibility({
     required this.canAdd,
     this.addedAt,
     required this.hasExistingTrips,
+    required this.hasDemoTrips,
   });
 
   factory DefaultTripsEligibility.fromJson(Map<String, dynamic> json) =>
@@ -27,5 +31,5 @@ class DefaultTripsEligibility extends Equatable {
   Map<String, dynamic> toJson() => _$DefaultTripsEligibilityToJson(this);
 
   @override
-  List<Object?> get props => [canAdd, addedAt, hasExistingTrips];
+  List<Object?> get props => [canAdd, addedAt, hasExistingTrips, hasDemoTrips];
 }

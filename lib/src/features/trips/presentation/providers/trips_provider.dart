@@ -276,6 +276,23 @@ class Trips extends _$Trips {
     }
   }
 
+  /// Remove every demo trip from this account. Returns how many were deleted.
+  Future<int> deleteSampleTrips() async {
+    AppLogger.action('Deleting sample trips');
+    try {
+      final deleted = await _tripRepository.deleteDemoTrips();
+      AppLogger.info('Sample trips deleted: $deleted');
+
+      await _loadTrips();
+      _loadAvailableTags();
+
+      return deleted;
+    } catch (e) {
+      AppLogger.error('Failed to delete sample trips: $e');
+      rethrow;
+    }
+  }
+
   /// Update trip
   Future<void> updateTrip(String id, Map<String, dynamic> updates) async {
     AppLogger.action('Updating trip: $id');

@@ -35,6 +35,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const String _appVersion = '1.0.0';
 
   bool _isAddingSampleTrips = false;
+  bool _isRemovingSampleTrips = false;
 
   Future<void> _handleSignOut() async {
     HapticFeedback.lightImpact();
@@ -315,6 +316,101 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _handleDeleteSampleTrips() async {
+    HapticFeedback.lightImpact();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+        ),
+        title: Text(
+          'Remove Sample Trips',
+          style: AppTypography.headlineSmall.copyWith(color: AppColors.coralBurst),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This permanently deletes the sample trips and everything in them - '
+              'activities, packing lists, expenses, documents and memories. '
+              'This cannot be undone.',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.coralBurst),
+            ),
+            const SizedBox(height: AppSizes.space12),
+            Text(
+              'Only the sample trips are removed. Any trips you created yourself are '
+              'left untouched.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSizes.space12),
+            Text(
+              'If you want to keep one as a starting point, save it as a template '
+              'first - you can then build new trips from it.',
+              style: AppTypography.bodySmall.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
+            child: Text(
+              'Remove Trips',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.coralBurst,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isRemovingSampleTrips = true);
+
+    try {
+      final deleted = await ref.read(tripsProvider.notifier).deleteSampleTrips();
+      if (!mounted) return;
+
+      // Removing them frees the one-time allowance, so the add tile comes back.
+      ref.invalidate(defaultTripsEligibilityProvider);
+
+      HapticFeedback.mediumImpact();
+      _showSampleTripsMessage(
+        deleted == 0
+            ? 'No sample trips to remove.'
+            : '$deleted sample trips removed.',
+        deleted == 0 ? AppColors.warning : AppColors.oceanTeal,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      _showSampleTripsMessage('Failed to remove sample trips: $e', AppColors.error);
+    } finally {
+      if (mounted) setState(() => _isRemovingSampleTrips = false);
+    }
+  }
+
   void _handleManageSubscription() {
     HapticFeedback.lightImpact();
     context.push(AppRoutes.subscription);
@@ -354,8 +450,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final colorScheme = theme.colorScheme;
 
     return LoadingOverlay(
-      isLoading: authState.isLoading || _isAddingSampleTrips,
-      message: _isAddingSampleTrips ? 'Adding sample trips...' : 'Signing out...',
+      isLoading: authState.isLoading || _isAddingSampleTrips || _isRemovingSampleTrips,
+      message: switch ((_isAddingSampleTrips, _isRemovingSampleTrips)) {
+        (true, _) => 'Adding sample trips...',
+        (_, true) => 'Removing sample trips...',
+        _ => 'Signing out...',
+      },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
@@ -421,6 +521,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: _canAddSampleTrips(eligibility) ? _handleAddSampleTrips : null,
                   showChevron: _canAddSampleTrips(eligibility),
                 ),
+                if (eligibility.asData?.value.hasDemoTrips ?? false)
+                  SettingsTile(
+                    title: 'Remove Sample Trips',
+                    subtitle: 'Delete the demo trips when you are done exploring',
+                    isDestructive: true,
+                    onTap: _handleDeleteSampleTrips,
+                  ),
               ],
             ),
             const SizedBox(height: AppSizes.space16),
