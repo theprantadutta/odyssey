@@ -92,7 +92,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../../Odyssey.storekit">
+         identifier = "../Odyssey.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
