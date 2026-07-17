@@ -50,6 +50,11 @@ class ApiConfig {
   static const String publicTemplates = '$templates/public';
   static const String templateFromTrip = '$templates/from-trip';
   static String templateDetail(String id) => '$templates/$id';
+
+  // Moderation — required for the public template gallery (App Store Guideline 1.2)
+  static const String moderation = '/moderation';
+  static String reportTemplate(String id) => '$moderation/templates/$id/report';
+  static String blockUser(String id) => '$moderation/users/$id/block';
   static String useTemplate(String id) => '$templates/use/$id';
 
   // Weather endpoints

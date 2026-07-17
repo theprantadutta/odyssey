@@ -241,6 +241,33 @@ class TemplateRepository {
   }
 
   /// Fork a template - API-only
+  /// Report a public template. Enough reports and it leaves the gallery.
+  Future<void> reportTemplate({
+    required String templateId,
+    required String reason,
+    String? details,
+  }) async {
+    try {
+      await _dioClient.post(
+        ApiConfig.reportTemplate(templateId),
+        data: {'reason': reason, if (details != null && details.isNotEmpty) 'details': details},
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Stop seeing a user's public templates. The gallery is filtered per-viewer, so
+  /// drop the local cache to force a refetch rather than trying to prune it here.
+  Future<void> blockUser(String userId) async {
+    try {
+      await _dioClient.post(ApiConfig.blockUser(userId));
+      await _db.templatesDao.clearPublicCache();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<TripTemplateModel> forkTemplate(String templateId) async {
     if (!ConnectivityService().isOnline) {
       throw 'Forking templates requires an internet connection';

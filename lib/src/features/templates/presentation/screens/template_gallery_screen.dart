@@ -11,6 +11,7 @@ import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
 import '../widgets/template_card.dart';
+import '../widgets/report_template_sheet.dart';
 import '../widgets/use_template_dialog.dart';
 
 class TemplateGalleryScreen extends ConsumerStatefulWidget {
@@ -684,13 +685,72 @@ class _MyTemplatesTab extends ConsumerWidget {
   }
 }
 
-class _TemplateDetailsSheet extends StatelessWidget {
+class _TemplateDetailsSheet extends ConsumerWidget {
   final TripTemplateModel template;
 
   const _TemplateDetailsSheet({required this.template});
 
+  /// Report the content, or block whoever published it. Both are required by App
+  /// Store Guideline 1.2 for an app that carries user-generated content.
+  static void _showModerationOptions(
+    BuildContext context,
+    WidgetRef ref,
+    TripTemplateModel template,
+  ) {
+    HapticFeedback.lightImpact();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXl)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.flag_outlined, color: AppColors.coralBurst),
+              title: Text('Report this template', style: AppTypography.bodyMedium),
+              subtitle: Text(
+                'Tell us it breaks the rules',
+                style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: colorScheme.surface,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXl)),
+                  ),
+                  builder: (_) => ReportTemplateSheet(template: template),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.block, color: AppColors.coralBurst),
+              title: Text('Block this author', style: AppTypography.bodyMedium),
+              subtitle: Text(
+                'Hide everything they publish',
+                style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                showBlockAuthorDialog(context, ref, template);
+              },
+            ),
+            const SizedBox(height: AppSizes.space8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final structure = template.structure;
@@ -719,6 +779,21 @@ class _TemplateDetailsSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSizes.space24),
+
+              // Report / block. Required on user-generated content by App Store
+              // Guideline 1.2, and required to be on the content rather than buried
+              // in settings.
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _showModerationOptions(context, ref, template),
+                  icon: Icon(Icons.flag_outlined, size: 16, color: colorScheme.onSurfaceVariant),
+                  label: Text(
+                    'Report',
+                    style: AppTypography.labelMedium.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ),
 
               // Header
               Row(

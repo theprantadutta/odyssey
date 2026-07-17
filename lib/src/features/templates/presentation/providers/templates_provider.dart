@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:odyssey/src/core/providers/analytics_provider.dart';
+import 'package:odyssey/src/core/services/logger_service.dart';
 import 'package:odyssey/src/features/templates/data/models/template_model.dart';
 import 'package:odyssey/src/features/templates/data/repositories/template_repository.dart';
 
@@ -262,6 +263,28 @@ class TemplateGallery extends _$TemplateGallery {
 
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true, error: null);
+    await _loadTemplates();
+  }
+
+  /// Report a public template. Required by App Store Guideline 1.2 for user content.
+  Future<void> reportTemplate({
+    required String templateId,
+    required String reason,
+    String? details,
+  }) async {
+    AppLogger.action('Reporting template: $templateId');
+    await ref.read(templateRepositoryProvider).reportTemplate(
+          templateId: templateId,
+          reason: reason,
+          details: details,
+        );
+  }
+
+  /// Block a template's author, then reload: the gallery is filtered per-viewer, so
+  /// their templates disappear on the refetch.
+  Future<void> blockUser(String userId) async {
+    AppLogger.action('Blocking user: $userId');
+    await ref.read(templateRepositoryProvider).blockUser(userId);
     await _loadTemplates();
   }
 
