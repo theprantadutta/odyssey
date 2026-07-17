@@ -139,3 +139,66 @@ Store problem, and fine at the current install base, but the maps will start fai
 at some point. The fix is a `urlTemplate` and an API key pointed at a real tile
 provider (MapTiler, Stadia, Thunderforest, Mapbox all have free tiers), plus whatever
 attribution that provider requires on top of OSM's.
+
+---
+
+## App Privacy (the nutrition labels)
+
+First question: **"Do you or your third-party partners collect data from this app?"**
+→ **Yes.**
+
+Declare these twelve. "Linked" means tied to identity; Analytics is linked because
+`setUserId` is called with the backend user GUID, which maps to an email in Postgres.
+
+| Data type | Purposes | Linked | Tracking |
+|---|---|---|---|
+| Contact Info → Email Address | App Functionality | Yes | No |
+| Contact Info → Name | App Functionality | Yes | No |
+| User Content → Photos or Videos | App Functionality | Yes | No |
+| User Content → Other User Content (trips, expenses, notes, documents) | App Functionality | Yes | No |
+| Identifiers → User ID | App Functionality, Analytics | Yes | No |
+| Identifiers → Device ID (IDFA, AdMob) | Third-Party Advertising | No | **Yes** |
+| Location → Precise Location | App Functionality | Yes | No |
+| Location → Coarse Location (AdMob, IP-derived) | Third-Party Advertising | No | **Yes** |
+| Purchases → Purchase History | App Functionality, Analytics | Yes | No |
+| Usage Data → Product Interaction | Analytics, Third-Party Advertising | Yes | **Yes** |
+| Usage Data → Advertising Data | Third-Party Advertising | Yes | **Yes** |
+| Diagnostics → Crash Data | App Functionality | **No** | No |
+
+### Why each is what it is
+
+- **Precise, not Coarse, and Linked.** `LocationService` uses
+  `LocationAccuracy.high` and the picker writes 6 decimal places (~0.1 m). It is
+  optional and user-initiated, with no background collection - but it is uploaded and
+  persisted as `Memory.Latitude/Longitude` and `Activity.Latitude/Longitude`, which
+  hang off a Trip, which hangs off a User. Optional does not mean uncollected.
+- **Crash Data is NOT linked.** Nothing calls `setUserIdentifier` or `setCustomKey`,
+  so Crashlytics never learns the user id. If that changes, this row changes.
+- **Tracking is Yes because ads are personalized.** No `AdRequest` sets
+  `nonPersonalizedAds` and there is no `npa` extra anywhere, so personalization is on
+  by default outside regulated regions, and ATT is requested with a usage string that
+  says "personalized ads". That is tracking under Apple's definition.
+- **Expenses are User Content, not Financial Info.** Apple's Financial Info means
+  payment and account details - cards, banks, salary. These are trip budget records
+  the user typed. No payment instrument is stored anywhere.
+- **Amounts never reach analytics.** `expense_created` sends `category` + `currency`
+  only.
+
+### Judgement call worth knowing
+
+**Product Interaction → Tracking: Yes** is the cautious answer. Firebase Analytics
+data is not automatically fed to ad targeting, so a case exists for No. Yes is chosen
+because AdMob and Firebase share a Google account context and the app already shows
+the ATT prompt, so declaring it costs nothing and under-declaring tracking is a
+rejection risk. Revisit if the ad setup changes.
+
+### Known gap: video metadata
+
+Photos go through `pickImage(maxWidth: 1920, imageQuality: 85)`, which re-encodes and
+incidentally drops EXIF including GPS. **Videos go through `pickVideo` with no
+re-encode, so embedded GPS survives the upload.** Nothing in either repo strips
+metadata deliberately.
+
+This does not change the label - Precise Location is declared as collected and linked
+either way - but it means location reaches the server through a path no one designed,
+for users who never tapped the location button. Worth stripping explicitly.
