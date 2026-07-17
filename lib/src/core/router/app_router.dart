@@ -134,15 +134,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.legalAgreement;
       }
 
-      // Redirect to post-auth onboarding if user just registered/logged in
-      if (isAuthenticated && needsOnboarding && !isOnOnboarding) {
+      // Redirect to post-auth onboarding if user just registered/logged in.
+      // Gated on hasAcceptedTerms so the legal screen always outranks onboarding:
+      // without it, an authenticated user with stale terms bounces between /legal
+      // (which this rule leaves) and /onboarding (which the legal rule leaves).
+      if (isAuthenticated && needsOnboarding && hasSeenIntro && hasAcceptedTerms && !isOnOnboarding) {
         AppLogger.navigation('Redirecting to onboarding (new user)');
         return AppRoutes.onboarding;
       }
 
       // Redirect to home if authenticated and onboarding complete
       // Don't redirect during loading (e.g., logout in progress)
-      if (!isLoading && isAuthenticated && !needsOnboarding && (isOnLogin || isOnRegister || isOnSplash || isOnOnboarding || isOnIntro || isOnLegalAgreement)) {
+      // The gate screens rank above home: intro, then legal, then onboarding. Each
+      // condition below leaves a screen only once that screen's job is done -
+      // hasSeenIntro for the intro, hasAcceptedTerms for the legal agreement.
+      // Without them the two rules fight: this one sends the user home, the rule
+      // above sends them straight back.
+      //
+      // Stale terms surface it on a legal version bump. The intro case surfaces on
+      // reinstall: the Keychain keeps the auth token while hasSeenIntro, which lives
+      // in shared preferences, is wiped.
+      if (!isLoading &&
+          isAuthenticated &&
+          !needsOnboarding &&
+          (isOnLogin ||
+              isOnRegister ||
+              isOnSplash ||
+              isOnOnboarding ||
+              (isOnIntro && hasSeenIntro) ||
+              (isOnLegalAgreement && hasAcceptedTerms))) {
         AppLogger.navigation('Redirecting to home (authenticated)');
         return AppRoutes.home;
       }
