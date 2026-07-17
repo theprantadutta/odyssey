@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../data/models/achievement_model.dart';
+import 'achievement_icons.dart';
 
 class AchievementBadge extends StatelessWidget {
   final Achievement achievement;
@@ -9,6 +10,12 @@ class AchievementBadge extends StatelessWidget {
   final VoidCallback? onTap;
   final double size;
 
+  /// Off wherever the surrounding layout already names the achievement.
+  final bool showLabel;
+
+  /// Off wherever the points are already shown, e.g. next to the tier.
+  final bool showPoints;
+
   const AchievementBadge({
     super.key,
     required this.achievement,
@@ -16,6 +23,8 @@ class AchievementBadge extends StatelessWidget {
     this.progress,
     this.onTap,
     this.size = 80,
+    this.showLabel = true,
+    this.showPoints = true,
   });
 
   @override
@@ -28,87 +37,88 @@ class AchievementBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildBadge(context, tier),
-          const SizedBox(height: AppSizes.space4),
-          SizedBox(
-            width: size + 20,
-            child: Text(
-              achievement.name,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: isEarned ? FontWeight.w600 : FontWeight.normal,
-                    color: isEarned
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.5),
-                  ),
+          if (showLabel) ...[
+            const SizedBox(height: AppSizes.space8),
+            SizedBox(
+              width: size + 20,
+              child: Text(
+                achievement.name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: isEarned ? FontWeight.w600 : FontWeight.normal,
+                      color: isEarned
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.5),
+                    ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildBadge(BuildContext context, AchievementTier tier) {
-    final tierColors = _getTierColors(tier);
+    final color = tierColor(tier);
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasChip = (isEarned && showPoints) || (!isEarned && progress != null);
 
-    return Container(
+    return SizedBox(
+      // Room for the chip that overhangs the bottom edge, so it is never clipped
+      // and never collides with whatever sits underneath.
+      height: hasChip ? size + 10 : size,
       width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: isEarned
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: tierColors,
-              )
-            : null,
-        color: isEarned ? null : Colors.grey.shade300,
-        boxShadow: isEarned
-            ? [
-                BoxShadow(
-                  color: tierColors[0].withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-              ]
-            : null,
-        border: Border.all(
-          color: isEarned ? tierColors[0] : Colors.grey.shade400,
-          width: 3,
-        ),
-      ),
       child: Stack(
-        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
         children: [
-          // Icon
-          Text(
-            achievement.icon,
-            style: TextStyle(
-              fontSize: size * 0.4,
-              color: isEarned ? null : Colors.grey.shade400,
+          // Same treatment as the category headers: a soft tint of the accent with
+          // the line icon on top. No gradient or drop shadow - nothing else in the
+          // app is built that way.
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isEarned
+                  ? color.withValues(alpha: 0.15)
+                  : colorScheme.onSurface.withValues(alpha: 0.05),
+              border: Border.all(
+                color: isEarned
+                    ? color.withValues(alpha: 0.45)
+                    : colorScheme.onSurface.withValues(alpha: 0.12),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                achievementIcon(achievement.icon),
+                size: size * 0.44,
+                color: isEarned
+                    ? color
+                    : colorScheme.onSurface.withValues(alpha: 0.28),
+              ),
             ),
           ),
-          // Progress indicator (if in progress)
           if (!isEarned && progress != null)
+            Positioned(bottom: 0, child: _buildProgressChip(context)),
+          if (isEarned && showPoints)
             Positioned(
-              bottom: 4,
-              child: _buildProgressIndicator(context),
-            ),
-          // Points badge (if earned)
-          if (isEarned)
-            Positioned(
-              bottom: -2,
+              bottom: 0,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: tierColors[0],
+                  color: color,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surface,
+                    width: 1.5,
+                  ),
                 ),
                 child: Text(
                   '+${achievement.points}',
@@ -125,51 +135,23 @@ class AchievementBadge extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressIndicator(BuildContext context) {
-    // Progress ratio used for display
-    final _ = (progress! / achievement.threshold).clamp(0.0, 1.0);
-
+  Widget _buildProgressChip(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Text(
         '$progress/${achievement.threshold}',
         style: TextStyle(
           fontSize: 9,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
-  }
-
-  List<Color> _getTierColors(AchievementTier tier) {
-    switch (tier) {
-      case AchievementTier.bronze:
-        return [
-          const Color(0xFFCD7F32),
-          const Color(0xFFE5A04F),
-        ];
-      case AchievementTier.silver:
-        return [
-          const Color(0xFFC0C0C0),
-          const Color(0xFFE0E0E0),
-        ];
-      case AchievementTier.gold:
-        return [
-          const Color(0xFFFFD700),
-          const Color(0xFFFFF0A0),
-        ];
-      case AchievementTier.platinum:
-        return [
-          const Color(0xFF00CED1),
-          const Color(0xFF7FFFD4),
-        ];
-    }
   }
 }
 
@@ -191,80 +173,98 @@ class AchievementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final tier = AchievementTier.fromString(achievement.tier);
-    final tierColors = _getTierColors(tier);
+    final color = tierColor(tier);
 
-    return Card(
-      elevation: isEarned ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-        side: isEarned
-            ? BorderSide(color: tierColors[0], width: 2)
-            : BorderSide.none,
-      ),
+    // Flat, not a Card: these already sit inside a section card, and a raised card
+    // within a card reads as clutter. The tier tint carries the earned state.
+    final background = isEarned
+        ? color.withValues(alpha: 0.06)
+        : colorScheme.onSurface.withValues(alpha: 0.03);
+
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-        child: Padding(
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            border: Border.all(
+              color: isEarned
+                  ? color.withValues(alpha: 0.25)
+                  : colorScheme.onSurface.withValues(alpha: 0.08),
+            ),
+          ),
           padding: const EdgeInsets.all(AppSizes.space12),
           child: Row(
             children: [
-              // Badge
+              // The row already names the achievement and shows its points, so the
+              // badge repeats neither.
               AchievementBadge(
                 achievement: achievement,
                 isEarned: isEarned,
                 progress: progress,
-                size: 60,
+                size: 52,
+                showLabel: false,
+                showPoints: false,
               ),
               const SizedBox(width: AppSizes.space12),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             achievement.name,
-                            style:
-                                Theme.of(context).textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: isEarned
-                                          ? null
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.6),
-                                    ),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: isEarned
+                                  ? colorScheme.onSurface
+                                  : colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
                           ),
                         ),
+                        const SizedBox(width: AppSizes.space8),
                         _buildTierChip(context, tier),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSizes.space4),
                     Text(
                       achievement.description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.7),
-                          ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.3,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    if (isEarned && earnedAt != null)
-                      Text(
-                        'Earned ${_formatDate(earnedAt!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: tierColors[0],
-                              fontWeight: FontWeight.w500,
+                    if (isEarned && earnedAt != null) ...[
+                      const SizedBox(height: AppSizes.space8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_rounded, size: 13, color: color),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Earned ${_formatDate(earnedAt!)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w600,
                             ),
-                      )
-                    else if (progress != null)
+                          ),
+                        ],
+                      ),
+                    ] else if (progress != null) ...[
+                      const SizedBox(height: AppSizes.space8),
                       _buildProgressBar(context, tier),
+                    ],
                   ],
                 ),
               ),
@@ -276,43 +276,33 @@ class AchievementCard extends StatelessWidget {
   }
 
   Widget _buildTierChip(BuildContext context, AchievementTier tier) {
-    final tierColors = _getTierColors(tier);
+    final color = tierColor(tier);
 
+    // Tinted rather than filled: a solid chip at the end of every row turned the list
+    // into a column of loud pills.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: tierColors[0].withValues(alpha: isEarned ? 1.0 : 0.3),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withValues(alpha: isEarned ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            tier.displayName,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: isEarned ? Colors.white : tierColors[0],
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '${achievement.points}pts',
-            style: TextStyle(
-              fontSize: 10,
-              color: isEarned
-                  ? Colors.white.withValues(alpha: 0.8)
-                  : tierColors[0].withValues(alpha: 0.8),
-            ),
-          ),
-        ],
+      child: Text(
+        '${tier.displayName} · ${achievement.points}pts',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: isEarned
+              ? color
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+        ),
       ),
     );
   }
 
   Widget _buildProgressBar(BuildContext context, AchievementTier tier) {
+    final theme = Theme.of(context);
     final progressPercent = (progress! / achievement.threshold).clamp(0.0, 1.0);
-    final tierColors = _getTierColors(tier);
+    final color = tierColor(tier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,26 +312,26 @@ class AchievementCard extends StatelessWidget {
           children: [
             Text(
               'Progress',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             Text(
               '$progress / ${achievement.threshold}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSizes.space4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progressPercent,
-            backgroundColor: Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation(tierColors[0]),
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation(color),
             minHeight: 6,
           ),
         ),
@@ -349,22 +339,8 @@ class AchievementCard extends StatelessWidget {
     );
   }
 
-  List<Color> _getTierColors(AchievementTier tier) {
-    switch (tier) {
-      case AchievementTier.bronze:
-        return [const Color(0xFFCD7F32), const Color(0xFFE5A04F)];
-      case AchievementTier.silver:
-        return [const Color(0xFFC0C0C0), const Color(0xFFE0E0E0)];
-      case AchievementTier.gold:
-        return [const Color(0xFFFFD700), const Color(0xFFFFF0A0)];
-      case AchievementTier.platinum:
-        return [const Color(0xFF00CED1), const Color(0xFF7FFFD4)];
-    }
-  }
-
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
+    final diff = DateTime.now().difference(date);
 
     if (diff.inDays == 0) {
       return 'today';

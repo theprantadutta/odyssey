@@ -11,6 +11,7 @@ import '../../../subscription/presentation/providers/subscription_provider.dart'
 import '../../data/models/achievement_model.dart';
 import '../providers/achievements_provider.dart';
 import '../widgets/achievement_badge.dart';
+import '../widgets/achievement_icons.dart';
 
 class AchievementsScreen extends ConsumerStatefulWidget {
   const AchievementsScreen({super.key});
@@ -725,17 +726,10 @@ class _TierHeader extends StatelessWidget {
     );
   }
 
+  /// Delegates to the shared tier palette; the second stop only lifts the gradient.
   List<Color> _getTierColors(AchievementTier tier) {
-    switch (tier) {
-      case AchievementTier.bronze:
-        return [const Color(0xFFCD7F32), const Color(0xFFE5A04F)];
-      case AchievementTier.silver:
-        return [const Color(0xFF9E9E9E), const Color(0xFFC0C0C0)];
-      case AchievementTier.gold:
-        return [const Color(0xFFFFAB00), const Color(0xFFFFD700)];
-      case AchievementTier.platinum:
-        return [const Color(0xFF00ACC1), const Color(0xFF00CED1)];
-    }
+    final color = tierColor(tier);
+    return [color, Color.lerp(color, Colors.white, 0.28)!];
   }
 }
 
@@ -839,6 +833,8 @@ class _AchievementDetailSheet extends StatelessWidget {
             isEarned: isEarned,
             progress: progress,
             size: 100,
+            // The dialog prints the name right below.
+            showLabel: false,
           ),
           const SizedBox(height: AppSizes.space16),
           // Name
@@ -975,17 +971,10 @@ class _AchievementDetailSheet extends StatelessWidget {
     );
   }
 
+  /// Delegates to the shared tier palette; the second stop only lifts the gradient.
   List<Color> _getTierColors(AchievementTier tier) {
-    switch (tier) {
-      case AchievementTier.bronze:
-        return [const Color(0xFFCD7F32), const Color(0xFFE5A04F)];
-      case AchievementTier.silver:
-        return [const Color(0xFF9E9E9E), const Color(0xFFC0C0C0)];
-      case AchievementTier.gold:
-        return [const Color(0xFFFFAB00), const Color(0xFFFFD700)];
-      case AchievementTier.platinum:
-        return [const Color(0xFF00ACC1), const Color(0xFF00CED1)];
-    }
+    final color = tierColor(tier);
+    return [color, Color.lerp(color, Colors.white, 0.28)!];
   }
 
   String _formatDate(DateTime date) {

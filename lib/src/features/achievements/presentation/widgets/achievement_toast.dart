@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../data/models/achievement_model.dart';
+import 'achievement_icons.dart';
 
 class AchievementToast extends StatefulWidget {
   final AchievementUnlock achievement;
@@ -58,7 +59,10 @@ class _AchievementToastState extends State<AchievementToast>
   @override
   Widget build(BuildContext context) {
     final tier = AchievementTier.fromString(widget.achievement.tier);
-    final tierColors = _getTierColors(tier);
+    final color = tierColor(tier);
+    // Same accent as the badge, lifted at one end so the toast still reads as a
+    // celebration rather than a flat block.
+    final tierColors = [color, Color.lerp(color, Colors.white, 0.28)!];
 
     return SlideTransition(
       position: _slideAnimation,
@@ -105,9 +109,10 @@ class _AchievementToastState extends State<AchievementToast>
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: Text(
-                          widget.achievement.icon,
-                          style: const TextStyle(fontSize: 28),
+                        child: Icon(
+                          achievementIcon(widget.achievement.icon),
+                          size: 28,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -179,18 +184,6 @@ class _AchievementToastState extends State<AchievementToast>
     );
   }
 
-  List<Color> _getTierColors(AchievementTier tier) {
-    switch (tier) {
-      case AchievementTier.bronze:
-        return [const Color(0xFFCD7F32), const Color(0xFFE5A04F)];
-      case AchievementTier.silver:
-        return [const Color(0xFF9E9E9E), const Color(0xFFC0C0C0)];
-      case AchievementTier.gold:
-        return [const Color(0xFFFFAB00), const Color(0xFFFFD700)];
-      case AchievementTier.platinum:
-        return [const Color(0xFF00ACC1), const Color(0xFF00CED1)];
-    }
-  }
 }
 
 // Helper function to show achievement toast as overlay
