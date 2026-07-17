@@ -472,8 +472,12 @@ class LoadingOverlay extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 20),
-                                  // Text content
-                                  Column(
+                                  // Text content. Flexible so a long message wraps
+                                  // instead of overflowing the row - the row sizes to
+                                  // its children, so an unconstrained Text here spills
+                                  // past the card as soon as the message is wordy.
+                                  Flexible(
+                                    child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -496,6 +500,7 @@ class LoadingOverlay extends StatelessWidget {
                                         ),
                                       ),
                                     ],
+                                    ),
                                   ),
                                 ],
                               ],

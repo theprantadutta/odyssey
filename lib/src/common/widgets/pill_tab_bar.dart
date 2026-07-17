@@ -159,6 +159,15 @@ class _PillTabState extends State<_PillTab> with SingleTickerProviderStateMixin 
             children: [
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
+                // The default transitionBuilder copies the child's key onto the
+                // FadeTransition, and the default layoutBuilder stacks outgoing
+                // children alongside the incoming one. The key below only ever
+                // takes two values per tab, so toggling a tab back within the
+                // 200ms fade puts two identically keyed entries in that Stack and
+                // it throws "Duplicate keys found". An unkeyed transition leaves
+                // the Stack's children unkeyed, so there is nothing to collide.
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
                 child: Icon(
                   widget.isSelected
                       ? (widget.item.activeIcon ?? widget.item.icon)

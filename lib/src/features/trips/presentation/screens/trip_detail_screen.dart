@@ -449,6 +449,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           child: PageView(
           controller: _pageController,
           onPageChanged: (index) {
+            // Tapping a tab already set this and started the page animation, which
+            // then reports every page it crosses. Rebuilding the tab bar for an
+            // index it is already on is just churn.
+            if (_selectedTabIndex == index) return;
             setState(() => _selectedTabIndex = index);
           },
           children: [
