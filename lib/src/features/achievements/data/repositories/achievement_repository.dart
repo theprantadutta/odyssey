@@ -219,6 +219,10 @@ class AchievementRepository {
 
       for (final ua in [...userResponse.earned, ...userResponse.inProgress]) {
         await _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua));
+        // Also refresh the definition itself. Without this only locked achievements
+        // ever got theirs updated, so the cached name, icon and points of anything
+        // the user had earned stayed frozen at whatever they were first cached as.
+        await _db.achievementsDao.upsertAchievement(achievementToLocal(ua.achievement));
       }
 
       for (final a in userResponse.locked) {
