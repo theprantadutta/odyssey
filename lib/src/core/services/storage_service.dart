@@ -96,7 +96,9 @@ class StorageService {
   //
   // v2 (2026-07-10): privacy policy updated to disclose AdMob advertising and
   //   sharing of the Advertising ID / device identifiers with Google.
-  static const int currentLegalVersion = 2;
+  // v3 (2026-07-17): terms updated for the public template gallery - what publishing
+  //   means, no tolerance for objectionable content, and how to report or block.
+  static const int currentLegalVersion = 3;
 
   static const String _acceptedLegalVersionKey = 'accepted_legal_version';
 

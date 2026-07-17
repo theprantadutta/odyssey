@@ -40,6 +40,15 @@ You agree **not** to:
 - You retain ownership of all content you create or upload to the App (trips, photos, notes, etc.)
 - By uploading content, you grant us a limited license to store, process, and display your content as necessary to provide the App's services
 - You are solely responsible for the content you upload
+
+### Publishing templates publicly
+
+- You may choose to publish a trip template to the public gallery, where every other user can see and use it. Everything else you create stays private to you and anyone you explicitly share a trip with.
+- **There is no tolerance for objectionable content or abusive behaviour.** Do not publish anything that is offensive, abusive, hateful, harassing, sexually explicit, violent, illegal, deceptive, spam, or that infringes anyone's rights.
+- Public templates are screened automatically, and any user can report one or block its author. Reported content is reviewed, and anything breaking these Terms is removed from the gallery, usually within 24 hours.
+- We may remove any public template and suspend or terminate the account of anyone who publishes objectionable content, without notice.
+- Report a template from its details screen in the App, or email us at prantadutta1997@gmail.com.
+
 - We may remove content that violates these Terms
 
 ---
