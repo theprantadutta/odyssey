@@ -114,3 +114,28 @@ Upgrade for more storage, unlimited trips, and an ad-free experience. Subscripti
   work offline, but sign-in and sample trips need the network.
 - The premium paragraph carries the auto-renewal disclosure Guideline 3.1.2 wants.
 - No "Google Play" and no "Android" anywhere.
+
+---
+
+## Content Rights
+
+**"Yes, it contains, shows, or accesses third-party content, and I have the
+necessary rights."**
+
+Odyssey shows third-party content in three places:
+
+- **OpenStreetMap tiles** on the world map, the trip map, and the blurred premium
+  teaser. The data is ODbL, so the credit is a licence requirement, not a courtesy -
+  every map renders "© OpenStreetMap contributors" linking to the copyright page.
+- **Unsplash photos** backing the demo trips' covers and memories. The Unsplash
+  Licence permits free commercial use.
+- **AdMob creative** served to free users, under the AdMob terms.
+
+### Known risk: OSM tile hosting
+
+The app fetches tiles straight from `tile.openstreetmap.org`. OSM's Tile Usage Policy
+discourages exactly this for commercial apps, and they block heavy users. Not an App
+Store problem, and fine at the current install base, but the maps will start failing
+at some point. The fix is a `urlTemplate` and an API key pointed at a real tile
+provider (MapTiler, Stadia, Thunderforest, Mapbox all have free tiers), plus whatever
+attribution that provider requires on top of OSM's.

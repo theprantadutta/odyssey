@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../common/theme/app_colors.dart';
@@ -80,6 +81,20 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.odyssey.app',
+              ),
+              // Required by the OpenStreetMap licence: the tile data is ODbL and
+              // must be credited wherever it is shown.
+              RichAttributionWidget(
+                showFlutterMapAttribution: false,
+                attributions: [
+                  TextSourceAttribution(
+                    'OpenStreetMap contributors',
+                    onTap: () => launchUrl(
+                      Uri.parse('https://www.openstreetmap.org/copyright'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                ],
               ),
               // Trip markers
               MarkerLayer(
@@ -370,6 +385,27 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
           // Blur overlay
           Container(
             color: colorScheme.surface.withValues(alpha: 0.8),
+          ),
+          // The tiles are still on screen behind the blur, so they still need
+          // crediting. Plain text rather than RichAttributionWidget: that widget
+          // reads MapController from its context, so it only works inside a
+          // FlutterMap - where the blur would render it unreadable anyway.
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: GestureDetector(
+              onTap: () => launchUrl(
+                Uri.parse('https://www.openstreetmap.org/copyright'),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: Text(
+                '© OpenStreetMap contributors',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+            ),
           ),
           // Premium prompt
           Center(
