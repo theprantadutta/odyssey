@@ -74,6 +74,11 @@
 	     always-location API and Apple's upload scanner reads the binary, not the
 	     code path (ITMS-90683). The pod-only BYPASS_PERMISSION_LOCATION_ALWAYS flag
 	     cannot help here: this project builds geolocator via Swift Package Manager. -->
+	<!-- Export compliance: encryption is limited to HTTPS/TLS and sign-in
+	     authentication hashing - the exempt uses. Declaring it here means App Store
+	     Connect stops asking the encryption questionnaire on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Odyssey uses your location only while you are using the app, to fill in GPS coordinates for activities and memories. Location is never collected in the background.</string>
 
