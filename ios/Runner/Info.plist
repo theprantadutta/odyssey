@@ -70,6 +70,12 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Odyssey needs your location to automatically fill in GPS coordinates for your activities and memories.</string>
+	<!-- Never requested by the app; required because geolocator compiles in the
+	     always-location API and Apple's upload scanner reads the binary, not the
+	     code path (ITMS-90683). The pod-only BYPASS_PERMISSION_LOCATION_ALWAYS flag
+	     cannot help here: this project builds geolocator via Swift Package Manager. -->
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Odyssey uses your location only while you are using the app, to fill in GPS coordinates for activities and memories. Location is never collected in the background.</string>
 
 	<!-- Photo library + camera: image_picker uses these to attach photos to memories and documents. -->
 	<key>NSCameraUsageDescription</key>
