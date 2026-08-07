@@ -91,6 +91,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen>
                             onPurchaseLifetime: () => ref
                                 .read(purchaseProvider.notifier)
                                 .purchaseLifetime(),
+                            onRetry: () =>
+                                ref.read(purchaseProvider.notifier).retry(),
                           ),
 
                         // Features comparison
@@ -409,8 +411,10 @@ class _UpgradeSection extends StatelessWidget {
   final VoidCallback onPurchaseMonthly;
   final VoidCallback onPurchaseYearly;
   final VoidCallback onPurchaseLifetime;
+  final VoidCallback onRetry;
 
   const _UpgradeSection({
+    required this.onRetry,
     this.pricing,
     required this.purchaseState,
     required this.onPurchaseMonthly,
@@ -424,13 +428,27 @@ class _UpgradeSection extends StatelessWidget {
 
     if (pricing == null) return const SizedBox.shrink();
 
-    // Prefer store prices, fall back to backend pricing
-    final monthlyPrice =
-        purchaseState.monthlyProduct?.price ?? pricing!.formattedMonthly;
-    final yearlyPrice =
-        purchaseState.yearlyProduct?.price ?? pricing!.formattedYearly;
-    final lifetimePrice =
-        purchaseState.lifetimeProduct?.price ?? pricing!.formattedLifetime;
+    if (!purchaseState.isInitialized) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSizes.space24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Only ever show a purchasable card when its StoreKit product actually loaded.
+    // A card with a fallback price that fails on tap is what a reviewer reports as
+    // "not available for purchase using In-App Purchase".
+    final hasMonthly = purchaseState.monthlyProduct != null;
+    final hasYearly = purchaseState.yearlyProduct != null;
+    final hasLifetime = purchaseState.lifetimeProduct != null;
+    if (!hasMonthly && !hasYearly && !hasLifetime) {
+      return _StoreUnavailable(onRetry: onRetry);
+    }
+
+    // Store prices only - no hardcoded fallback that might not match the App Store.
+    final monthlyPrice = purchaseState.monthlyProduct?.price;
+    final yearlyPrice = purchaseState.yearlyProduct?.price;
+    final lifetimePrice = purchaseState.lifetimeProduct?.price;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -450,39 +468,88 @@ class _UpgradeSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSizes.space16),
 
-        // Pricing options
-        _PricingOption(
-          title: 'Monthly',
-          price: monthlyPrice,
-          isPopular: false,
-          isLoading: purchaseState.activeProductId == 'odyssey_premium_monthly',
-          onTap: onPurchaseMonthly,
-        ),
-
-        const SizedBox(height: AppSizes.space12),
-
-        _PricingOption(
-          title: 'Yearly',
-          price: yearlyPrice,
-          subtitle:
-              'Save ${pricing!.yearlySavingsPercent}% (${pricing!.formattedYearlyMonthly})',
-          isPopular: true,
-          isLoading: purchaseState.activeProductId == 'odyssey_premium_yearly',
-          onTap: onPurchaseYearly,
-        ),
-
-        const SizedBox(height: AppSizes.space12),
-
-        _PricingOption(
-          title: 'Lifetime',
-          price: lifetimePrice,
-          subtitle: 'One-time payment, forever access',
-          isPopular: false,
-          isLoading:
-              purchaseState.activeProductId == 'odyssey_premium_lifetime',
-          onTap: onPurchaseLifetime,
-        ),
+        // Pricing options - each shown only when its product loaded from the store.
+        if (hasYearly) ...[
+          _PricingOption(
+            title: 'Yearly',
+            price: yearlyPrice!,
+            subtitle:
+                'Save ${pricing!.yearlySavingsPercent}% (${pricing!.formattedYearlyMonthly})',
+            isPopular: true,
+            isLoading: purchaseState.activeProductId == 'odyssey_premium_yearly',
+            onTap: onPurchaseYearly,
+          ),
+          const SizedBox(height: AppSizes.space12),
+        ],
+        if (hasMonthly) ...[
+          _PricingOption(
+            title: 'Monthly',
+            price: monthlyPrice!,
+            isPopular: false,
+            isLoading:
+                purchaseState.activeProductId == 'odyssey_premium_monthly',
+            onTap: onPurchaseMonthly,
+          ),
+          const SizedBox(height: AppSizes.space12),
+        ],
+        if (hasLifetime)
+          _PricingOption(
+            title: 'Lifetime',
+            price: lifetimePrice!,
+            subtitle: 'One-time payment, forever access',
+            isPopular: false,
+            isLoading:
+                purchaseState.activeProductId == 'odyssey_premium_lifetime',
+            onTap: onPurchaseLifetime,
+          ),
       ],
+    );
+  }
+}
+
+/// Shown on the subscription screen when StoreKit returned no products, so a user (or
+/// a reviewer) never sees a purchasable-looking card that fails on tap.
+class _StoreUnavailable extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _StoreUnavailable({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.space20),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.storefront_outlined,
+              color: colorScheme.onSurfaceVariant, size: 32),
+          const SizedBox(height: AppSizes.space12),
+          Text(
+            'Plans are not available right now',
+            style: AppTypography.titleSmall.copyWith(color: colorScheme.onSurface),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSizes.space4),
+          Text(
+            'We could not reach the App Store to load subscription options. '
+            'Please check your connection and try again.',
+            style: AppTypography.bodySmall
+                .copyWith(color: colorScheme.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSizes.space16),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Try again'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -88,6 +88,14 @@ class Purchase extends _$Purchase {
     return const PurchaseState();
   }
 
+  /// Re-run store initialisation. Exposed so the paywall can offer a Retry when
+  /// StoreKit returned no products - a reviewer must never be left on a paywall that
+  /// looks purchasable but cannot complete a purchase.
+  Future<void> retry() async {
+    state = state.copyWith(isInitialized: false, error: null);
+    await _initialize();
+  }
+
   Future<void> _initialize() async {
     try {
       await _purchaseService.initialize();

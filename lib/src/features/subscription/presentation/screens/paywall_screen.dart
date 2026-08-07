@@ -314,45 +314,97 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   }
 
   Widget _buildPricingOptions(SubscriptionState subscription, PurchaseState purchaseState) {
-    // Use store prices if available
-    final yearlyPrice = purchaseState.yearlyProduct?.price ??
-        subscription.pricing?.formattedYearly ??
-        '\$24.99/yr';
-    final monthlyPrice = purchaseState.monthlyProduct?.price ??
-        subscription.pricing?.formattedMonthly ??
-        '\$2.99/mo';
-    final lifetimePrice = purchaseState.lifetimeProduct?.price ??
-        subscription.pricing?.formattedLifetime ??
-        '\$49.99';
+    // Still initialising the store connection.
+    if (!purchaseState.isInitialized) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSizes.space24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // StoreKit returned no products. Never render tappable price cards in this state:
+    // a card showing a price that fails on tap is exactly what a reviewer reports as
+    // "the subscription is not available for purchase using In-App Purchase". Show an
+    // honest unavailable state with a Retry instead.
+    final hasProducts = purchaseState.yearlyProduct != null ||
+        purchaseState.monthlyProduct != null ||
+        purchaseState.lifetimeProduct != null;
+    if (!hasProducts) {
+      return _buildStoreUnavailable(purchaseState);
+    }
 
     final yearlySavings = subscription.pricing?.yearlySavingsPercent ?? 30;
 
     return Column(
       children: [
-        _PricingCard(
-          title: 'Yearly',
-          price: yearlyPrice,
-          subtitle: 'Save $yearlySavings%',
-          isRecommended: true,
-          isEnabled: !purchaseState.isPurchasing,
-          onTap: () => ref.read(purchaseProvider.notifier).purchaseYearly(),
-        ),
-        const SizedBox(height: AppSizes.space12),
-        _PricingCard(
-          title: 'Monthly',
-          price: monthlyPrice,
-          isEnabled: !purchaseState.isPurchasing,
-          onTap: () => ref.read(purchaseProvider.notifier).purchaseMonthly(),
-        ),
-        const SizedBox(height: AppSizes.space12),
-        _PricingCard(
-          title: 'Lifetime',
-          price: lifetimePrice,
-          subtitle: 'One-time payment',
-          isEnabled: !purchaseState.isPurchasing,
-          onTap: () => ref.read(purchaseProvider.notifier).purchaseLifetime(),
-        ),
+        // Each card is shown only when its StoreKit product actually loaded, and uses
+        // the store's own localised price - never a hardcoded fallback that might not
+        // match what the App Store would charge.
+        if (purchaseState.yearlyProduct != null) ...[
+          _PricingCard(
+            title: 'Yearly',
+            price: purchaseState.yearlyProduct!.price,
+            subtitle: 'Save $yearlySavings%',
+            isRecommended: true,
+            isEnabled: !purchaseState.isPurchasing,
+            onTap: () => ref.read(purchaseProvider.notifier).purchaseYearly(),
+          ),
+          const SizedBox(height: AppSizes.space12),
+        ],
+        if (purchaseState.monthlyProduct != null) ...[
+          _PricingCard(
+            title: 'Monthly',
+            price: purchaseState.monthlyProduct!.price,
+            isEnabled: !purchaseState.isPurchasing,
+            onTap: () => ref.read(purchaseProvider.notifier).purchaseMonthly(),
+          ),
+          const SizedBox(height: AppSizes.space12),
+        ],
+        if (purchaseState.lifetimeProduct != null)
+          _PricingCard(
+            title: 'Lifetime',
+            price: purchaseState.lifetimeProduct!.price,
+            subtitle: 'One-time payment',
+            isEnabled: !purchaseState.isPurchasing,
+            onTap: () => ref.read(purchaseProvider.notifier).purchaseLifetime(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildStoreUnavailable(PurchaseState purchaseState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.space20),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.storefront_outlined, color: colorScheme.onSurfaceVariant, size: 32),
+          const SizedBox(height: AppSizes.space12),
+          Text(
+            'Plans are not available right now',
+            style: AppTypography.titleSmall.copyWith(color: colorScheme.onSurface),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSizes.space4),
+          Text(
+            'We could not reach the App Store to load subscription options. '
+            'Please check your connection and try again.',
+            style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSizes.space16),
+          FilledButton.icon(
+            onPressed: () => ref.read(purchaseProvider.notifier).retry(),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Try again'),
+          ),
+        ],
+      ),
     );
   }
 }
