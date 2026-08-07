@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../ads/native_ad_slots.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
-import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_colors.dart';
@@ -45,7 +42,6 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
@@ -374,26 +370,18 @@ class _InProgressTab extends StatelessWidget {
       );
     }
 
-    // Interleave inline native ads after every Nth achievement (free users
-    // only — the tile renders nothing for premium users). Disabled for short
-    // lists via NativeAdSlots' minimum-items guard.
-    final slots = NativeAdSlots(achievements.length);
-
+    // Deliberately ad-free. Achievements is a reward screen — it already carries
+    // a premium upsell banner and lock badges on gated tiers, and stacking ads
+    // on top taxes the exact moment the app is supposed to feel good.
     return RefreshIndicator(
       color: AppColors.sunnyYellow,
       backgroundColor: colorScheme.surface,
       onRefresh: onRefresh,
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSizes.space16),
-        itemCount: slots.totalCount,
+        itemCount: achievements.length,
         itemBuilder: (context, index) {
-          if (slots.isAdAt(index)) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: AppSizes.space12),
-              child: NativeAdListTile(),
-            );
-          }
-          final ua = achievements[slots.realIndexAt(index)];
+          final ua = achievements[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSizes.space12),
             child: AchievementCard(

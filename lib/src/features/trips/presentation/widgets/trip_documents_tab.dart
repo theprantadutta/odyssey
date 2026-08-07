@@ -7,6 +7,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../documents/data/models/document_model.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../documents/presentation/screens/document_upload_screen.dart';
@@ -275,6 +276,7 @@ class TripDocumentsTab extends ConsumerWidget {
   void _navigateToUpload(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.documentUpload),
         builder: (context) => DocumentUploadScreen(tripId: tripId),
       ),
     );
@@ -307,6 +309,7 @@ class TripDocumentsTab extends ConsumerWidget {
     if (primaryFile?.isPdf == true) {
       Navigator.of(context).push(
         MaterialPageRoute(
+          settings: TaskRoutes.settings(TaskRoutes.pdfViewer),
           builder: (context) => PdfViewerScreen(
             url: url,
             title: document.name,
@@ -364,6 +367,7 @@ class TripDocumentsTab extends ConsumerWidget {
 
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.photoViewer),
         builder: (context) => _DocumentImageViewer(
           images: imageFiles.map((f) => f.url).toList(),
           title: document.name,

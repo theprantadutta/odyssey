@@ -8,6 +8,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../../common/widgets/pill_tab_bar.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/trip_model.dart';
@@ -26,7 +27,6 @@ import 'trip_form_screen.dart';
 import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
 import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
 import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -211,7 +211,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        bottomNavigationBar: const BannerAdWidget(),
         body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -533,6 +532,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 Navigator.pop(context);
                 Navigator.of(context).push(
                   MaterialPageRoute(
+                    settings: TaskRoutes.settings(TaskRoutes.tripForm),
                     builder: (context) => TripFormScreen(trip: trip),
                   ),
                 ).then((_) {

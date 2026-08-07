@@ -5,6 +5,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../memories/presentation/providers/memories_provider.dart';
 import '../../../memories/presentation/screens/photo_upload_screen.dart';
 import '../../../memories/presentation/screens/photo_viewer_screen.dart';
@@ -227,6 +228,7 @@ class TripMemoriesTab extends ConsumerWidget {
   void _navigateToUpload(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.photoUpload),
         builder: (context) => PhotoUploadScreen(tripId: tripId),
       ),
     );
@@ -239,6 +241,7 @@ class TripMemoriesTab extends ConsumerWidget {
   ) {
     Navigator.of(context).push(
       PageRouteBuilder(
+        settings: TaskRoutes.settings(TaskRoutes.photoViewer),
         pageBuilder: (context, animation, secondaryAnimation) =>
             PhotoViewerScreen(
           tripId: tripId,

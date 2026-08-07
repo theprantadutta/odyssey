@@ -11,7 +11,8 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
 import '../../../../common/widgets/empty_state.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../ads/ad_constants.dart';
+import '../../../../core/router/task_routes.dart';
+import '../../../ads/native_ad_slots.dart';
 import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -109,7 +110,10 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
     Navigator.of(context)
         .push(
-          MaterialPageRoute(builder: (context) => TripFormScreen(trip: trip)),
+          MaterialPageRoute(
+            settings: TaskRoutes.settings(TaskRoutes.tripForm),
+            builder: (context) => TripFormScreen(trip: trip),
+          ),
         )
         .then((_) {
           ref.read(tripsProvider.notifier).refresh();
@@ -709,15 +713,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   }
 
   Widget _buildTripsList(TripsState state) {
-    final tripCount = state.trips.length;
-
     // Inject a native ad after every Nth trip (free users only — the ad tile
-    // itself renders nothing for premium users). Disabled for short lists.
-    final n = AdConstants.nativeAdEveryNItems;
-    final showAds = tripCount >= AdConstants.nativeAdMinItemsBeforeFirst;
-    final adCount = showAds ? tripCount ~/ n : 0;
-    final totalCount = tripCount + adCount;
-    final block = n + 1; // n trips followed by 1 ad
+    // itself renders nothing for premium users). Disabled for short lists, and
+    // for the whole app when the native format is switched off, in which case no
+    // slots are allocated at all.
+    final slots = NativeAdSlots(state.trips.length);
 
     return SliverPadding(
       padding: const EdgeInsets.only(
@@ -726,7 +726,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          if (showAds && index % block == n) {
+          if (slots.isAdAt(index)) {
             return NativeAdListTile(
               key: ValueKey('dashboard_native_ad_$index'),
               margin: const EdgeInsets.symmetric(
@@ -735,8 +735,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
               ),
             );
           }
-          // Map the interleaved index back to the real trip index.
-          final tripIndex = index - (index ~/ block);
+          final tripIndex = slots.realIndexAt(index);
           final trip = state.trips[tripIndex];
           return TripCard(
             trip: trip,
@@ -745,7 +744,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
             onEdit: () => _handleEditTrip(trip.id),
             onDelete: () => _handleDeleteTrip(trip.id, trip.title),
           );
-        }, childCount: totalCount),
+        }, childCount: slots.totalCount),
       ),
     );
   }

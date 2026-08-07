@@ -19,7 +19,13 @@ are only needed for a **production release** with your own real ads.
 3. **Ad unit IDs** live under **Ad units** — create one unit per format. Each looks like `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ` (note the **`/`**).
 4. Create a **separate AdMob app for Android and for iOS** if you ship both. If you're Android-only for now, just fill the Android section and leave iOS blank.
 
-The ad formats in use: **Banner**, **Native (inline)**, **Interstitial**, **App Open**, and **Rewarded**. Create one ad unit of each type, per platform.
+The ad formats wired up: **Banner**, **Native (inline)**, **Interstitial**, **App Open**, and **Rewarded**. Create one ad unit of each type, per platform — including the ones that are currently switched off, so turning them on later is a one-line change rather than an AdMob console trip.
+
+> **Currently live: Banner, Native and Rewarded only.** Interstitial and App Open
+> are disabled in `lib/src/features/ads/ad_constants.dart` (the "quiet launch"
+> profile), along with a 3-day ad-free grace period for new installs. All of the
+> switches and cadence numbers live in that one file — it is the only place to
+> change ad intensity, and doing so requires a release.
 
 ---
 

@@ -5,6 +5,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../expenses/data/models/expense_model.dart';
 import '../../../expenses/presentation/providers/expenses_provider.dart';
 import '../../../expenses/presentation/screens/expense_form_screen.dart';
@@ -225,6 +226,7 @@ class TripExpensesTab extends ConsumerWidget {
   void _navigateToAddExpense(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.expenseForm),
         builder: (context) => ExpenseFormScreen(tripId: tripId),
       ),
     );
@@ -233,6 +235,7 @@ class TripExpensesTab extends ConsumerWidget {
   void _navigateToEditExpense(BuildContext context, ExpenseModel expense) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.expenseForm),
         builder: (context) => ExpenseFormScreen(
           tripId: tripId,
           expense: expense,

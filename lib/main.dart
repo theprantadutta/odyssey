@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,7 +7,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
 import 'src/core/config/admob_config.dart';
-import 'src/features/ads/application/remote_ad_config.dart';
 import 'src/features/ads/presentation/providers/ads_providers.dart';
 import 'src/common/theme/app_theme.dart';
 import 'src/common/theme/theme_provider.dart';
@@ -63,11 +60,6 @@ Future<void> main() async {
   } catch (e) {
     AppLogger.error('Failed to initialize Firebase', e);
   }
-
-  // Fetch remote ad-cadence overrides in the background. Fire-and-forget so it
-  // never delays startup — it self-guards against failures and, until it
-  // resolves, the compiled-in AdConstants defaults are used.
-  unawaited(RemoteAdConfig.initialize());
 
   // Initialize notification service (must be after Firebase init)
   try {

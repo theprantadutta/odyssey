@@ -4,6 +4,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../core/config/admob_config.dart';
 import '../../../core/services/logger_service.dart';
+import '../ad_constants.dart';
 import 'full_screen_ad_lock.dart';
 
 /// Loads and shows user-initiated Rewarded ads ("watch an ad to unlock X").
@@ -30,7 +31,10 @@ class RewardedAdManager {
   /// offers a watch-to-unlock option). No-op if disabled or already ready.
   void preload() => _preload();
 
+  /// Forced off when [AdConstants.rewardedEnabled] is false. Every other path
+  /// short-circuits on [_enabled], so this is the single choke point.
   void setEnabled(bool enabled) {
+    enabled = enabled && AdConstants.rewardedEnabled;
     if (_enabled == enabled) return;
     _enabled = enabled;
     if (enabled) {

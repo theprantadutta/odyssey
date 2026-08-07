@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../core/config/admob_config.dart';
@@ -24,13 +26,19 @@ class InterstitialAdManager {
   int _navCount = 0;
   int _shownThisSession = 0;
   DateTime? _lastShownAt;
+  Timer? _showTimer;
 
   static final AdRequest _request = AdRequest(
     keywords: const ['travel', 'trips', 'vacation', 'flights', 'hotels'],
   );
 
   /// Turn the manager on/off. Off => dispose cached ad and reset counters.
+  ///
+  /// Forced off when [AdConstants.interstitialEnabled] is false, so a disabled
+  /// format can never be switched on by a caller — every other code path already
+  /// short-circuits on [_enabled], which makes this the single choke point.
   void setEnabled(bool enabled) {
+    enabled = enabled && AdConstants.interstitialEnabled;
     if (_enabled == enabled) return;
     _enabled = enabled;
     if (enabled) {
@@ -38,12 +46,14 @@ class InterstitialAdManager {
     } else {
       _navCount = 0;
       _shownThisSession = 0;
+      _cancelPendingShow();
       _disposeAd();
     }
   }
 
-  /// Call on every route push. Shows an ad every Nth qualifying navigation,
-  /// until the per-session cap is reached.
+  /// Call on every qualifying route push (the observer filters out task flows
+  /// and modal pages). Shows an ad every Nth navigation, until the per-session
+  /// cap is reached.
   void onNavigation() {
     if (!_enabled || !AdMobConfig.isSupportedPlatform) return;
     // Session cap reached: stop counting and stop preloading so we don't burn
@@ -55,7 +65,20 @@ class InterstitialAdManager {
       _preload();
       return;
     }
-    _showIfReady();
+
+    // Wait for the incoming route's transition to settle before covering it.
+    // Showing straight out of `didPush` drops the ad on top of a screen that is
+    // still animating in, which reads as a glitch rather than an ad break.
+    _cancelPendingShow();
+    _showTimer = Timer(AdConstants.interstitialShowDelay, () {
+      _showTimer = null;
+      _showIfReady();
+    });
+  }
+
+  void _cancelPendingShow() {
+    _showTimer?.cancel();
+    _showTimer = null;
   }
 
   void _preload() {
@@ -90,6 +113,9 @@ class InterstitialAdManager {
   }
 
   void _showIfReady() {
+    // The timer may outlive a premium upgrade or a consent revocation.
+    if (!_enabled) return;
+
     final ad = _ad;
     if (ad == null) {
       _preload();
@@ -131,5 +157,8 @@ class InterstitialAdManager {
     _ad = null;
   }
 
-  void dispose() => _disposeAd();
+  void dispose() {
+    _cancelPendingShow();
+    _disposeAd();
+  }
 }

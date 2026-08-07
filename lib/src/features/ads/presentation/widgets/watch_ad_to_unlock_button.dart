@@ -12,8 +12,13 @@ import '../providers/ads_providers.dart';
 
 /// A "watch a short ad to unlock for 24 hours" button for free users.
 ///
-/// Renders nothing unless [adsEnabledProvider] is true, so premium users (and
-/// unsupported platforms) never see it. On a completed rewarded view it grants a
+/// Renders nothing unless [rewardedAdsEnabledProvider] is true, so premium users
+/// (and unsupported platforms) never see it. It is deliberately gated on the
+/// rewarded-specific provider rather than the master [adsEnabledProvider]: this
+/// is an opt-in trial of a premium feature, so it stays available during the
+/// new-user grace period when passive ad formats are suppressed.
+///
+/// On a completed rewarded view it grants a
 /// [kTemporaryUnlockDuration] unlock for [feature] and invokes [onUnlocked]
 /// (typically used to pop the paywall / refresh the gated screen).
 class WatchAdToUnlockButton extends ConsumerStatefulWidget {
@@ -77,7 +82,7 @@ class _WatchAdToUnlockButtonState extends ConsumerState<WatchAdToUnlockButton> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = ref.watch(adsEnabledProvider);
+    final enabled = ref.watch(rewardedAdsEnabledProvider);
     if (!enabled) return const SizedBox.shrink();
 
     final colorScheme = Theme.of(context).colorScheme;

@@ -7,6 +7,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/providers/analytics_provider.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../settings/presentation/widgets/legal_document_viewer.dart';
 import '../mixins/subscription_lifecycle_mixin.dart';
@@ -58,6 +59,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   void _openLegalDocument(String title, String assetPath) {
     HapticFeedback.lightImpact();
     Navigator.of(context).push(MaterialPageRoute(
+      settings: TaskRoutes.settings(TaskRoutes.legalViewer),
       builder: (_) => LegalDocumentViewer(
         title: title,
         assetPath: assetPath,
