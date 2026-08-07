@@ -2,6 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Google Sign-In. Without the reversed client ID registered as a URL scheme the
+	     OAuth callback cannot return to the app, so "Continue with Google" errors the
+	     instant it is tapped. GIDClientID lets the SDK resolve the iOS OAuth client.
+	     Both values come from GoogleService-Info.plist (CLIENT_ID / REVERSED_CLIENT_ID). -->
+	<key>GIDClientID</key>
+	<string>780629189564-qksirrfstodh0ku3u5qtjlgk9v9i08vn.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.780629189564-qksirrfstodh0ku3u5qtjlgk9v9i08vn</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
