@@ -15,6 +15,7 @@ import '../../../../common/widgets/form_section_card.dart';
 import '../../../../core/providers/app_version_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../trips/data/models/default_trips_eligibility.dart';
@@ -630,6 +631,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () {
                     HapticFeedback.lightImpact();
                     Navigator.of(context).push(MaterialPageRoute(
+                      settings: TaskRoutes.settings(TaskRoutes.legalViewer),
                       builder: (_) => const LegalDocumentViewer(
                         title: 'Privacy Policy',
                         assetPath: 'assets/legal/privacy.md',
@@ -642,6 +644,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () {
                     HapticFeedback.lightImpact();
                     Navigator.of(context).push(MaterialPageRoute(
+                      settings: TaskRoutes.settings(TaskRoutes.legalViewer),
                       builder: (_) => const LegalDocumentViewer(
                         title: 'Terms & Conditions',
                         assetPath: 'assets/legal/terms.md',

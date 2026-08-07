@@ -252,4 +252,26 @@ class StorageService {
     if (millis == null) return null;
     return DateTime.fromMillisecondsSinceEpoch(millis);
   }
+
+  // First-launch timestamp — drives the new-user ad grace period.
+  static const String _firstLaunchKey = 'first_launch_at';
+
+  /// Returns when this install first ran, recording "now" the first time it's
+  /// called. Idempotent: every later call returns the originally-stored value,
+  /// so the grace-period clock starts once and never resets mid-life.
+  ///
+  /// A reinstall legitimately starts the clock again — a returning user who
+  /// wiped the app is deciding about it afresh.
+  Future<DateTime> ensureFirstLaunchAt() async {
+    final existing = await _storage.read(key: _firstLaunchKey);
+    final millis = existing == null ? null : int.tryParse(existing);
+    if (millis != null) return DateTime.fromMillisecondsSinceEpoch(millis);
+
+    final now = DateTime.now();
+    await _storage.write(
+      key: _firstLaunchKey,
+      value: now.millisecondsSinceEpoch.toString(),
+    );
+    return now;
+  }
 }

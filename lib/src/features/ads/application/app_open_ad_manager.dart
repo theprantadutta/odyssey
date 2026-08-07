@@ -50,7 +50,10 @@ class AppOpenAdManager with WidgetsBindingObserver {
     _disposeAd();
   }
 
+  /// Forced off when [AdConstants.appOpenEnabled] is false. Every other path
+  /// short-circuits on [_enabled], so this is the single choke point.
   void setEnabled(bool enabled) {
+    enabled = enabled && AdConstants.appOpenEnabled;
     if (_enabled == enabled) return;
     _enabled = enabled;
     if (enabled) {

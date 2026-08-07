@@ -5,6 +5,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../packing/data/models/packing_model.dart';
 import '../../../packing/presentation/providers/packing_provider.dart';
 import '../../../packing/presentation/screens/packing_item_form_screen.dart';
@@ -266,6 +267,7 @@ class TripPackingTab extends ConsumerWidget {
   void _navigateToAddItem(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
         builder: (context) => PackingItemFormScreen(tripId: tripId),
       ),
     );
@@ -274,6 +276,7 @@ class TripPackingTab extends ConsumerWidget {
   void _navigateToEditItem(BuildContext context, PackingItemModel item) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
         builder: (context) => PackingItemFormScreen(
           tripId: tripId,
           item: item,

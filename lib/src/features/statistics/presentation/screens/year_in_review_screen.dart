@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
@@ -27,7 +26,6 @@ class YearInReviewScreen extends ConsumerWidget {
     final currentYear = DateTime.now().year;
 
     return Scaffold(
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         title: const Text('Year in Review'),
         actions: [

@@ -25,7 +25,11 @@ class NativeAdSlots {
   /// Number of real (non-ad) items in the list.
   final int realCount;
 
-  bool get _enabled => realCount >= AdConstants.nativeAdMinItemsBeforeFirst;
+  /// Slots are only allocated when the format is switched on at all — otherwise
+  /// the list would reserve indices for tiles that render nothing, leaving gaps.
+  bool get _enabled =>
+      AdConstants.nativeEnabled &&
+      realCount >= AdConstants.nativeAdMinItemsBeforeFirst;
 
   /// A "block" is N real items followed by 1 ad.
   int get _block => AdConstants.nativeAdEveryNItems + 1;

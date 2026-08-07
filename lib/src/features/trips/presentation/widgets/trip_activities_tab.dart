@@ -5,6 +5,7 @@ import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/router/task_routes.dart';
 import '../../../activities/data/models/activity_model.dart';
 import '../../../activities/presentation/providers/activities_provider.dart';
 import '../../../activities/presentation/screens/activity_form_screen.dart';
@@ -253,6 +254,7 @@ class TripActivitiesTab extends ConsumerWidget {
   void _navigateToAddActivity(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.activityForm),
         builder: (context) => ActivityFormScreen(tripId: tripId),
       ),
     );
@@ -261,6 +263,7 @@ class TripActivitiesTab extends ConsumerWidget {
   void _navigateToEditActivity(BuildContext context, ActivityModel activity) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.activityForm),
         builder: (context) => ActivityFormScreen(
           tripId: tripId,
           activity: activity,
