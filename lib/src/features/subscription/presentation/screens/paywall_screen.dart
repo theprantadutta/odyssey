@@ -345,7 +345,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         if (purchaseState.yearlyProduct != null) ...[
           _PricingCard(
             title: 'Yearly',
-            price: purchaseState.yearlyProduct!.price,
+            price: purchaseState.yearlyPrice!,
             subtitle: 'Save $yearlySavings%',
             isRecommended: true,
             isEnabled: !purchaseState.isPurchasing,
@@ -356,7 +356,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         if (purchaseState.monthlyProduct != null) ...[
           _PricingCard(
             title: 'Monthly',
-            price: purchaseState.monthlyProduct!.price,
+            price: purchaseState.monthlyPrice!,
             isEnabled: !purchaseState.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseMonthly(),
           ),
@@ -365,7 +365,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
         if (purchaseState.lifetimeProduct != null)
           _PricingCard(
             title: 'Lifetime',
-            price: purchaseState.lifetimeProduct!.price,
+            price: purchaseState.lifetimePrice!,
             subtitle: 'One-time payment',
             isEnabled: !purchaseState.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseLifetime(),

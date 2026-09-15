@@ -126,31 +126,37 @@ class SubscriptionRepository {
   }
 
   /// Verify and process a purchase with the backend
-  Future<bool> verifyPurchase({
-    required String productId,
-    required String receiptData,
-    String? signature,
-    required String platform,
-  }) async {
+  /// Sends a receipt to the backend and returns its response body.
+  ///
+  /// Returns null when the backend could not be reached or answered with an
+  /// error status. The caller must treat null as *transient*, never as a
+  /// rejection: refusing to deliver a purchase the user really paid for because
+  /// our own server was down is the one outcome we cannot take back.
+  ///
+  /// [payload] is built by `backendPayloadFor` and already carries the keys the
+  /// endpoint expects (`product_id`, `receipt_data`, `purchase_token`,
+  /// `transaction_id`, `platform`).
+  Future<Map<String, dynamic>?> verifyPurchasePayload(
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final response = await _dioClient.post(
         '$_basePath/purchase/verify',
-        data: {
-          'product_id': productId,
-          'receipt_data': receiptData,
-          'signature': signature,
-          'platform': platform,
-        },
+        data: payload,
       );
-      final verified = response.data['verified'] as bool? ?? false;
-      if (verified) {
+
+      final body = response.data;
+      if (body is! Map) return null;
+
+      final normalized = Map<String, dynamic>.from(body);
+      if (normalized['verified'] as bool? ?? false) {
         // Refresh cached status after purchase
         _refreshStatus();
       }
-      return verified;
+      return normalized;
     } catch (e) {
       AppLogger.error('Failed to verify purchase: $e');
-      return false;
+      return null;
     }
   }
 

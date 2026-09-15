@@ -41,6 +41,9 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // minSdk = flutter.minSdkVersion
         minSdk = 24
+        // flutter_inapp_purchase (OpenIAP) ships one Android module per store
+        // (play / horizon / amazon); pick the Play Store one.
+        missingDimensionStrategy("platform", "play")
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -60,6 +63,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

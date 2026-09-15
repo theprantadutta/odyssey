@@ -1,11 +1,13 @@
 import 'dart:async';
 
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:flutter_inapp_purchase/flutter_inapp_purchase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/constants/billing_config.dart';
+import '../../data/services/purchase_mapping.dart';
 import '../../data/services/purchase_service.dart';
 import 'subscription_provider.dart';
 
@@ -17,7 +19,7 @@ class PurchaseState {
   final bool isAvailable;
   final bool isPurchasing;
   final String? activeProductId;
-  final List<ProductDetails> products;
+  final List<ProductCommon> products;
   final String? error;
   final String? successMessage;
 
@@ -31,21 +33,32 @@ class PurchaseState {
     this.successMessage,
   });
 
-  ProductDetails? get monthlyProduct =>
+  ProductCommon? get monthlyProduct =>
       products.where((p) => p.id == ProductIds.monthlySubscription).firstOrNull;
 
-  ProductDetails? get yearlyProduct =>
+  ProductCommon? get yearlyProduct =>
       products.where((p) => p.id == ProductIds.yearlySubscription).firstOrNull;
 
-  ProductDetails? get lifetimeProduct =>
+  ProductCommon? get lifetimeProduct =>
       products.where((p) => p.id == ProductIds.lifetimePurchase).firstOrNull;
+
+  /// Prices as the store would charge them.
+  ///
+  /// Not `displayPrice`: an Android subscription whose first pricing phase is a
+  /// free trial reports "Free" there, which would advertise the wrong number.
+  String? get monthlyPrice => _priceOf(monthlyProduct);
+  String? get yearlyPrice => _priceOf(yearlyProduct);
+  String? get lifetimePrice => _priceOf(lifetimeProduct);
+
+  static String? _priceOf(ProductCommon? product) =>
+      product == null ? null : displayPriceFor(product);
 
   PurchaseState copyWith({
     bool? isInitialized,
     bool? isAvailable,
     bool? isPurchasing,
     String? activeProductId,
-    List<ProductDetails>? products,
+    List<ProductCommon>? products,
     String? error,
     String? successMessage,
     bool clearError = false,
@@ -70,7 +83,15 @@ class PurchaseState {
 /// Purchase state notifier provider
 @Riverpod(keepAlive: true)
 class Purchase extends _$Purchase {
+  /// How long a purchase may sit "in progress" with no outcome before a resume
+  /// is allowed to clear it. Android sometimes closes the billing sheet without
+  /// emitting anything at all, which would otherwise leave the paywall spinning
+  /// with no way out.
+  static const Duration _purchaseWatchdog = Duration(seconds: 20);
+
   late final PurchaseService _purchaseService;
+
+  DateTime? _purchaseStartedAt;
 
   @override
   PurchaseState build() {
@@ -81,6 +102,13 @@ class Purchase extends _$Purchase {
     _purchaseService.onPurchaseError = _onPurchaseError;
     _purchaseService.onPurchasePending = _onPurchasePending;
     _purchaseService.onPurchaseRestored = _onPurchaseRestored;
+
+    // Tag purchases with the signed-in account and, once after sign-in, fulfil
+    // anything the store already reports as owned for them.
+    ref.listen(authProvider, (previous, next) {
+      if (previous?.user?.id == next.user?.id) return;
+      unawaited(_purchaseService.setUser(next.user?.id));
+    });
 
     // Initialize on build
     _initialize();
@@ -121,12 +149,16 @@ class Purchase extends _$Purchase {
 
   void _onPurchaseComplete(PurchaseResult result) {
     AppLogger.info('Purchase complete: ${result.productId}');
+    _purchaseStartedAt = null;
     unawaited(ref.read(analyticsServiceProvider).trackPurchaseCompleted(
           plan: _planFromProductId(result.productId),
         ));
     state = state.copyWith(
       isPurchasing: false,
-      successMessage: 'Purchase successful! You are now a Premium member.',
+      successMessage: result.pendingVerification
+          ? 'Thanks! Your purchase went through and is being confirmed - '
+              'Premium unlocks shortly.'
+          : 'Purchase successful! You are now a Premium member.',
       clearError: true,
       clearActiveProduct: true,
     );
@@ -137,6 +169,7 @@ class Purchase extends _$Purchase {
 
   void _onPurchaseRestored(PurchaseResult result) {
     AppLogger.info('Purchase restored: ${result.productId}');
+    _purchaseStartedAt = null;
     state = state.copyWith(
       isPurchasing: false,
       successMessage: 'Purchases restored successfully!',
@@ -149,6 +182,7 @@ class Purchase extends _$Purchase {
 
   void _onPurchaseError(String error) {
     AppLogger.error('Purchase error: $error');
+    _purchaseStartedAt = null;
     unawaited(ref
         .read(analyticsServiceProvider)
         .trackPurchaseFailed(plan: 'unknown', error: error));
@@ -160,9 +194,18 @@ class Purchase extends _$Purchase {
     );
   }
 
+  /// A deferred payment: the sheet is done but the money is not. Nothing is
+  /// unlocked, so the spinner has to stop and say why.
   void _onPurchasePending() {
     AppLogger.info('Purchase pending');
-    state = state.copyWith(isPurchasing: true);
+    _purchaseStartedAt = null;
+    state = state.copyWith(
+      isPurchasing: false,
+      error: 'Your payment is pending approval. Premium unlocks as soon as it '
+          'clears - no need to buy again.',
+      clearSuccess: true,
+      clearActiveProduct: true,
+    );
   }
 
   /// Purchase monthly subscription
@@ -232,9 +275,10 @@ class Purchase extends _$Purchase {
     await _changeSubscription(product);
   }
 
-  Future<void> _purchase(ProductDetails product) async {
+  Future<void> _purchase(ProductCommon product) async {
     if (state.isPurchasing) return;
 
+    _purchaseStartedAt = DateTime.now();
     state = state.copyWith(
       isPurchasing: true,
       activeProductId: product.id,
@@ -253,9 +297,10 @@ class Purchase extends _$Purchase {
     // Success will be handled by the stream callback
   }
 
-  Future<void> _changeSubscription(ProductDetails product) async {
+  Future<void> _changeSubscription(ProductCommon product) async {
     if (state.isPurchasing) return;
 
+    _purchaseStartedAt = DateTime.now();
     state = state.copyWith(
       isPurchasing: true,
       activeProductId: product.id,
@@ -273,7 +318,11 @@ class Purchase extends _$Purchase {
     }
   }
 
-  /// Restore previous purchases
+  /// Restore previous purchases.
+  ///
+  /// OpenIAP re-emits nothing on the purchase stream for a restore, so this
+  /// awaits the reconcile against `getAvailablePurchases` rather than sleeping
+  /// and hoping events showed up.
   Future<void> restorePurchases() async {
     if (state.isPurchasing) return;
 
@@ -282,14 +331,42 @@ class Purchase extends _$Purchase {
 
     await _purchaseService.restorePurchases();
 
-    // Wait a moment for any restored purchases to process
-    await Future.delayed(const Duration(seconds: 2));
-
     state = state.copyWith(isPurchasing: false);
 
     // Force refresh from server to get updated status immediately
     ref.read(subscriptionProvider.notifier).forceRefresh();
   }
+
+  /// Re-read the store and fulfil anything owned but not yet delivered.
+  ///
+  /// Call on app resume: the billing sheet closing is itself a resume, and a
+  /// deferred payment that cleared in the background only shows up here.
+  Future<void> reconcileStoreState() async {
+    await _purchaseService.reconcileStoreState();
+    _clearStuckPurchase();
+  }
+
+  /// Release a purchase that never produced an outcome.
+  ///
+  /// Only after the reconcile has run, so a purchase that did succeed is already
+  /// reflected before the spinner is taken away.
+  void _clearStuckPurchase() {
+    if (!state.isPurchasing) return;
+
+    final startedAt = _purchaseStartedAt;
+    if (startedAt != null &&
+        DateTime.now().difference(startedAt) < _purchaseWatchdog) {
+      return;
+    }
+
+    AppLogger.warning('Clearing stuck purchase state');
+    _purchaseStartedAt = null;
+    state = state.copyWith(isPurchasing: false, clearActiveProduct: true);
+  }
+
+  /// Tell the store which user is signed in, so purchases carry an account tag.
+  Future<void> setUser(String? userId) => _purchaseService.setUser(userId);
+
 
   /// Clear error message
   void clearError() {

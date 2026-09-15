@@ -91,9 +91,8 @@ dependencies:
   # Connectivity
   connectivity_plus: ^7.0.0
 
-  # In-App Purchases
-  in_app_purchase: ^3.3.0
-  in_app_purchase_android: ^0.5.2
+  # In-App Purchases (OpenIAP: Play Billing 9.1 / StoreKit 2)
+  flutter_inapp_purchase: ^10.6.1
 
   # In-App Update (Android only; no-op on iOS)
   in_app_update: ^4.2.3

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 
@@ -275,5 +277,76 @@ class StorageService {
       value: now.millisecondsSinceEpoch.toString(),
     );
     return now;
+  }
+
+  // In-app purchases — delivered receipts and the verification retry queue.
+  //
+  // `getAvailablePurchases` returns every owned item on every resume, so delivery
+  // has to be deduped by a persisted set of purchase identities. The queue holds
+  // receipts the backend could not answer for; they are replayed until it does.
+  static const String _deliveredPurchasesKey = 'delivered_purchase_ids';
+  static const String _pendingVerificationsKey = 'pending_purchase_verifications';
+  static const int _maxDeliveredPurchaseIds = 200;
+
+  Future<Set<String>> getDeliveredPurchaseIds() async {
+    final raw = await _storage.read(key: _deliveredPurchasesKey);
+    if (raw == null || raw.isEmpty) return <String>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return <String>{};
+      return decoded.map((e) => e.toString()).toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  /// Records [purchaseId] as delivered, keeping the most recent
+  /// [_maxDeliveredPurchaseIds] entries so the value cannot grow without bound.
+  Future<void> addDeliveredPurchaseId(String purchaseId) async {
+    final existing = await getDeliveredPurchaseIds();
+    if (existing.contains(purchaseId)) return;
+
+    final updated = [...existing, purchaseId];
+    final trimmed = updated.length > _maxDeliveredPurchaseIds
+        ? updated.sublist(updated.length - _maxDeliveredPurchaseIds)
+        : updated;
+
+    await _storage.write(
+      key: _deliveredPurchasesKey,
+      value: jsonEncode(trimmed),
+    );
+  }
+
+  Future<void> clearDeliveredPurchaseIds() async {
+    await _storage.delete(key: _deliveredPurchasesKey);
+  }
+
+  /// Receipts awaiting a backend verdict, oldest first. Keys are the same ones
+  /// the pre-OpenIAP client used (`product_id`, `transaction_id`, `platform`,
+  /// `receipt_data`, `purchase_token`), so entries persisted by the old plugin
+  /// still parse after the upgrade.
+  Future<List<Map<String, dynamic>>> getPendingVerifications() async {
+    final raw = await _storage.read(key: _pendingVerificationsKey);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded.whereType<Map<String, dynamic>>().toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> savePendingVerifications(
+    List<Map<String, dynamic>> pending,
+  ) async {
+    if (pending.isEmpty) {
+      await _storage.delete(key: _pendingVerificationsKey);
+      return;
+    }
+    await _storage.write(
+      key: _pendingVerificationsKey,
+      value: jsonEncode(pending),
+    );
   }
 }

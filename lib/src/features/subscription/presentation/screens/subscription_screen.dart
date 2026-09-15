@@ -446,9 +446,9 @@ class _UpgradeSection extends StatelessWidget {
     }
 
     // Store prices only - no hardcoded fallback that might not match the App Store.
-    final monthlyPrice = purchaseState.monthlyProduct?.price;
-    final yearlyPrice = purchaseState.yearlyProduct?.price;
-    final lifetimePrice = purchaseState.lifetimeProduct?.price;
+    final monthlyPrice = purchaseState.monthlyPrice;
+    final yearlyPrice = purchaseState.yearlyPrice;
+    final lifetimePrice = purchaseState.lifetimePrice;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

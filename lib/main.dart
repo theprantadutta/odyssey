@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,6 +21,7 @@ import 'src/core/services/connectivity_service.dart';
 import 'src/core/services/logger_service.dart';
 import 'src/core/services/notification_service.dart';
 import 'src/core/sync/sync_service.dart';
+import 'src/features/subscription/presentation/providers/purchase_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,13 +94,57 @@ class OdysseyApp extends ConsumerStatefulWidget {
   ConsumerState<OdysseyApp> createState() => _OdysseyAppState();
 }
 
-class _OdysseyAppState extends ConsumerState<OdysseyApp> {
+class _OdysseyAppState extends ConsumerState<OdysseyApp>
+    with WidgetsBindingObserver {
+  /// Resume events arrive in bursts (the billing sheet closing is itself a
+  /// resume), so reconciling is throttled just enough to collapse those.
+  static const Duration _storeReconcileInterval = Duration(seconds: 10);
+
+  DateTime? _lastStoreReconcile;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForAppUpdate();
+      // Bring the store connection up at launch, not on first paywall view.
+      // StoreKit replays every unfinished transaction on launch, and Play
+      // refunds anything left unacknowledged for 3 days - both need a listener
+      // attached and a reconcile run before the user goes anywhere near a
+      // purchase screen.
+      ref.read(purchaseProvider);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _reconcileStoreState();
+    }
+  }
+
+  /// Fulfil anything the store now reports as owned.
+  ///
+  /// This is how a deferred ("slow test card", cash, parental approval) payment
+  /// that cleared in the background finally unlocks Premium, and how a purchase
+  /// whose verification was queued while we were offline gets replayed.
+  void _reconcileStoreState() {
+    final last = _lastStoreReconcile;
+    if (last != null &&
+        DateTime.now().difference(last) < _storeReconcileInterval) {
+      return;
+    }
+    _lastStoreReconcile = DateTime.now();
+
+    unawaited(ref.read(purchaseProvider.notifier).reconcileStoreState());
   }
 
   Future<void> _checkForAppUpdate() async {
