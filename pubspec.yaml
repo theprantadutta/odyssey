@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
 
-version: 2.3.0+17
+version: 3.0.0+18
 
 environment:
   sdk: ^3.10.0
@@ -18,6 +18,9 @@ dependencies:
 
   # HTTP & API
   dio: ^5.7.0
+  # The cache manager's FileService contract is expressed in package:http types,
+  # so the authenticated media fetch layer speaks them directly.
+  http: ^1.6.0
   retrofit: ^4.4.1
   json_annotation: ^4.9.0
 
@@ -74,6 +77,8 @@ dependencies:
   url_launcher: ^6.2.0
   http_parser: ^4.1.2
   path_provider: ^2.1.5
+  # Imported directly by the Drift database for file paths.
+  path: ^1.9.0
 
   # PDF Viewer
   pdfx: ^2.6.0
@@ -113,6 +118,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+  # Used by test/session/late_response_isolation_test.dart to point the
+  # database at a temporary directory. Already present transitively; declared
+  # so the analyzer does not flag the import.
+  path_provider_platform_interface: ^2.1.2
 
   # Code Generation
   build_runner: ^2.4.14

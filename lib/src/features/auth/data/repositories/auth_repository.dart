@@ -5,6 +5,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/google_sign_in_service.dart';
 import '../../../../core/services/apple_sign_in_service.dart';
 import '../../../../core/config/api_config.dart';
+import '../models/account_deletion_receipt.dart';
 import '../models/user_model.dart';
 
 /// Exception thrown when account linking is required
@@ -146,23 +147,38 @@ class AuthRepository {
     return await _storageService.isAuthenticated();
   }
 
-  /// Permanently delete the current user's account and all associated data.
+  /// Ask the backend to delete the current user's account.
   ///
-  /// Calls the backend, then clears all local auth/session state. Also signs
-  /// out of Firebase/Google so a stale social session can't re-authenticate.
-  Future<void> deleteAccount() async {
+  /// Returns once the server has accepted the request and taken the account's
+  /// access away. It does *not* mean the data is gone: the server removes it
+  /// afterwards, on its own, and this call has no way to observe that. The
+  /// receipt carries what the server actually claimed, so callers report the
+  /// request rather than a completion.
+  ///
+  /// The body used to be dropped on the floor, which is how the old
+  /// `{"undeleted_files": n}` answer went unnoticed.
+  ///
+  /// Local auth/session state is cleared either way once the server accepts,
+  /// including the Firebase/Google session, so a stale social session cannot
+  /// re-authenticate an account that no longer works.
+  Future<AccountDeletionReceipt> deleteAccount() async {
+    final AccountDeletionReceipt receipt;
+
     try {
-      await _dioClient.delete(ApiConfig.deleteAccount);
+      final response = await _dioClient.delete(ApiConfig.deleteAccount);
+      receipt = AccountDeletionReceipt.fromJson(response.data);
     } on DioException catch (e) {
-      // Server-side deletion failed; keep the local session intact.
+      // The request was not accepted; keep the local session intact so the user
+      // can try again. This is the only outcome where they still can.
       throw _handleError(e);
     }
 
-    // Deletion succeeded — clear all local state and any social session.
     try {
       await _googleSignInService.signOut();
     } catch (_) {}
     await _storageService.clearAuthData();
+
+    return receipt;
   }
 
   /// Sign in with Google

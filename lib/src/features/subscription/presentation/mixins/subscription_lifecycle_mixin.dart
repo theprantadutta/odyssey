@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/logger_service.dart';
+import '../providers/feature_access_provider.dart';
 import '../providers/subscription_provider.dart';
 
 /// Mixin that refreshes subscription status when the app resumes from background.
@@ -65,6 +66,16 @@ mixin SubscriptionLifecycleMixin<T extends ConsumerStatefulWidget>
     try {
       AppLogger.debug('Refreshing subscription status on app resume...');
       await ref.read(subscriptionProvider.notifier).refresh();
+
+      // Rewarded unlocks are refreshed alongside the subscription, for the same
+      // reason: both are entitlements the server owns and the device caches. A
+      // grant that expired while the app was backgrounded would otherwise keep a
+      // gate open until something happened to re-read it.
+      //
+      // This also resolves rewards earned earlier whose confirmation had not
+      // arrived yet - the ad network delivers on its own schedule, and the user
+      // should not have to watch a second ad for something they already earned.
+      await ref.read(temporaryUnlocksProvider.notifier).refreshIncludingPending();
     } catch (e) {
       AppLogger.error('Failed to refresh subscription on resume: $e');
     } finally {
@@ -86,6 +97,7 @@ mixin SubscriptionLifecycleMixin<T extends ConsumerStatefulWidget>
 
     try {
       await ref.read(subscriptionProvider.notifier).refresh();
+      await ref.read(temporaryUnlocksProvider.notifier).refresh();
       return true;
     } catch (e) {
       AppLogger.error('Failed to refresh subscription: $e');

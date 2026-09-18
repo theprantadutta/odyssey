@@ -48,6 +48,15 @@ class ActivitiesDao extends DatabaseAccessor<AppDatabase> with _$ActivitiesDaoMi
     return (select(localActivities)..where((a) => a.isDirty.equals(true))).get();
   }
 
+  /// Marks a record as carrying unsent changes.
+  ///
+  /// For a record written from a server copy that still has newer local edits
+  /// queued: the write leaves it clean, and a clean row is never pushed.
+  Future<void> markDirty(String id) {
+    return (update(localActivities)..where((t) => t.id.equals(id)))
+        .write(const LocalActivitiesCompanion(isDirty: Value(true)));
+  }
+
   Future<void> clearDirty(String id) {
     return (update(localActivities)..where((a) => a.id.equals(id)))
         .write(const LocalActivitiesCompanion(isDirty: Value(false), isLocalOnly: Value(false)));
@@ -64,5 +73,22 @@ class ActivitiesDao extends DatabaseAccessor<AppDatabase> with _$ActivitiesDaoMi
 
   Future<void> deleteAll() {
     return delete(localActivities).go();
+  }
+
+  /// Repoints rows from one trip ID to another.
+  ///
+  /// Used when a server-assigned trip ID replaces the locally generated one, so
+  /// children are not orphaned when the stale parent row is removed.
+  Future<void> repointTrip(String fromTripId, String toTripId) {
+    return (update(localActivities)..where((t) => t.tripId.equals(fromTripId)))
+        .write(LocalActivitiesCompanion(tripId: Value(toTripId)));
+  }
+
+  /// Removes every row for a trip outright.
+  ///
+  /// Used when access to the trip is revoked: a soft delete would leave the
+  /// content readable, which is exactly what revocation has to prevent.
+  Future<void> deleteByTrip(String tripId) {
+    return (delete(localActivities)..where((t) => t.tripId.equals(tripId))).go();
   }
 }

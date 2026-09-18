@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -40,6 +41,16 @@ class LocalTrips extends Table {
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -60,6 +71,16 @@ class LocalActivities extends Table {
   BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -85,6 +106,16 @@ class LocalExpenses extends Table {
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -106,6 +137,16 @@ class LocalMemories extends Table {
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -126,6 +167,16 @@ class LocalDocuments extends Table {
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -145,6 +196,16 @@ class LocalPackingItems extends Table {
   BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -188,6 +249,16 @@ class LocalTemplates extends Table {
   BoolColumn get isDirty => boolean().withDefault(const Constant(false))();
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+
+  /// The server's own revision string for this record, stored verbatim.
+  ///
+  /// Kept apart from [updatedAt] because they answer different questions.
+  /// [updatedAt] is when this device last touched the row and is stored as a
+  /// Drift DateTime - unix seconds. A server revision needs to go back to the
+  /// server byte-for-byte, and PostgreSQL keeps microseconds, so round-tripping
+  /// it through a DateTime silently truncates it and the server rejects the
+  /// result as stale. Held as opaque text: nothing here parses or compares it.
+  TextColumn get serverRevision => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -281,8 +352,188 @@ class SyncQueue extends Table {
   TextColumn get payload => text()(); // JSON
   TextColumn get status => text().withDefault(const Constant('pending'))();
   DateTimeColumn get createdAt => dateTime()();
+
+  /// Position in the queue, independent of any clock.
+  ///
+  /// FIFO used to be `ORDER BY createdAt`, which ties whenever two operations
+  /// are made in the same second - and coalescing deliberately carries the
+  /// *original* timestamp onto the merged row, so ties are normal rather than
+  /// rare. A parent create and its child create in one second could come back
+  /// child-first, and the child would be pushed to a server that has never
+  /// heard of its parent.
+  ///
+  /// Assigned once, monotonically, and preserved when a row is coalesced: the
+  /// merged operation keeps the place in line that the edit it replaces had.
+  IntColumn get sequence => integer().withDefault(const Constant(0))();
+
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
+
+  /// The local row's `updatedAt` at the moment this operation was sent.
+  ///
+  /// An acknowledgement is only valid for the revision it was sent for. If the
+  /// user edited the record again while the request was in flight, the row's
+  /// current `updatedAt` no longer matches and the response must not clear the
+  /// dirty flag or overwrite the newer edit.
+  ///
+  /// Durable rather than in-memory so an operation left in flight by a process
+  /// kill can still be reasoned about on the next launch.
+  DateTimeColumn get sentRevision => dateTime().nullable()();
+
+  /// When this operation was handed to the server, for stuck-operation recovery.
+  DateTimeColumn get sentAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Unsynced operations set aside when their account signed out.
+///
+/// Clearing the database on sign-out used to delete queued work outright, so an
+/// edit made offline and never pushed was gone the moment the user logged out.
+/// These rows are keyed by the account that made them and restored if that same
+/// account signs back in; another account never sees them.
+class QuarantinedOperations extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+  TextColumn get operation => text()();
+  TextColumn get payload => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get quarantinedAt => dateTime()();
+
+  /// Why this was set aside - see [QuarantineReason].
+  ///
+  /// The two cases must not be treated alike. Work set aside on sign-out is
+  /// this account's own, and belongs back in the ordinary tables the moment
+  /// they sign in again. Work set aside because *access was revoked* is still
+  /// theirs to recover, but the trip it belongs to is not: putting it back
+  /// would return content the server has said they may no longer see.
+  TextColumn get reason =>
+      text().withDefault(const Constant('sign_out'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Snapshots of the local rows that quarantined operations act on.
+///
+/// Saving the queue alone is not enough. A queued operation is usually a partial
+/// patch, and the row it patches is deleted when the database is cleared on
+/// sign-out - so the restored operation would describe an edit the user can no
+/// longer see, and a child would come back with no parent. These snapshots put
+/// the base data back before the queue is replayed.
+class QuarantinedRecords extends Table {
+  /// `userId:entityType:entityId`.
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  /// The Drift row, serialised with its own `toJson`.
+  TextColumn get rowJson => text()();
+  DateTimeColumn get quarantinedAt => dateTime()();
+
+  /// Why this was set aside - see [QuarantineReason].
+  TextColumn get reason =>
+      text().withDefault(const Constant('sign_out'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// A push the server rejected because the record had changed underneath it.
+///
+/// Both versions are kept: discarding either one silently loses work the user
+/// did. The local row stays dirty and unchanged so nothing disappears from the
+/// screen while the conflict is unresolved.
+class SyncConflicts extends Table {
+  TextColumn get id => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  /// The operation payload we tried to push.
+  TextColumn get localPayload => text()();
+
+  /// The record as the server holds it.
+  TextColumn get serverPayload => text()();
+
+  DateTimeColumn get detectedAt => dateTime()();
+
+  /// The queue sequence this conflict was detected at.
+  ///
+  /// Resolution has to tell "the edit that was refused" from "an edit the user
+  /// made afterwards", and it must not lose that distinction for two edits in
+  /// the same second. [detectedAt] is a Drift DateTime - unix seconds - so
+  /// comparing against it decides same-second cases by luck. The sequence is
+  /// exact.
+  ///
+  /// Zero for a conflict recorded before this column existed; comparisons treat
+  /// that as "unknown" and fall back to the timestamp.
+  IntColumn get detectedSequence => integer().withDefault(const Constant(0))();
+
+  /// Cleared once the user (or a later successful push) settles it.
+  BoolColumn get isResolved => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Why a piece of work is sitting in recovery storage rather than in the app.
+///
+/// Stored as text so the value survives a schema the enum later outgrows.
+abstract final class QuarantineReason {
+  /// The account signed out. Restored in full when they sign back in.
+  static const signOut = 'sign_out';
+
+  /// Access to the trip was revoked. The work is kept and never silently
+  /// restored: the trip must stay out of normal browsing, so putting the rows
+  /// back would undo the eviction that removed them.
+  static const revoked = 'revoked';
+
+  /// The operation is larger than one `POST /sync/push` body may carry, so the
+  /// server refuses it with 413 however often it is sent.
+  ///
+  /// Kept and never silently restored, for the same reason [revoked] is: the
+  /// user wrote it and only they can recreate it, but putting it back on the
+  /// queue would re-send the identical body and stall every operation behind it
+  /// all over again. The local row is untouched and still dirty - the user's
+  /// data is on screen, it is the *push* that could not be made.
+  static const tooLarge = 'too_large';
+}
+
+/// Unresolved conflicts belonging to an account that is not signed in.
+///
+/// Kept separately from [SyncConflicts] for the same reason the operations are:
+/// signing out clears the ordinary tables. A conflict holds the only copy of
+/// the user's rejected edit, and once its queue row is gone - an acknowledged
+/// conflict removes it - nothing else in the database points at that work. It
+/// was therefore the one thing the queue-driven quarantine could never find.
+class QuarantinedConflicts extends Table {
+  /// `userId:conflictId`.
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get conflictId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  /// The edit the user made, which the server refused.
+  TextColumn get localPayload => text()();
+
+  /// The record as the server holds it.
+  TextColumn get serverPayload => text()();
+
+  DateTimeColumn get detectedAt => dateTime()();
+
+  /// See [SyncConflicts.detectedSequence].
+  IntColumn get detectedSequence => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get quarantinedAt => dateTime()();
+
+  /// See [QuarantineReason].
+  TextColumn get reason =>
+      text().withDefault(const Constant('sign_out'))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -314,6 +565,10 @@ class SyncMetadata extends Table {
     LocalSharedTrips,
     LocalSubscriptionCache,
     SyncQueue,
+    SyncConflicts,
+    QuarantinedOperations,
+    QuarantinedRecords,
+    QuarantinedConflicts,
     SyncMetadata,
   ],
   daos: [
@@ -333,8 +588,16 @@ class SyncMetadata extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Builds a database over a caller-supplied executor.
+  ///
+  /// Tests use this with `NativeDatabase.memory()` so queue coalescing, dirty
+  /// flags and ID remapping can be exercised against real SQL rather than a
+  /// hand-written fake that cannot reproduce transaction behaviour.
+  @visibleForTesting
+  AppDatabase.forTesting(super.executor);
+
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -343,6 +606,8 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
+        // Applied in ascending order so an upgrade from any older version walks
+        // the same path a stepwise upgrade would have taken.
         if (from < 2) {
           // Add new tables
           await m.createTable(localTemplates);
@@ -358,17 +623,74 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(localTripShares, localTripShares.isLocalOnly);
           await m.addColumn(localTripShares, localTripShares.isDeleted);
         }
+        if (from < 3) {
+          // Revision tracking for acknowledgements, and durable conflict records.
+          await m.addColumn(syncQueue, syncQueue.sentRevision);
+          await m.addColumn(syncQueue, syncQueue.sentAt);
+          await m.createTable(syncConflicts);
+        }
+        if (from < 4) {
+          // Unsynced work is set aside per account rather than deleted on logout.
+          await m.createTable(quarantinedOperations);
+        }
+        if (from < 5) {
+          // Base rows the quarantined operations act on, so a restored partial
+          // edit still has a record to apply to.
+          await m.createTable(quarantinedRecords);
+        }
+        if (from < 6) {
+          // Revoked-access recovery is separated from ordinary sign-out work,
+          // and unresolved conflicts are preserved in their own right rather
+          // than only through the queue row that happened to reference them.
+          await m.addColumn(quarantinedOperations, quarantinedOperations.reason);
+          await m.addColumn(quarantinedRecords, quarantinedRecords.reason);
+          await m.createTable(quarantinedConflicts);
+        }
+        if (from < 7) {
+          // Exact server revisions, and ordering that does not depend on a
+          // clock with one-second resolution.
+          await m.addColumn(localTrips, localTrips.serverRevision);
+          await m.addColumn(localActivities, localActivities.serverRevision);
+          await m.addColumn(localExpenses, localExpenses.serverRevision);
+          await m.addColumn(localMemories, localMemories.serverRevision);
+          await m.addColumn(localDocuments, localDocuments.serverRevision);
+          await m.addColumn(localPackingItems, localPackingItems.serverRevision);
+          await m.addColumn(localTemplates, localTemplates.serverRevision);
+
+          await m.addColumn(syncQueue, syncQueue.sequence);
+          await m.addColumn(syncConflicts, syncConflicts.detectedSequence);
+
+          // Existing rows get a sequence in their current timestamp order, so
+          // an upgrade does not reorder a queue that is already waiting.
+          await m.database.customStatement(
+            'UPDATE sync_queue SET sequence = rowid WHERE sequence = 0',
+          );
+        }
       },
     );
   }
 
+  /// Empties every table that belongs to the signed-in account.
+  ///
+  /// The three quarantine tables are deliberately preserved: they are the
+  /// recovery storage, holding work belonging to an account that has signed out
+  /// or lost access to a trip. Wiping them here would delete the very thing
+  /// they exist to save.
   Future<void> clearAllData() async {
     await transaction(() async {
       for (final table in allTables) {
+        if (_preservedOnClear.contains(table.actualTableName)) continue;
         await delete(table).go();
       }
     });
   }
+
+  /// Recovery storage, which outlives the account whose data it holds.
+  late final Set<String> _preservedOnClear = {
+    quarantinedOperations.actualTableName,
+    quarantinedRecords.actualTableName,
+    quarantinedConflicts.actualTableName,
+  };
 }
 
 LazyDatabase _openConnection() {

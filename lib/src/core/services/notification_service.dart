@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'logger_service.dart';
+import 'startup_prompt_queue.dart';
 
 /// Callback type for handling notification taps
 typedef NotificationTapCallback = void Function(Map<String, dynamic> data);
@@ -104,16 +105,27 @@ class NotificationService {
   }
 
   /// Request notification permissions
+  ///
+  /// Queued with the other startup prompts. This runs during `main()` while the
+  /// UMP consent flow is running in the background, and two system modals
+  /// presented at once are drawn over each other - with a tap meant for one
+  /// landing on the other. Ordering them costs a moment at launch and makes the
+  /// sequence the same every time.
   Future<bool> requestPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-      announcement: false,
-      carPlay: false,
-      criticalAlert: false,
+    final settings = await StartupPromptQueue.instance.enqueue(
+      'notification-permission',
+      () => _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+        announcement: false,
+        carPlay: false,
+        criticalAlert: false,
+      ),
     );
+
+    if (settings == null) return false;
 
     final granted = settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;

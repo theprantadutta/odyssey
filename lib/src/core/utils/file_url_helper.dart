@@ -1,38 +1,65 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../config/api_config.dart';
 
-/// Helper class for handling FileRunner URLs with authentication
+/// Turns stored file URLs into URLs this app is allowed to fetch.
+///
+/// Files used to be fetched straight from the storage service with a shared API
+/// key appended to the URL. The key shipped inside the app, so anyone who
+/// extracted it held whatever authority it carried, and putting it in a query
+/// string spread it through URL logs and caches besides.
+///
+/// Files now come from Odyssey's own API, which checks the caller's session and
+/// the owning trip's permissions on every request and applies the storage
+/// credential itself. Nothing secret reaches the device.
 class FileUrlHelper {
-  FileUrlHelper._(); // Private constructor
+  FileUrlHelper._();
 
-  /// Get the FileRunner API key from environment
-  static String get _apiKey => dotenv.env['FILERUNNER_API_KEY'] ?? '';
-
-  /// Converts a FileRunner URL to an authenticated URL with API key
+  /// Rewrites a stored file URL to this app's authenticated file endpoint.
   ///
-  /// If the URL is from filerunner.pranta.dev, appends the api_key query param.
-  /// Otherwise, returns the URL unchanged.
-  static String getAuthenticatedUrl(String? url) {
-    if (url == null || url.isEmpty) {
-      return '';
-    }
+  /// Returns the URL unchanged when it is not one of ours - an externally hosted
+  /// cover image is fetched directly, and carries no credentials of any kind.
+  static String resolve(String? url) {
+    if (url == null || url.isEmpty) return '';
 
-    if (url.contains('filerunner.pranta.dev')) {
-      final apiKey = _apiKey;
-      if (apiKey.isEmpty) {
-        return url;
-      }
-      final separator = url.contains('?') ? '&' : '?';
-      return '$url${separator}api_key=$apiKey';
-    }
+    final fileId = tryExtractFileId(url);
+    if (fileId == null) return url;
 
-    return url;
+    return '${ApiConfig.fullBaseUrl}${ApiConfig.files}/$fileId';
   }
 
-  /// Check if a URL is a FileRunner URL
-  static bool isFileRunnerUrl(String? url) {
-    if (url == null || url.isEmpty) {
-      return false;
-    }
-    return url.contains('filerunner.pranta.dev');
+  /// The storage id inside a file URL, or null if this is not a storage URL.
+  ///
+  /// Parsed rather than substring-matched. `url.contains(host)` would accept
+  /// `https://evil.example.com/?next=files.example.com`, and matching the host
+  /// without the scheme would accept `http://` on a service reached over TLS.
+  static String? tryExtractFileId(String? url) {
+    if (url == null || url.isEmpty) return null;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.isAbsolute) return null;
+
+    if (!_isStorageHost(uri)) return null;
+
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.length < 2) return null;
+    if (segments[segments.length - 2].toLowerCase() != 'files') return null;
+
+    final fileId = segments.last;
+    return fileId.isEmpty ? null : fileId;
+  }
+
+  /// The API origin private files are fetched from.
+  static String get apiOrigin => ApiConfig.baseUrl;
+
+  /// Whether a URL points at our own file storage.
+  static bool isStorageUrl(String? url) => tryExtractFileId(url) != null;
+
+  static bool _isStorageHost(Uri uri) {
+    final expected = Uri.tryParse(ApiConfig.fileStorageBaseUrl);
+    if (expected == null || !expected.isAbsolute) return false;
+
+    // Scheme, host and port compared as parsed components, never as substrings.
+    return uri.scheme.toLowerCase() == expected.scheme.toLowerCase() &&
+        uri.host.toLowerCase() == expected.host.toLowerCase() &&
+        uri.port == expected.port;
   }
 }

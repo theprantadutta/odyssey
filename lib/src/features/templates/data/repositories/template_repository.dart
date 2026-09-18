@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -10,7 +12,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/local_record_reconciler.dart';
 import '../models/template_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Template repository - local-first with background API sync
 class TemplateRepository {
@@ -84,6 +90,7 @@ class TemplateRepository {
 
   /// Get template by ID - reads from local DB first
   Future<TripTemplateModel> getTemplate(String templateId) async {
+    final scope = AccountSession().capture();
     final local = await _db.templatesDao.getById(templateId);
     if (local != null && !local.isDeleted) {
       if (ConnectivityService().isOnline) {
@@ -105,7 +112,7 @@ class TemplateRepository {
     try {
       final response = await _dioClient.get(ApiConfig.templateDetail(templateId));
       final template = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
-      await _db.templatesDao.upsert(templateToLocal(template));
+      await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
       return template;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -136,20 +143,15 @@ class TemplateRepository {
       entityType: 'template',
       entityId: id,
       operation: 'create',
-      payload: request.toJson(),
+      payload: withClientId(id, request.toJson()),
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post(ApiConfig.templates, data: request.toJson());
-        final serverTemplate = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
-        await _db.templatesDao.upsert(templateToLocal(serverTemplate));
-        await _db.syncQueueDao.removeForEntity('template', id);
-        return serverTemplate;
-      } catch (e) {
-        AppLogger.warning('Failed to sync template create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return template;
   }
@@ -182,20 +184,15 @@ class TemplateRepository {
       entityType: 'template',
       entityId: templateId,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch(ApiConfig.templateDetail(templateId), data: updates);
-        final serverTemplate = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
-        await _db.templatesDao.upsert(templateToLocal(serverTemplate));
-        await _db.syncQueueDao.removeForEntity('template', templateId);
-        return serverTemplate;
-      } catch (e) {
-        AppLogger.warning('Failed to sync template update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.templatesDao.getById(templateId);
     return updated != null ? templateFromLocal(updated) : throw 'Template not found';
@@ -205,35 +202,42 @@ class TemplateRepository {
   Future<void> deleteTemplate(String templateId) async {
     await _db.templatesDao.softDelete(templateId);
 
-    await SyncQueueService().enqueue(
+    final queued = await SyncQueueService().enqueue(
       entityType: 'template',
       entityId: templateId,
       operation: 'delete',
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete(ApiConfig.templateDetail(templateId));
-        await _db.templatesDao.hardDelete(templateId);
-        await _db.syncQueueDao.removeForEntity('template', templateId);
-      } catch (e) {
-        AppLogger.warning('Failed to sync template delete, will retry: $e');
-      }
+    // The delete cancelled a create that never reached the server, so there is
+    // nothing to sync and nothing to keep: drop the row instead of leaving a
+    // soft-deleted ghost that is hidden from the user and never syncs away.
+    if (!queued) {
+      await LocalRecordReconciler(_db)
+          .purgeLocalOnly(entityType: 'template', id: templateId);
+      return;
     }
+
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   /// Create template from existing trip - API-only
   Future<TripTemplateModel> createTemplateFromTrip(
     TemplateFromTripRequest request,
   ) async {
+    final scope = AccountSession().capture();
     if (!ConnectivityService().isOnline) {
       throw 'Creating templates from trips requires an internet connection';
     }
     try {
       final response = await _dioClient.post(ApiConfig.templateFromTrip, data: request.toJson());
       final template = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
-      await _db.templatesDao.upsert(templateToLocal(template));
+      await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
       return template;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -260,22 +264,24 @@ class TemplateRepository {
   /// Stop seeing a user's public templates. The gallery is filtered per-viewer, so
   /// drop the local cache to force a refetch rather than trying to prune it here.
   Future<void> blockUser(String userId) async {
+    final scope = AccountSession().capture();
     try {
       await _dioClient.post(ApiConfig.blockUser(userId));
-      await _db.templatesDao.clearPublicCache();
+      await scope.write(() => _db.templatesDao.clearPublicCache());
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
   Future<TripTemplateModel> forkTemplate(String templateId) async {
+    final scope = AccountSession().capture();
     if (!ConnectivityService().isOnline) {
       throw 'Forking templates requires an internet connection';
     }
     try {
       final response = await _dioClient.post('${ApiConfig.templateDetail(templateId)}/fork');
       final template = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
-      await _db.templatesDao.upsert(templateToLocal(template));
+      await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
       return template;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -317,6 +323,7 @@ class TemplateRepository {
     int pageSize = 20,
     TemplateCategory? category,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': page, 'page_size': pageSize};
       if (category != null) queryParams['category'] = category.apiValue;
@@ -325,7 +332,7 @@ class TemplateRepository {
       final templatesResponse = TemplatesResponse.fromJson(response.data as Map<String, dynamic>);
 
       for (final template in templatesResponse.templates) {
-        await _db.templatesDao.upsert(templateToLocal(template));
+        await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
       }
 
       return templatesResponse;
@@ -335,6 +342,7 @@ class TemplateRepository {
   }
 
   void _refreshMyTemplatesFromApi({TemplateCategory? category}) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': 1, 'page_size': 100};
       if (category != null) queryParams['category'] = category.apiValue;
@@ -343,7 +351,7 @@ class TemplateRepository {
       for (final template in templatesResponse.templates) {
         final existing = await _db.templatesDao.getById(template.id);
         if (existing == null || !existing.isDirty) {
-          await _db.templatesDao.upsert(templateToLocal(template));
+          await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
         }
       }
     } catch (e) {
@@ -357,6 +365,7 @@ class TemplateRepository {
     TemplateCategory? category,
     String? search,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': page, 'page_size': pageSize};
       if (category != null) queryParams['category'] = category.apiValue;
@@ -366,7 +375,7 @@ class TemplateRepository {
       final templatesResponse = TemplatesResponse.fromJson(response.data as Map<String, dynamic>);
 
       for (final template in templatesResponse.templates) {
-        await _db.templatesDao.upsertPublic(templateToPublicCache(template));
+        await scope.write(() => _db.templatesDao.upsertPublic(templateToPublicCache(template)));
       }
 
       return templatesResponse;
@@ -376,6 +385,7 @@ class TemplateRepository {
   }
 
   void _refreshPublicTemplatesFromApi({TemplateCategory? category, String? search}) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': 1, 'page_size': 100};
       if (category != null) queryParams['category'] = category.apiValue;
@@ -383,7 +393,7 @@ class TemplateRepository {
       final response = await _dioClient.get(ApiConfig.publicTemplates, queryParameters: queryParams);
       final templatesResponse = TemplatesResponse.fromJson(response.data as Map<String, dynamic>);
       for (final template in templatesResponse.templates) {
-        await _db.templatesDao.upsertPublic(templateToPublicCache(template));
+        await scope.write(() => _db.templatesDao.upsertPublic(templateToPublicCache(template)));
       }
     } catch (e) {
       AppLogger.warning('Background public template refresh failed: $e');
@@ -391,12 +401,13 @@ class TemplateRepository {
   }
 
   void _refreshTemplateFromApi(String id) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.templateDetail(id));
       final template = TripTemplateModel.fromJson(response.data as Map<String, dynamic>);
       final existing = await _db.templatesDao.getById(id);
       if (existing == null || !existing.isDirty) {
-        await _db.templatesDao.upsert(templateToLocal(template));
+        await scope.write(() => _db.templatesDao.upsert(templateToLocal(template)));
       }
     } catch (e) {
       AppLogger.warning('Background template detail refresh failed: $e');

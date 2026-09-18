@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,7 +16,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../memories/data/models/upload_outcome.dart';
 import '../models/document_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Progress callback for file uploads
 typedef ProgressCallback = void Function(int sent, int total);
@@ -104,6 +110,7 @@ class DocumentRepository {
   Future<List<DocumentsByType>> getDocumentsGrouped({
     required String tripId,
   }) async {
+    final scope = AccountSession().capture();
     final localDocs = await _db.documentsDao.getByTrip(tripId);
 
     if (localDocs.isNotEmpty || !ConnectivityService().isOnline) {
@@ -139,7 +146,7 @@ class DocumentRepository {
       // Cache all documents locally
       for (final group in grouped) {
         for (final doc in group.documents) {
-          await _db.documentsDao.upsert(documentToLocal(doc));
+          await scope.write(() => _db.documentsDao.upsert(documentToLocal(doc)));
         }
       }
 
@@ -151,6 +158,7 @@ class DocumentRepository {
 
   /// Get document by ID - reads from local DB first
   Future<DocumentModel> getDocumentById(String id) async {
+    final scope = AccountSession().capture();
     final local = await _db.documentsDao.getById(id);
     if (local != null && !local.isDeleted) {
       if (ConnectivityService().isOnline) {
@@ -162,7 +170,7 @@ class DocumentRepository {
     try {
       final response = await _dioClient.get('${ApiConfig.documents}/$id');
       final doc = DocumentModel.fromJson(response.data);
-      await _db.documentsDao.upsert(documentToLocal(doc));
+      await scope.write(() => _db.documentsDao.upsert(documentToLocal(doc)));
       return doc;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -195,30 +203,33 @@ class DocumentRepository {
       payload: request.toJson(),
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post('${ApiConfig.documents}/', data: request.toJson());
-        final serverDoc = DocumentModel.fromJson(response.data);
-        await _db.documentsDao.upsert(documentToLocal(serverDoc));
-        await _db.syncQueueDao.removeForEntity('document', id);
-        return serverDoc;
-      } catch (e) {
-        AppLogger.warning('Failed to sync document create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return doc;
   }
 
   /// Upload a document with multiple files - online only (files need uploading)
+  ///
+  /// [operationId] identifies this upload attempt and must stay the same across
+  /// retries. The server resolves a repeat to the document it already created, so
+  /// a lost response costs one request instead of a second full upload and a
+  /// duplicate document. Callers that retry must pass the id they used the first
+  /// time; omitting it generates a fresh one, which is right for a new attempt.
   Future<DocumentModel> uploadDocument({
     required String tripId,
     required String name,
     required List<SelectedDocumentFile> files,
+    String? operationId,
     String? type,
     String? notes,
     ProgressCallback? onProgress,
   }) async {
+    final scope = AccountSession().capture();
     if (name.isEmpty) throw 'Document name is required';
     if (files.isEmpty) throw 'At least one file is required';
     if (files.length > maxFilesPerDocument) {
@@ -235,6 +246,7 @@ class DocumentRepository {
     try {
       final formMap = <String, dynamic>{
         'trip_id': tripId,
+        'operation_id': operationId ?? const Uuid().v4(),
         'name': name,
         'type': type ?? 'other',
         if (notes != null && notes.isNotEmpty) 'notes': notes,
@@ -263,11 +275,19 @@ class DocumentRepository {
       final serverDoc = DocumentModel.fromJson(response.data);
 
       // Cache in local DB
-      await _db.documentsDao.upsert(documentToLocal(serverDoc));
+      await scope.write(() => _db.documentsDao.upsert(documentToLocal(serverDoc)));
 
       return serverDoc;
     } on DioException catch (e) {
-      throw _handleError(e);
+      // Classified rather than flattened to a string: the caller has to be able
+      // to tell "try again" from "this will never work until you free up space".
+      throw UploadFailure.fromResponse(
+        statusCode: e.response?.statusCode,
+        body: e.response?.data is Map<String, dynamic>
+            ? e.response!.data as Map<String, dynamic>
+            : null,
+        fallbackMessage: _handleError(e),
+      );
     }
   }
 
@@ -281,12 +301,13 @@ class DocumentRepository {
     required String mimeType,
     String? notes,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final formData = FormData.fromMap({
         'trip_id': tripId,
         'name': name,
         'type': type,
-        if (notes != null) 'notes': notes,
+        'notes': ?notes,
         'file': await MultipartFile.fromFile(
           filePath,
           filename: fileName,
@@ -301,7 +322,7 @@ class DocumentRepository {
       );
 
       final serverDoc = DocumentModel.fromJson(response.data);
-      await _db.documentsDao.upsert(documentToLocal(serverDoc));
+      await scope.write(() => _db.documentsDao.upsert(documentToLocal(serverDoc)));
       return serverDoc;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -328,20 +349,15 @@ class DocumentRepository {
       entityType: 'document',
       entityId: id,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch('${ApiConfig.documents}/$id', data: updates);
-        final serverDoc = DocumentModel.fromJson(response.data);
-        await _db.documentsDao.upsert(documentToLocal(serverDoc));
-        await _db.syncQueueDao.removeForEntity('document', id);
-        return serverDoc;
-      } catch (e) {
-        AppLogger.warning('Failed to sync document update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.documentsDao.getById(id);
     return updated != null ? documentFromLocal(updated) : throw 'Document not found';
@@ -358,15 +374,12 @@ class DocumentRepository {
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete('${ApiConfig.documents}/$id');
-        await _db.documentsDao.hardDelete(id);
-        await _db.syncQueueDao.removeForEntity('document', id);
-      } catch (e) {
-        AppLogger.warning('Failed to sync document delete, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   // ─── Private Methods ──────────────────────────────────────────
@@ -375,6 +388,7 @@ class DocumentRepository {
     required String tripId,
     String? type,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'trip_id': tripId};
       if (type != null) queryParams['type'] = type;
@@ -383,7 +397,7 @@ class DocumentRepository {
       final docsResponse = DocumentsResponse.fromJson(response.data);
 
       for (final doc in docsResponse.documents) {
-        await _db.documentsDao.upsert(documentToLocal(doc));
+        await scope.write(() => _db.documentsDao.upsert(documentToLocal(doc)));
       }
 
       return docsResponse;
@@ -393,6 +407,7 @@ class DocumentRepository {
   }
 
   void _refreshFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.documents,
@@ -402,7 +417,7 @@ class DocumentRepository {
       for (final doc in docsResponse.documents) {
         final existing = await _db.documentsDao.getById(doc.id);
         if (existing == null || !existing.isDirty) {
-          await _db.documentsDao.upsert(documentToLocal(doc));
+          await scope.write(() => _db.documentsDao.upsert(documentToLocal(doc)));
         }
       }
     } catch (e) {
@@ -411,12 +426,13 @@ class DocumentRepository {
   }
 
   void _refreshDocumentFromApi(String id) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get('${ApiConfig.documents}/$id');
       final doc = DocumentModel.fromJson(response.data);
       final existing = await _db.documentsDao.getById(id);
       if (existing == null || !existing.isDirty) {
-        await _db.documentsDao.upsert(documentToLocal(doc));
+        await scope.write(() => _db.documentsDao.upsert(documentToLocal(doc)));
       }
     } catch (e) {
       AppLogger.warning('Background document detail refresh failed: $e');

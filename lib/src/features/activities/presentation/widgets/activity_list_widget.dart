@@ -38,12 +38,15 @@ class ActivityListWidget extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       buildDefaultDragHandles: false,
       itemCount: activities.length,
-      onReorder: (oldIndex, newIndex) {
+      // onReorderItem, not onReorder: it hands over the index *after* the
+      // dragged item is removed, which is the adjustment the old callback made
+      // by hand with `newIndex -= 1`. Keeping that decrement alongside this
+      // would apply it twice and land every downward move one place short.
+      //
+      // It is also the index the consumer wants: reorderActivities does
+      // removeAt(oldIndex) then insert(newIndex, ...).
+      onReorderItem: (oldIndex, newIndex) {
         HapticFeedback.mediumImpact();
-        // ReorderableListView requires adjustment when moving down
-        if (newIndex > oldIndex) {
-          newIndex -= 1;
-        }
         onReorder(oldIndex, newIndex);
       },
       proxyDecorator: (child, index, animation) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -10,7 +12,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/local_record_reconciler.dart';
 import '../models/packing_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Packing repository - local-first with background API sync
 class PackingRepository {
@@ -99,6 +105,7 @@ class PackingRepository {
 
   /// Get packing item by ID - reads from local DB first
   Future<PackingItemModel> getPackingItemById(String id) async {
+    final scope = AccountSession().capture();
     final local = await _db.packingDao.getById(id);
     if (local != null && !local.isDeleted) {
       return packingItemFromLocal(local);
@@ -107,7 +114,7 @@ class PackingRepository {
     try {
       final response = await _dioClient.get('${ApiConfig.packing}/$id');
       final item = PackingItemModel.fromJson(response.data);
-      await _db.packingDao.upsert(packingItemToLocal(item));
+      await scope.write(() => _db.packingDao.upsert(packingItemToLocal(item)));
       return item;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -138,20 +145,15 @@ class PackingRepository {
       entityType: 'packing_item',
       entityId: id,
       operation: 'create',
-      payload: request.toJson(),
+      payload: withClientId(id, request.toJson()),
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post('${ApiConfig.packing}/', data: request.toJson());
-        final serverItem = PackingItemModel.fromJson(response.data);
-        await _db.packingDao.upsert(packingItemToLocal(serverItem));
-        await _db.syncQueueDao.removeForEntity('packing_item', id);
-        return serverItem;
-      } catch (e) {
-        AppLogger.warning('Failed to sync packing item create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return item;
   }
@@ -178,20 +180,15 @@ class PackingRepository {
       entityType: 'packing_item',
       entityId: id,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch('${ApiConfig.packing}/$id', data: updates);
-        final serverItem = PackingItemModel.fromJson(response.data);
-        await _db.packingDao.upsert(packingItemToLocal(serverItem));
-        await _db.syncQueueDao.removeForEntity('packing_item', id);
-        return serverItem;
-      } catch (e) {
-        AppLogger.warning('Failed to sync packing item update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.packingDao.getById(id);
     return updated != null ? packingItemFromLocal(updated) : throw 'Packing item not found';
@@ -214,20 +211,15 @@ class PackingRepository {
         entityType: 'packing_item',
         entityId: id,
         operation: 'update',
-        payload: {'is_packed': newPacked, '_base_version': existing.updatedAt.toIso8601String()},
+        payload: {'is_packed': newPacked, '_base_version': baseVersionOf(existing)},
       );
 
-      if (ConnectivityService().isOnline) {
-        try {
-          final response = await _dioClient.post('${ApiConfig.packing}/$id/toggle');
-          final serverItem = PackingItemModel.fromJson(response.data);
-          await _db.packingDao.upsert(packingItemToLocal(serverItem));
-          await _db.syncQueueDao.removeForEntity('packing_item', id);
-          return serverItem;
-        } catch (e) {
-          AppLogger.warning('Failed to sync packing toggle, will retry: $e');
-        }
-      }
+      // One write path. The request is made by the sync service, which is
+      // the only place that knows which revision an acknowledgement is for
+      // and how to merge a response with an edit made since. Issuing it here
+      // as well, and then clearing the queue for this entity, is what lost
+      // an edit made while the first request was in flight.
+      unawaited(SyncService().performSync());
 
       final updated = await _db.packingDao.getById(id);
       return updated != null ? packingItemFromLocal(updated) : throw 'Packing item not found';
@@ -248,6 +240,7 @@ class PackingRepository {
     required List<String> itemIds,
     required bool isPacked,
   }) async {
+    final scope = AccountSession().capture();
     // Update locally first
     for (final itemId in itemIds) {
       await ((_db.update(_db.localPackingItems))..where((t) => t.id.equals(itemId))).write(
@@ -271,7 +264,7 @@ class PackingRepository {
         );
         // Clear dirty flags
         for (final itemId in itemIds) {
-          await _db.packingDao.clearDirty(itemId);
+          await scope.write(() => _db.packingDao.clearDirty(itemId));
         }
       } catch (e) {
         AppLogger.warning('Failed to sync bulk toggle, will retry: $e');
@@ -283,22 +276,28 @@ class PackingRepository {
   Future<void> deletePackingItem(String id) async {
     await _db.packingDao.softDelete(id);
 
-    await SyncQueueService().enqueue(
+    final queued = await SyncQueueService().enqueue(
       entityType: 'packing_item',
       entityId: id,
       operation: 'delete',
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete('${ApiConfig.packing}/$id');
-        await _db.packingDao.hardDelete(id);
-        await _db.syncQueueDao.removeForEntity('packing_item', id);
-      } catch (e) {
-        AppLogger.warning('Failed to sync packing item delete, will retry: $e');
-      }
+    // The delete cancelled a create that never reached the server, so there is
+    // nothing to sync and nothing to keep: drop the row instead of leaving a
+    // soft-deleted ghost that is hidden from the user and never syncs away.
+    if (!queued) {
+      await LocalRecordReconciler(_db)
+          .purgeLocalOnly(entityType: 'packing_item', id: id);
+      return;
     }
+
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   /// Reorder packing items - local update with sync
@@ -306,6 +305,7 @@ class PackingRepository {
     required String tripId,
     required List<ItemOrderData> itemOrders,
   }) async {
+    final scope = AccountSession().capture();
     for (final order in itemOrders) {
       await ((_db.update(_db.localPackingItems))..where((t) => t.id.equals(order.id))).write(
         LocalPackingItemsCompanion(
@@ -326,7 +326,7 @@ class PackingRepository {
           },
         );
         for (final order in itemOrders) {
-          await _db.packingDao.clearDirty(order.id);
+          await scope.write(() => _db.packingDao.clearDirty(order.id));
         }
       } catch (e) {
         AppLogger.warning('Failed to sync packing reorder, will retry: $e');
@@ -340,6 +340,7 @@ class PackingRepository {
     required String tripId,
     String? category,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'trip_id': tripId};
       if (category != null) queryParams['category'] = category;
@@ -348,7 +349,7 @@ class PackingRepository {
       final packingResponse = PackingListResponse.fromJson(response.data);
 
       for (final item in packingResponse.items) {
-        await _db.packingDao.upsert(packingItemToLocal(item));
+        await scope.write(() => _db.packingDao.upsert(packingItemToLocal(item)));
       }
 
       return packingResponse;
@@ -358,6 +359,7 @@ class PackingRepository {
   }
 
   void _refreshFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.packing,
@@ -367,7 +369,7 @@ class PackingRepository {
       for (final item in packingResponse.items) {
         final existing = await _db.packingDao.getById(item.id);
         if (existing == null || !existing.isDirty) {
-          await _db.packingDao.upsert(packingItemToLocal(item));
+          await scope.write(() => _db.packingDao.upsert(packingItemToLocal(item)));
         }
       }
     } catch (e) {

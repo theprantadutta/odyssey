@@ -16,6 +16,7 @@ import '../../../../core/providers/app_version_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
+import '../../../ads/presentation/providers/ads_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../trips/data/models/default_trips_eligibility.dart';
@@ -114,9 +115,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Two separate promises, because the server makes two. Signing
+                // out is immediate and certain; removing the data happens
+                // afterwards, on the server, and nothing here knows when it
+                // finishes - so nothing here says when it will.
                 Text(
-                  'This permanently deletes your account and all your trips, '
-                  'memories, documents, and photos. This cannot be undone.',
+                  'This deletes your account and all your trips, memories, '
+                  'documents, and photos. You will be signed out straight away '
+                  'and will not be able to sign in again. Removing your data '
+                  'from our servers happens afterwards. This cannot be undone.',
                   style: AppTypography.bodyMedium
                       .copyWith(color: colorScheme.onSurfaceVariant),
                 ),
@@ -176,14 +183,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (confirmed == true && mounted) {
       try {
-        await ref.read(authProvider.notifier).deleteAccount();
+        final receipt = await ref.read(authProvider.notifier).deleteAccount();
+
+        // What the server actually said, not what the tap implied. It accepted
+        // the request and took the account's access away; the data goes
+        // afterwards, and this screen is never told when. Claiming "deleted"
+        // here would be a promise made on the server's behalf that it has not
+        // yet kept.
+        if (mounted && !receipt.deletionCompleted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                receipt.alreadyRequested
+                    ? 'Your account is already being deleted. You have been '
+                        'signed out and cannot sign in again.'
+                    : 'Deletion requested. You have been signed out and cannot '
+                        'sign in again. Removing your data is in progress.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
         // Auth state becomes unauthenticated -> router redirects to login.
       } catch (e) {
         if (mounted) {
           HapticFeedback.heavyImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to delete account: $e'),
+              content: Text('Could not request account deletion: $e'),
               backgroundColor: AppColors.coralBurst,
               behavior: SnackBarBehavior.floating,
             ),
@@ -652,6 +679,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ));
                   },
                 ),
+
+                // Shown only where consent was required in the first place.
+                // UMP requires a persistent way to change that answer - consent
+                // that can be given once and never revisited is not consent -
+                // and everywhere else this form does nothing, so a row that
+                // opens nothing would be worse than no row.
+                if (ref.watch(privacyOptionsRequiredProvider))
+                  SettingsTile(
+                    title: 'Ad Privacy Options',
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+
+                      final messenger = ScaffoldMessenger.of(context);
+                      await ref.read(showPrivacyOptionsProvider)();
+
+                      if (!context.mounted) return;
+
+                      messenger.showSnackBar(const SnackBar(
+                        content: Text('Your ad preferences have been updated.'),
+                      ));
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: AppSizes.space16),

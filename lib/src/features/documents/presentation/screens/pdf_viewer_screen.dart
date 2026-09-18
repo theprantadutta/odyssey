@@ -5,6 +5,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 
 /// Screen for viewing PDF documents
@@ -50,13 +51,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         _downloadProgress = 0.0;
       });
 
-      // Use authenticated URL for FileRunner files
-      final authenticatedUrl = FileUrlHelper.getAuthenticatedUrl(widget.url);
+      // Private documents come from our API, which authorizes the request
+      // against the trip's current permissions.
+      final fileUrl = FileUrlHelper.resolve(widget.url);
 
-      // Use cache manager to download and cache PDF
-      final cacheManager = DefaultCacheManager();
+      // The authenticated manager, not the default one: it attaches the current
+      // token and refreshes it on a 401. A document opened after a while of
+      // reading locally cached trip data would otherwise be fetched with an
+      // expired token and simply fail to open.
+      final cacheManager = AuthenticatedMediaCacheManager.instance;
       final fileStream = cacheManager.getFileStream(
-        authenticatedUrl,
+        fileUrl,
         withProgress: true,
       );
 

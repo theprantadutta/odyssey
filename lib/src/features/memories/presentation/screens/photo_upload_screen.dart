@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
+import '../../data/models/upload_outcome.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1303,6 +1305,15 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
           ),
         );
         Navigator.of(context).pop();
+      }
+    } on UploadFailure catch (failure) {
+      // The draft is deliberately left intact - the caption, the location and the
+      // selected files all stay on screen. Losing a considered caption because a
+      // network hiccup interrupted the upload is worse than the hiccup.
+      if (mounted) {
+        _showError(failure.isRetryable
+            ? '${failure.message} You can try again.'
+            : failure.message);
       }
     } catch (e) {
       if (mounted) {

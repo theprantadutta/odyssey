@@ -13,6 +13,8 @@ import '../../../activities/data/models/activity_model.dart';
 import '../../../activities/presentation/providers/activities_provider.dart';
 import '../../../memories/data/models/memory_model.dart';
 import '../../../memories/presentation/providers/memories_provider.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 /// Map tab showing activities and memories for a trip
 class TripMapTab extends ConsumerStatefulWidget {
@@ -262,7 +264,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
         child: imageUrl != null
             ? CachedNetworkImage(
-                imageUrl: imageUrl,
+                imageUrl: FileUrlHelper.resolve(imageUrl),
+                cacheManager: AuthenticatedMediaCacheManager.instance,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: colorScheme.surfaceContainerHighest,
@@ -686,7 +689,8 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
                         fit: StackFit.expand,
                         children: [
                           CachedNetworkImage(
-                            imageUrl: imageUrl,
+                            imageUrl: FileUrlHelper.resolve(imageUrl),
+                            cacheManager: AuthenticatedMediaCacheManager.instance,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Container(
                               color: colorScheme.surfaceContainerHighest,

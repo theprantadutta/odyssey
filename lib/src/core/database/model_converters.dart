@@ -50,6 +50,11 @@ LocalTripsCompanion tripToLocal(TripModel model, {bool isDirty = false, bool isL
     displayCurrency: Value(model.displayCurrency),
     createdAt: Value(DateTime.parse(model.createdAt)),
     updatedAt: Value(DateTime.parse(model.updatedAt)),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    serverRevision: Value(model.updatedAt),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),
@@ -87,6 +92,11 @@ LocalActivitiesCompanion activityToLocal(ActivityModel model, {bool isDirty = fa
     longitude: Value(model.longitude),
     createdAt: Value(DateTime.parse(model.createdAt)),
     updatedAt: Value(DateTime.parse(model.updatedAt)),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    serverRevision: Value(model.updatedAt),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),
@@ -130,6 +140,11 @@ LocalExpensesCompanion expenseToLocal(ExpenseModel model, {bool isDirty = false,
     convertedAt: Value(model.convertedAt),
     createdAt: Value(DateTime.parse(model.createdAt)),
     updatedAt: Value(DateTime.parse(model.updatedAt)),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    serverRevision: Value(model.updatedAt),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),
@@ -165,6 +180,11 @@ LocalPackingItemsCompanion packingItemToLocal(PackingItemModel model, {bool isDi
     sortOrder: Value(model.sortOrder),
     createdAt: Value(DateTime.parse(model.createdAt)),
     updatedAt: Value(DateTime.parse(model.updatedAt ?? DateTime.now().toIso8601String())),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    serverRevision: Value(model.updatedAt),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),
@@ -203,6 +223,11 @@ LocalDocumentsCompanion documentToLocal(DocumentModel model, {bool isDirty = fal
     notes: Value(model.notes),
     createdAt: Value(DateTime.parse(model.createdAt)),
     updatedAt: Value(DateTime.parse(model.updatedAt ?? model.createdAt)),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    serverRevision: Value(model.updatedAt),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),
@@ -260,6 +285,14 @@ LocalTemplatesCompanion templateToLocal(TripTemplateModel model, {bool isDirty =
     useCount: Value(model.useCount),
     createdAt: Value(model.createdAt),
     updatedAt: Value(model.updatedAt ?? DateTime.now()),
+    // Stored exactly as the server sent it. Parsing it into `updatedAt` costs
+    // sub-second precision - Drift keeps a DateTime as unix seconds - and the
+    // truncated value sent back as a base version reads as stale, producing a
+    // conflict on a record nobody else touched.
+    // The model already parsed this into a DateTime, which in Dart keeps
+    // microseconds; only Drift storage truncates. Serialising it back is
+    // therefore lossless from here.
+    serverRevision: Value(model.updatedAt?.toIso8601String()),
     isDirty: Value(isDirty),
     isLocalOnly: Value(isLocalOnly),
     isDeleted: const Value(false),

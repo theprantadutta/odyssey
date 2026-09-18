@@ -34,9 +34,18 @@ class ApiConfig {
   static const String templates = '/templates';
   static const String seed = '/seed';
   static const String files = '/files';
+  static const String rewards = '/rewards';
 
   // File upload endpoints
   static const String fileUpload = '$files/upload';
+
+  /// Where stored files physically live.
+  ///
+  /// Used only to recognise our own file URLs so they can be rewritten to the
+  /// authenticated endpoint. The app never talks to this host directly and holds
+  /// no credential for it.
+  static String get fileStorageBaseUrl =>
+      dotenv.env['FILE_STORAGE_BASE_URL'] ?? 'https://filerunner.pranta.dev';
 
   // Sharing endpoints
   static const String sharedWithMe = '$trips/shared-with-me';

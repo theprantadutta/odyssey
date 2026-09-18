@@ -8,6 +8,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/statistics_model.dart';
+import '../../../../core/session/account_session.dart';
 
 /// Exception thrown when a premium feature is accessed by a free user
 class PremiumRequiredException implements Exception {
@@ -56,6 +57,7 @@ class StatisticsRepository {
 
   /// Year in review - premium, API with cache
   Future<YearInReviewStats> getYearInReview({int? year}) async {
+    final scope = AccountSession().capture();
     final cacheKey = 'year_in_review_${year ?? DateTime.now().year}';
 
     // Try cache first
@@ -82,7 +84,7 @@ class StatisticsRepository {
       final stats = YearInReviewStats.fromJson(response.data);
 
       // Cache for offline access
-      await _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data));
+      await scope.write(() => _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data)));
 
       return stats;
     } on DioException catch (e) {
@@ -95,6 +97,7 @@ class StatisticsRepository {
     int limit = 20,
     int offset = 0,
   }) async {
+    final scope = AccountSession().capture();
     final cacheKey = 'travel_timeline_${limit}_$offset';
 
     // Try cache first
@@ -120,7 +123,7 @@ class StatisticsRepository {
       );
       final timeline = TravelTimeline.fromJson(response.data);
 
-      await _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data));
+      await scope.write(() => _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data)));
 
       return timeline;
     } on DioException catch (e) {
@@ -129,6 +132,46 @@ class StatisticsRepository {
   }
 
   // --- Private Methods ---
+
+  /// The dashboard's figures, computed from the local database.
+  ///
+  /// These rules mirror `GetOverallStatsQueryHandler` on the server. Where the
+  /// two disagreed, this side was wrong: it summed amounts across currencies
+  /// into a number that is not a quantity of money, counted trips booked for
+  /// next year as days already travelled, ignored open-ended trips, and filtered
+  /// on a `planning` status the server calls `planned`.
+
+  /// Today, with the time of day discarded.
+  ///
+  /// Trip dates are calendar days; comparing them against a timestamp makes a
+  /// trip that started this morning look as though it has not started.
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// Parses a stored date, or null if it is absent or unreadable.
+  static DateTime? _parseDate(String? value) {
+    if (value == null || value.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return null;
+
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  /// Reads the JSON-encoded tag list a trip row carries.
+  static List<String> _decodeTags(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is List ? decoded.map((t) => t.toString()).toList() : const [];
+    } catch (_) {
+      // A row we cannot read must not take the whole dashboard down.
+      return const [];
+    }
+  }
 
   Future<OverallStatistics> _computeLocalStatistics() async {
     final trips = await _db.tripsDao.getAll();
@@ -139,34 +182,102 @@ class StatisticsRepository {
     final totalTrips = trips.length;
     final completedTrips = trips.where((t) => t.status == 'completed').length;
     final ongoingTrips = trips.where((t) => t.status == 'ongoing').length;
-    final plannedTrips = trips.where((t) => t.status == 'planning').length;
-    final totalActivities = activities.length;
-    final totalMemories = memories.length;
-    final totalExpenses = expenses.length;
-    final totalExpenseAmount = expenses.fold<double>(0, (sum, e) => sum + e.amount);
 
-    // Compute total days of travel from trip start/end dates
-    int totalDaysOfTravel = 0;
+    // 'planned', not 'planning'. The server has never sent the latter, so this
+    // count was always zero.
+    final plannedTrips = trips.where((t) => t.status == 'planned').length;
+
+    // The currency the user's trips are mostly kept in, chosen from the data
+    // rather than assumed to be USD.
+    final currencyCounts = <String, int>{};
     for (final trip in trips) {
-      if (trip.endDate != null && trip.endDate!.isNotEmpty) {
-        try {
-          final start = DateTime.parse(trip.startDate);
-          final end = DateTime.parse(trip.endDate!);
-          totalDaysOfTravel += end.difference(start).inDays.abs();
-        } catch (_) {}
+      final currency = trip.displayCurrency;
+      if (currency.isEmpty) continue;
+      currencyCounts[currency] = (currencyCounts[currency] ?? 0) + 1;
+    }
+
+    final reportingCurrency = currencyCounts.isEmpty
+        ? 'USD'
+        : (currencyCounts.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value)))
+            .first
+            .key;
+
+    // Each expense counts in the currency it is actually expressed in: its
+    // converted amount where a conversion was recorded, otherwise its own.
+    final denominated = expenses.map((e) {
+      final converted = e.convertedAmount;
+      final convertedCurrency = e.convertedCurrency;
+
+      return converted != null &&
+              convertedCurrency != null &&
+              convertedCurrency.isNotEmpty
+          ? (amount: converted, currency: convertedCurrency)
+          : (amount: e.amount, currency: e.currency);
+    }).toList();
+
+    final expenseTotalsByCurrency = <String, double>{};
+    for (final entry in denominated) {
+      expenseTotalsByCurrency[entry.currency] =
+          (expenseTotalsByCurrency[entry.currency] ?? 0) + entry.amount;
+    }
+
+    // The headline figure covers the reporting currency only. Anything else is
+    // excluded and counted, rather than folded in at a guessed rate.
+    final totalExpenseAmount = expenseTotalsByCurrency[reportingCurrency] ?? 0;
+
+    final unconvertedExpenseCount = denominated
+        .where((e) => e.currency.toUpperCase() != reportingCurrency.toUpperCase())
+        .length;
+
+    final today = _today();
+
+    // Days actually travelled. A trip that has started counts up to today or
+    // its end, whichever is sooner, inclusive of both days; a trip that has not
+    // started counts nothing. Open-ended trips count too - being undated at the
+    // far end does not mean the days did not happen.
+    var totalDaysOfTravel = 0;
+    var plannedDaysAhead = 0;
+
+    for (final trip in trips) {
+      final start = _parseDate(trip.startDate);
+      if (start == null) continue;
+
+      final end = _parseDate(trip.endDate);
+
+      if (!start.isAfter(today)) {
+        final effectiveEnd = end != null && end.isBefore(today) ? end : today;
+        totalDaysOfTravel += effectiveEnd.difference(start).inDays + 1;
+      } else if (end != null) {
+        plannedDaysAhead += end.difference(start).inDays + 1;
       }
     }
 
-    // Activities by category
     final activitiesByCategory = <String, int>{};
     for (final a in activities) {
-      activitiesByCategory[a.category] = (activitiesByCategory[a.category] ?? 0) + 1;
+      activitiesByCategory[a.category] =
+          (activitiesByCategory[a.category] ?? 0) + 1;
     }
 
-    // Expenses by category
+    // Categories are reported in the reporting currency only, for the same
+    // reason the headline total is.
     final expensesByCategory = <String, double>{};
-    for (final e in expenses) {
-      expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amount;
+    for (var i = 0; i < expenses.length; i++) {
+      final entry = denominated[i];
+      if (entry.currency.toUpperCase() != reportingCurrency.toUpperCase()) {
+        continue;
+      }
+
+      final category = expenses[i].category;
+      expensesByCategory[category] =
+          (expensesByCategory[category] ?? 0) + entry.amount;
+    }
+
+    final tripTags = <String>{};
+    for (final trip in trips) {
+      for (final tag in _decodeTags(trip.tags)) {
+        if (tag.trim().isNotEmpty) tripTags.add(tag.trim());
+      }
     }
 
     return OverallStatistics(
@@ -174,13 +285,21 @@ class StatisticsRepository {
       completedTrips: completedTrips,
       ongoingTrips: ongoingTrips,
       plannedTrips: plannedTrips,
-      totalActivities: totalActivities,
-      totalMemories: totalMemories,
-      totalExpenses: totalExpenses,
+      totalActivities: activities.length,
+      totalMemories: memories.length,
+      totalExpenses: expenses.length,
       totalExpenseAmount: totalExpenseAmount,
-      countriesVisited: 0, // Requires geocoding data not in local schema
+      reportingCurrency: reportingCurrency,
+      expenseTotalsByCurrency: expenseTotalsByCurrency,
+      unconvertedExpenseCount: unconvertedExpenseCount,
+      // Destinations are not recorded anywhere yet, here or on the server.
+      // Reported as absent rather than as a zero that reads like a count.
+      destinationDataAvailable: false,
+      plannedDaysAhead: plannedDaysAhead,
+      tripTags: tripTags.toList()..sort(),
+      countriesVisited: 0,
       totalDaysOfTravel: totalDaysOfTravel,
-      uniqueDestinations: [], // Requires geocoding data not in local schema
+      uniqueDestinations: const [],
       activitiesByCategory: activitiesByCategory,
       expensesByCategory: expensesByCategory,
     );
@@ -197,24 +316,26 @@ class StatisticsRepository {
   }
 
   void _refreshYearInReview(int? year, String cacheKey) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.statisticsYearInReview,
         queryParameters: year != null ? {'year': year} : null,
       );
-      await _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data));
+      await scope.write(() => _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data)));
     } catch (e) {
       AppLogger.warning('Background year in review refresh failed: $e');
     }
   }
 
   void _refreshTravelTimeline(int limit, int offset, String cacheKey) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.statisticsTimeline,
         queryParameters: {'limit': limit, 'offset': offset},
       );
-      await _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data));
+      await scope.write(() => _db.subscriptionCacheDao.set(cacheKey, jsonEncode(response.data)));
     } catch (e) {
       AppLogger.warning('Background travel timeline refresh failed: $e');
     }

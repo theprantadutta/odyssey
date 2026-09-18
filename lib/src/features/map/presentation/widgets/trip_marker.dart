@@ -3,6 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../providers/map_provider.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 class TripMarker extends StatelessWidget {
   final TripLocation trip;
@@ -45,7 +47,8 @@ class TripMarker extends StatelessWidget {
         child: ClipOval(
           child: trip.coverImageUrl != null
               ? CachedNetworkImage(
-                  imageUrl: trip.coverImageUrl!,
+                  imageUrl: FileUrlHelper.resolve(trip.coverImageUrl!),
+                  cacheManager: AuthenticatedMediaCacheManager.instance,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => _buildPlaceholder(color),
                   errorWidget: (context, url, error) =>
@@ -142,7 +145,8 @@ class TripInfoCard extends StatelessWidget {
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusSm),
                             child: CachedNetworkImage(
-                              imageUrl: trip.coverImageUrl!,
+                              imageUrl: FileUrlHelper.resolve(trip.coverImageUrl!),
+                              cacheManager: AuthenticatedMediaCacheManager.instance,
                               fit: BoxFit.cover,
                             ),
                           )
@@ -294,11 +298,22 @@ class MapStatsOverlay extends StatelessWidget {
               Icons.flight,
               '${mapState.totalTrips} trips',
             ),
+            // "Places" rather than "destinations", and counted from locations
+            // actually recorded on memories. A trip has no destination field, so
+            // a destination count would be a claim the data cannot support.
             _buildStatRow(
               context,
               Icons.place,
-              '${mapState.uniqueDestinations.length} destinations',
+              '${mapState.uniqueDestinations.length} places recorded',
             ),
+            // Stated rather than hidden: these trips exist and are not on the
+            // map, which is otherwise indistinguishable from them missing.
+            if (mapState.unmapped.isNotEmpty)
+              _buildStatRow(
+                context,
+                Icons.location_off_outlined,
+                '${mapState.unmapped.length} without a location',
+              ),
             const Divider(height: AppSizes.space16),
             _buildLegendRow(context, 'Planned', AppColors.sunnyYellow,
                 mapState.plannedTrips.length),

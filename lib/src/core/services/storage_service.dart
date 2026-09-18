@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
+import '../utils/authenticated_media.dart';
 
 /// Secure storage service for sensitive data (JWT tokens, etc.)
 class StorageService {
@@ -19,6 +20,11 @@ class StorageService {
   // Access Token
   Future<void> saveAccessToken(String token) async {
     await _storage.write(key: ApiConfig.accessTokenKey, value: token);
+
+    // Image and video widgets build synchronously and cannot await secure
+    // storage, so they read a cached copy. Refreshing it here means a rotated
+    // token reaches media requests immediately rather than at the next sign-in.
+    await AuthenticatedMedia.refresh();
   }
 
   Future<String?> getAccessToken() async {
@@ -27,6 +33,7 @@ class StorageService {
 
   Future<void> deleteAccessToken() async {
     await _storage.delete(key: ApiConfig.accessTokenKey);
+    AuthenticatedMedia.clear();
   }
 
   // Refresh Token
@@ -256,6 +263,37 @@ class StorageService {
     if (millis == null) return null;
     return DateTime.fromMillisecondsSinceEpoch(millis);
   }
+
+  /// Removes one temporary feature unlock.
+  ///
+  /// Used when the server reports a feature is no longer granted, so the cached
+  /// copy cannot keep the gate open past the grant it was a copy of.
+  Future<void> clearFeatureUnlock(String featureKey) async {
+    await _storage.delete(key: _featureUnlockKey(featureKey));
+  }
+
+  /// Removes every temporary feature unlock.
+  ///
+  /// An unlock is earned by a person, not by a device: leaving them behind let
+  /// the next account to sign in inherit premium features it never earned.
+  Future<void> clearFeatureUnlocks() async {
+    for (final key in featureUnlockKeys) {
+      await _storage.delete(key: _featureUnlockKey(key));
+    }
+  }
+
+  /// Feature keys that can carry a temporary unlock.
+  ///
+  /// Kept here rather than derived from the subscription feature enum so core
+  /// storage does not depend on a feature module.
+  /// Must stay in step with `PremiumFeature.storageKey`.
+  static const List<String> featureUnlockKeys = [
+    'world_map',
+    'full_statistics',
+    'video_upload',
+    'edit_sharing',
+    'year_in_review',
+  ];
 
   // First-launch timestamp — drives the new-user ad grace period.
   static const String _firstLaunchKey = 'first_launch_at';

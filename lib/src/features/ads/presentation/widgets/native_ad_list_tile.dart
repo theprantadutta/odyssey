@@ -52,13 +52,68 @@ class _NativeAdListTileState extends ConsumerState<NativeAdListTile>
   bool get wantKeepAlive => _loaded;
 
   @override
+  void initState() {
+    super.initState();
+
+    // Watching the transition, not just the current value.
+    //
+    // Eligibility resolves asynchronously - consent, the grace period and the
+    // subscription all arrive after the first frame - so a tile mounted early
+    // sees `false` and used to stop there. `didChangeDependencies` does not run
+    // again merely because a provider changed, so the tile stayed empty until it
+    // was remounted or some unrelated inherited dependency happened to change.
+    ref.listenManual<bool>(
+      nativeAdsEnabledProvider,
+      (previous, next) {
+        if (next) {
+          _loadForCurrentTheme();
+          return;
+        }
+
+        // Disabled while an ad was loaded - the user subscribed, or withdrew
+        // consent. Released now rather than at disposal: holding a rendered ad
+        // for someone who just paid to stop seeing them is the complaint.
+        _disposeAd();
+      },
+    );
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Loading lives here rather than in build(): starting a network request from
     // build() is a side effect in a method that may run many times per frame.
     if (!ref.read(nativeAdsEnabledProvider)) return;
+    _loadForCurrentTheme();
+  }
+
+  void _loadForCurrentTheme() {
+    if (!mounted) return;
     final scheme = Theme.of(context).colorScheme;
     _load(scheme.surface, scheme.onSurface);
+  }
+
+  /// Releases the ad and allows a later eligibility change to load a new one.
+  void _disposeAd() {
+    _ad?.dispose();
+
+    if (!mounted) {
+      _ad = null;
+      _loaded = false;
+      _requested = false;
+      return;
+    }
+
+    setState(() {
+      _ad = null;
+      _loaded = false;
+
+      // Cleared too, so becoming eligible again can load once more. Leaving it
+      // set would make a single disable permanent for this tile's lifetime.
+      _requested = false;
+    });
+
+    updateKeepAlive();
   }
 
   @override

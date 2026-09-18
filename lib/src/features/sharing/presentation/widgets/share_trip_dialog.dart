@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
+import 'package:odyssey/src/features/sharing/data/repositories/sharing_repository.dart';
 import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
 import 'package:odyssey/src/features/subscription/presentation/providers/feature_access_provider.dart';
 import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
@@ -45,14 +46,34 @@ class _ShareTripDialogState extends ConsumerState<ShareTripDialog> {
       permission: _selectedPermission,
     );
 
-    final share = await ref
-        .read(tripSharesProvider(widget.tripId).notifier)
-        .shareTrip(request);
+    TripShareModel? share;
+    String? failure;
+    try {
+      share = await ref
+          .read(tripSharesProvider(widget.tripId).notifier)
+          .shareTrip(request);
+    } on OfflineInvitationException catch (e) {
+      failure = e.message;
+    } catch (e) {
+      failure = 'Could not send the invitation. Please try again.';
+    }
 
+    if (!mounted) return;
     setState(() => _isSharing = false);
 
-    if (share != null && mounted) {
-      setState(() => _lastInviteCode = share.inviteCode);
+    if (failure != null) {
+      // Says what actually happened: nothing was sent and nothing was queued.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(failure),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (share != null) {
+      setState(() => _lastInviteCode = share!.inviteCode);
       _emailController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

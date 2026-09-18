@@ -30,6 +30,13 @@ class SyncStatusState {
   bool get isSyncing => syncState == SyncState.syncing;
   bool get isOffline => syncState == SyncState.offline;
   bool get hasError => syncState == SyncState.error;
+
+  /// The cycle completed but some queued work did not land. Distinct from
+  /// [hasError], which means the cycle itself failed.
+  bool get hasPartialFailure => syncState == SyncState.partialFailure;
+
+  /// True whenever the user should be told something still needs attention.
+  bool get needsAttention => hasError || hasPartialFailure;
   bool get hasPendingChanges => pendingCount > 0;
 }
 

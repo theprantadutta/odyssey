@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -10,7 +12,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/local_record_reconciler.dart';
 import '../models/expense_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Expense repository - local-first with background API sync
 class ExpenseRepository {
@@ -91,6 +97,7 @@ class ExpenseRepository {
 
   /// Get expense by ID - reads from local DB first
   Future<ExpenseModel> getExpenseById(String id) async {
+    final scope = AccountSession().capture();
     final local = await _db.expensesDao.getById(id);
     if (local != null && !local.isDeleted) {
       if (ConnectivityService().isOnline) {
@@ -102,7 +109,7 @@ class ExpenseRepository {
     try {
       final response = await _dioClient.get('${ApiConfig.expenses}/$id');
       final expense = ExpenseModel.fromJson(response.data);
-      await _db.expensesDao.upsert(expenseToLocal(expense));
+      await scope.write(() => _db.expensesDao.upsert(expenseToLocal(expense)));
       return expense;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -133,20 +140,15 @@ class ExpenseRepository {
       entityType: 'expense',
       entityId: id,
       operation: 'create',
-      payload: request.toJson(),
+      payload: withClientId(id, request.toJson()),
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post('${ApiConfig.expenses}/', data: request.toJson());
-        final serverExpense = ExpenseModel.fromJson(response.data);
-        await _db.expensesDao.upsert(expenseToLocal(serverExpense));
-        await _db.syncQueueDao.removeForEntity('expense', id);
-        return serverExpense;
-      } catch (e) {
-        AppLogger.warning('Failed to sync expense create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return expense;
   }
@@ -173,20 +175,15 @@ class ExpenseRepository {
       entityType: 'expense',
       entityId: id,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch('${ApiConfig.expenses}/$id', data: updates);
-        final serverExpense = ExpenseModel.fromJson(response.data);
-        await _db.expensesDao.upsert(expenseToLocal(serverExpense));
-        await _db.syncQueueDao.removeForEntity('expense', id);
-        return serverExpense;
-      } catch (e) {
-        AppLogger.warning('Failed to sync expense update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.expensesDao.getById(id);
     return updated != null ? expenseFromLocal(updated) : throw 'Expense not found';
@@ -196,22 +193,28 @@ class ExpenseRepository {
   Future<void> deleteExpense(String id) async {
     await _db.expensesDao.softDelete(id);
 
-    await SyncQueueService().enqueue(
+    final queued = await SyncQueueService().enqueue(
       entityType: 'expense',
       entityId: id,
       operation: 'delete',
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete('${ApiConfig.expenses}/$id');
-        await _db.expensesDao.hardDelete(id);
-        await _db.syncQueueDao.removeForEntity('expense', id);
-      } catch (e) {
-        AppLogger.warning('Failed to sync expense delete, will retry: $e');
-      }
+    // The delete cancelled a create that never reached the server, so there is
+    // nothing to sync and nothing to keep: drop the row instead of leaving a
+    // soft-deleted ghost that is hidden from the user and never syncs away.
+    if (!queued) {
+      await LocalRecordReconciler(_db)
+          .purgeLocalOnly(entityType: 'expense', id: id);
+      return;
     }
+
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   /// Refresh expense conversions to latest exchange rates - online only
@@ -241,6 +244,7 @@ class ExpenseRepository {
     required String tripId,
     String? category,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'trip_id': tripId};
       if (category != null) queryParams['category'] = category;
@@ -249,7 +253,7 @@ class ExpenseRepository {
       final expensesResponse = ExpensesResponse.fromJson(response.data);
 
       for (final expense in expensesResponse.expenses) {
-        await _db.expensesDao.upsert(expenseToLocal(expense));
+        await scope.write(() => _db.expensesDao.upsert(expenseToLocal(expense)));
       }
 
       return expensesResponse;
@@ -259,6 +263,7 @@ class ExpenseRepository {
   }
 
   void _refreshFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.expenses,
@@ -268,7 +273,7 @@ class ExpenseRepository {
       for (final expense in expensesResponse.expenses) {
         final existing = await _db.expensesDao.getById(expense.id);
         if (existing == null || !existing.isDirty) {
-          await _db.expensesDao.upsert(expenseToLocal(expense));
+          await scope.write(() => _db.expensesDao.upsert(expenseToLocal(expense)));
         }
       }
     } catch (e) {
@@ -277,12 +282,13 @@ class ExpenseRepository {
   }
 
   void _refreshExpenseFromApi(String id) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get('${ApiConfig.expenses}/$id');
       final expense = ExpenseModel.fromJson(response.data);
       final existing = await _db.expensesDao.getById(id);
       if (existing == null || !existing.isDirty) {
-        await _db.expensesDao.upsert(expenseToLocal(expense));
+        await scope.write(() => _db.expensesDao.upsert(expenseToLocal(expense)));
       }
     } catch (e) {
       AppLogger.warning('Background expense detail refresh failed: $e');

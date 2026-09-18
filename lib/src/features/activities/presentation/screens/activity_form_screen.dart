@@ -153,6 +153,11 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         currentCount: currentCount,
       );
       if (!canCreate) return;
+
+      // The limit check shows its own dialog and awaits the answer, so this
+      // widget can be gone by the time it returns. Everything below touches
+      // `context`.
+      if (!mounted) return;
     }
 
     if (!_formKey.currentState!.validate()) {

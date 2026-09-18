@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -12,9 +14,14 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/local_record_reconciler.dart';
 import '../models/default_trips_eligibility.dart';
 import '../models/trip_model.dart';
+import 'trip_date_filter.dart';
 import '../models/trip_filter_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Trip repository - local-first with background API sync
 class TripRepository {
@@ -31,30 +38,19 @@ class TripRepository {
     final localTrips = await _db.tripsDao.getAll();
 
     if (localTrips.isNotEmpty || !ConnectivityService().isOnline) {
-      var trips = localTrips.map(tripFromLocal).toList();
-
-      // Apply local filtering
-      if (filters != null && filters.hasActiveFilters) {
-        trips = _applyFilters(trips, filters);
-      }
-
-      // Apply local sorting
-      if (filters != null && filters.hasCustomSorting) {
-        trips = _applySorting(trips, filters);
-      }
-
-      // Apply pagination
-      final total = trips.length;
-      final start = (page - 1) * pageSize;
-      final end = (start + pageSize).clamp(0, total);
-      final paged = start < total ? trips.sublist(start, end) : <TripModel>[];
+      final response = _pageLocalTrips(
+        localTrips.map(tripFromLocal).toList(),
+        page: page,
+        pageSize: pageSize,
+        filters: filters,
+      );
 
       // Trigger background refresh if online
       if (ConnectivityService().isOnline) {
         _refreshFromApi(filters: filters);
       }
 
-      return TripsResponse(trips: paged, total: total, page: page, pageSize: pageSize);
+      return response;
     }
 
     // No local data - fetch from API
@@ -63,6 +59,7 @@ class TripRepository {
 
   /// Get trip by ID - reads from local DB first
   Future<TripModel> getTripById(String id) async {
+    final scope = AccountSession().capture();
     final local = await _db.tripsDao.getById(id);
     if (local != null && !local.isDeleted) {
       // Background refresh
@@ -76,7 +73,7 @@ class TripRepository {
     try {
       final response = await _dioClient.get('${ApiConfig.trips}/$id');
       final trip = TripModel.fromJson(response.data);
-      await _db.tripsDao.upsert(tripToLocal(trip));
+      await scope.write(() => _db.tripsDao.upsert(tripToLocal(trip)));
       return trip;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -112,21 +109,15 @@ class TripRepository {
       entityType: 'trip',
       entityId: id,
       operation: 'create',
-      payload: request.toJson(),
+      payload: withClientId(id, request.toJson()),
     );
 
-    // Try immediate API call if online
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post('${ApiConfig.trips}/', data: request.toJson());
-        final serverTrip = TripModel.fromJson(response.data);
-        await _db.tripsDao.upsert(tripToLocal(serverTrip));
-        await _db.syncQueueDao.removeForEntity('trip', id);
-        return serverTrip;
-      } catch (e) {
-        AppLogger.warning('Failed to sync trip create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return trip;
   }
@@ -158,21 +149,15 @@ class TripRepository {
       entityType: 'trip',
       entityId: id,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    // Try immediate API call if online
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch('${ApiConfig.trips}/$id', data: updates);
-        final serverTrip = TripModel.fromJson(response.data);
-        await _db.tripsDao.upsert(tripToLocal(serverTrip));
-        await _db.syncQueueDao.removeForEntity('trip', id);
-        return serverTrip;
-      } catch (e) {
-        AppLogger.warning('Failed to sync trip update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.tripsDao.getById(id);
     return updated != null ? tripFromLocal(updated) : throw 'Trip not found';
@@ -182,22 +167,28 @@ class TripRepository {
   Future<void> deleteTrip(String id) async {
     await _db.tripsDao.softDelete(id);
 
-    await SyncQueueService().enqueue(
+    final queued = await SyncQueueService().enqueue(
       entityType: 'trip',
       entityId: id,
       operation: 'delete',
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete('${ApiConfig.trips}/$id');
-        await _db.tripsDao.hardDelete(id);
-        await _db.syncQueueDao.removeForEntity('trip', id);
-      } catch (e) {
-        AppLogger.warning('Failed to sync trip delete, will retry: $e');
-      }
+    // The delete cancelled a create that never reached the server, so there is
+    // nothing to sync and nothing to keep: drop the row instead of leaving a
+    // soft-deleted ghost that is hidden from the user and never syncs away.
+    if (!queued) {
+      await LocalRecordReconciler(_db)
+          .purgeLocalOnly(entityType: 'trip', id: id);
+      return;
     }
+
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   /// Get available tags for user's trips
@@ -235,6 +226,7 @@ class TripRepository {
   /// Create the sample trips. Returns the created trips, or null if the account
   /// has already used its one-time allowance (409).
   Future<List<TripModel>?> createDefaultTrips() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.post(ApiConfig.defaultTrips);
 
@@ -246,7 +238,7 @@ class TripRepository {
       // awaits the API when local is empty, so without this the new trips would
       // not surface until some later background refresh.
       for (final trip in created) {
-        await _db.tripsDao.upsert(tripToLocal(trip));
+        await scope.write(() => _db.tripsDao.upsert(tripToLocal(trip)));
       }
 
       return created;
@@ -258,6 +250,7 @@ class TripRepository {
 
   /// Remove every demo trip from this account. Returns how many were deleted.
   Future<int> deleteDemoTrips() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.delete(ApiConfig.deleteDemoTrips);
       final deletedIds = (response.data['deleted_trip_ids'] as List<dynamic>? ?? [])
@@ -267,7 +260,7 @@ class TripRepository {
       // otherwise keep serving them from Drift. hardDelete, not softDelete: the server
       // has already done the deletion, so there is nothing left to sync back.
       for (final id in deletedIds) {
-        await _db.tripsDao.hardDelete(id);
+        await scope.write(() => _db.tripsDao.hardDelete(id));
       }
 
       return (response.data['deleted_count'] as num?)?.toInt() ?? 0;
@@ -283,6 +276,7 @@ class TripRepository {
     int pageSize = 20,
     TripFilterModel? filters,
   }) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': page, 'page_size': pageSize};
       if (filters != null) queryParams.addAll(filters.toQueryParams());
@@ -292,7 +286,7 @@ class TripRepository {
 
       // Store in local DB
       for (final trip in tripsResponse.trips) {
-        await _db.tripsDao.upsert(tripToLocal(trip));
+        await scope.write(() => _db.tripsDao.upsert(tripToLocal(trip)));
       }
 
       return tripsResponse;
@@ -302,6 +296,7 @@ class TripRepository {
   }
 
   void _refreshFromApi({TripFilterModel? filters}) async {
+    final scope = AccountSession().capture();
     try {
       final queryParams = <String, dynamic>{'page': 1, 'page_size': 100};
       if (filters != null) queryParams.addAll(filters.toQueryParams());
@@ -310,7 +305,7 @@ class TripRepository {
       for (final trip in tripsResponse.trips) {
         final existing = await _db.tripsDao.getById(trip.id);
         if (existing == null || !existing.isDirty) {
-          await _db.tripsDao.upsert(tripToLocal(trip));
+          await scope.write(() => _db.tripsDao.upsert(tripToLocal(trip)));
         }
       }
     } catch (e) {
@@ -319,17 +314,66 @@ class TripRepository {
   }
 
   void _refreshTripFromApi(String id) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get('${ApiConfig.trips}/$id');
       final trip = TripModel.fromJson(response.data);
       final existing = await _db.tripsDao.getById(id);
       if (existing == null || !existing.isDirty) {
-        await _db.tripsDao.upsert(tripToLocal(trip));
+        await scope.write(() => _db.tripsDao.upsert(tripToLocal(trip)));
       }
     } catch (e) {
       AppLogger.warning('Background trip detail refresh failed: $e');
     }
   }
+
+  /// Reads trips from the local database **without** triggering a refresh.
+  ///
+  /// The visible list subscribes to the database, and every read that also
+  /// kicked off a network refresh would refresh, write, wake the subscription,
+  /// read, and refresh again. This is the read for when something has already
+  /// changed underneath.
+  Future<TripsResponse> getLocalTrips({
+    int page = 1,
+    int pageSize = 20,
+    TripFilterModel? filters,
+  }) async {
+    final localTrips = await _db.tripsDao.getAll();
+
+    return _pageLocalTrips(
+      localTrips.map(tripFromLocal).toList(),
+      page: page,
+      pageSize: pageSize,
+      filters: filters,
+    );
+  }
+
+  /// Filters, sorts and pages a local list the way the server would.
+  TripsResponse _pageLocalTrips(
+    List<TripModel> trips, {
+    required int page,
+    required int pageSize,
+    TripFilterModel? filters,
+  }) {
+    if (filters != null && filters.hasActiveFilters) {
+      trips = _applyFilters(trips, filters);
+    }
+
+    if (filters != null && filters.hasCustomSorting) {
+      trips = _applySorting(trips, filters);
+    }
+
+    final total = trips.length;
+    final start = (page - 1) * pageSize;
+    final end = (start + pageSize).clamp(0, total);
+    final paged = start < total ? trips.sublist(start, end) : <TripModel>[];
+
+    return TripsResponse(
+      trips: paged, total: total, page: page, pageSize: pageSize);
+  }
+
+  /// Emits whenever the local trip rows change.
+  Stream<void> watchLocalTrips() => _db.tripsDao.watchAll();
 
   List<TripModel> _applyFilters(List<TripModel> trips, TripFilterModel filters) {
     var filtered = trips;
@@ -343,6 +387,21 @@ class TripRepository {
     if (filters.tags != null && filters.tags!.isNotEmpty) {
       filtered = filtered.where((t) => t.tags?.any((tag) => filters.tags!.contains(tag)) ?? false).toList();
     }
+
+    // Date bounds were exposed by the filter model and the filter UI, and were
+    // simply not implemented here - so they worked against a fresh API response
+    // and stopped working the moment the list came from the local database,
+    // which is every offline use and most online ones.
+    if (filters.startDateFrom != null || filters.startDateTo != null) {
+      filtered = filtered
+          .where((t) => matchesStartDateRange(
+                t.startDate,
+                from: filters.startDateFrom,
+                to: filters.startDateTo,
+              ))
+          .toList();
+    }
+
     return filtered;
   }
 

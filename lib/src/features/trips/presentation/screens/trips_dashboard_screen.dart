@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../common/animations/animation_constants.dart' as anim;
 import '../../../../common/animations/loading/bouncing_dots_loader.dart';
 import '../../../../common/theme/app_colors.dart';
+import '../../../../common/widgets/sync_status_indicator.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/widgets/custom_button.dart';
@@ -256,6 +257,13 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                 child: _buildHeader(authState),
               ),
               actions: [
+                // Sync status.
+                //
+                // The indicator existed and was mounted on no screen at all, so
+                // a stuck queue or a preserved conflict was invisible: the app
+                // knew something had not synced and had nowhere to say it.
+                const SyncStatusIndicator(),
+
                 // Notification bell button
                 Container(
                   key: _notificationKey,

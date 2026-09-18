@@ -4,6 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/memory_model.dart';
+import 'package:uuid/uuid.dart';
+import '../../data/models/upload_outcome.dart';
 import '../../data/repositories/memory_repository.dart';
 
 part 'memories_provider.g.dart';
@@ -17,6 +19,13 @@ class MemoriesState {
   final String? error;
   final int total;
 
+  /// The classified refusal, when the last upload failed.
+  ///
+  /// Carried alongside [error] because the message alone cannot tell the UI
+  /// whether to offer "try again": retrying a quota refusal only wastes the
+  /// user's data.
+  final UploadFailure? uploadFailure;
+
   const MemoriesState({
     this.memories = const [],
     this.isLoading = false,
@@ -24,7 +33,11 @@ class MemoriesState {
     this.uploadProgress = 0.0,
     this.error,
     this.total = 0,
+    this.uploadFailure,
   });
+
+  /// Whether offering the user a retry makes sense.
+  bool get canRetryUpload => uploadFailure?.isRetryable ?? false;
 
   MemoriesState copyWith({
     List<MemoryModel>? memories,
@@ -33,6 +46,7 @@ class MemoriesState {
     double? uploadProgress,
     String? error,
     int? total,
+    UploadFailure? uploadFailure,
   }) {
     return MemoriesState(
       memories: memories ?? this.memories,
@@ -41,6 +55,9 @@ class MemoriesState {
       uploadProgress: uploadProgress ?? this.uploadProgress,
       error: error,
       total: total ?? this.total,
+      // Cleared alongside the error, so a stale refusal cannot keep offering a
+      // retry for an upload that has since succeeded.
+      uploadFailure: error == null ? null : (uploadFailure ?? this.uploadFailure),
     );
   }
 }
@@ -93,7 +110,39 @@ class TripMemories extends _$TripMemories {
     await _loadMemories();
   }
 
-  /// Upload a new memory with media files
+  /// The attempt that failed, kept so a retry of the same upload can replay it.
+  ///
+  /// A retry has to carry the id of the attempt it is retrying, or the server has
+  /// no way to tell it apart from a new upload - which is how a lost response
+  /// turns into two identical memories.
+  ///
+  /// Whether a press is a retry is decided from the request itself rather than
+  /// from a flag the screen has to remember to set and reset - nothing ever set
+  /// it, so the id was regenerated on every press and the server could never
+  /// recognise the retry. Pressing upload again on an unchanged draft is a retry;
+  /// editing the caption or the selection makes it a different memory, and
+  /// reusing the id there would hand back the *old* one.
+  ({String fingerprint, String operationId})? _failedAttempt;
+
+  static String _fingerprintOf(
+    List<SelectedMediaFile>? mediaFiles,
+    String? location,
+    double? latitude,
+    double? longitude,
+    String? caption,
+    DateTime? takenAt,
+  ) =>
+      [
+        location ?? '',
+        latitude?.toString() ?? '',
+        longitude?.toString() ?? '',
+        caption ?? '',
+        takenAt?.toIso8601String() ?? '',
+        for (final file in mediaFiles ?? const <SelectedMediaFile>[])
+          '${file.file.path}:${file.fileName}',
+      ].join('\u0000');
+
+  /// Upload a new memory with media files.
   Future<void> uploadMemory({
     List<SelectedMediaFile>? mediaFiles,
     String? location,
@@ -103,11 +152,20 @@ class TripMemories extends _$TripMemories {
     DateTime? takenAt,
   }) async {
     AppLogger.action('Uploading memory');
+
+    final fingerprint = _fingerprintOf(
+        mediaFiles, location, latitude, longitude, caption, takenAt);
+
+    final operationId = _failedAttempt?.fingerprint == fingerprint
+        ? _failedAttempt!.operationId
+        : const Uuid().v4();
+
     state = state.copyWith(isUploading: true, uploadProgress: 0.0, error: null);
 
     try {
       final newMemory = await _memoryRepository.uploadMemory(
         tripId: tripId,
+        operationId: operationId,
         mediaFiles: mediaFiles,
         location: location,
         latitude: latitude,
@@ -131,12 +189,34 @@ class TripMemories extends _$TripMemories {
       // Add to list
       final updatedMemories = [newMemory, ...state.memories];
 
+      // The attempt is settled, so the next upload is a new one.
+      _failedAttempt = null;
+
       state = state.copyWith(
         memories: updatedMemories,
         total: state.total + 1,
         isUploading: false,
         uploadProgress: 1.0,
       );
+    } on UploadFailure catch (failure) {
+      if (!ref.mounted) return;
+      AppLogger.error('Memory upload refused (${failure.kind.name}): $failure');
+
+      // Remembered only on a retryable failure: the next press of an unchanged
+      // draft then replays this attempt, so a response that was lost rather than
+      // never sent resolves to the memory the server already created. A refusal
+      // that will never succeed - no room on the plan - is not worth replaying.
+      _failedAttempt = failure.isRetryable
+          ? (fingerprint: fingerprint, operationId: operationId)
+          : null;
+
+      state = state.copyWith(
+        isUploading: false,
+        uploadProgress: 0.0,
+        error: failure.message,
+        uploadFailure: failure,
+      );
+      rethrow;
     } catch (e) {
       if (!ref.mounted) return;
       AppLogger.error('Failed to upload memory: $e');

@@ -7,6 +7,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/achievement_model.dart';
+import '../../../../core/session/account_session.dart';
 
 /// Achievement repository - read-cache pattern
 class AchievementRepository {
@@ -94,6 +95,7 @@ class AchievementRepository {
 
   /// Get unseen achievements - reads from local cache
   Future<List<UserAchievement>> getUnseenAchievements() async {
+    final scope = AccountSession().capture();
     final localUnseen = await _db.achievementsDao.getUnseen();
 
     if (localUnseen.isNotEmpty || !ConnectivityService().isOnline) {
@@ -107,7 +109,7 @@ class AchievementRepository {
           .toList();
 
       for (final ua in unseen) {
-        await _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua));
+        await scope.write(() => _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua)));
       }
 
       return unseen;
@@ -163,6 +165,7 @@ class AchievementRepository {
   // --- Private Methods ---
 
   Future<List<Achievement>> _fetchAllAchievementsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.achievements);
       final achievements = (response.data as List)
@@ -170,7 +173,7 @@ class AchievementRepository {
           .toList();
 
       final companions = achievements.map(achievementToLocal).toList();
-      await _db.achievementsDao.upsertAchievementBatch(companions);
+      await scope.write(() => _db.achievementsDao.upsertAchievementBatch(companions));
 
       return achievements;
     } on DioException catch (e) {
@@ -179,31 +182,33 @@ class AchievementRepository {
   }
 
   void _refreshAllAchievementsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.achievements);
       final achievements = (response.data as List)
           .map((json) => Achievement.fromJson(json))
           .toList();
       final companions = achievements.map(achievementToLocal).toList();
-      await _db.achievementsDao.upsertAchievementBatch(companions);
+      await scope.write(() => _db.achievementsDao.upsertAchievementBatch(companions));
     } catch (e) {
       AppLogger.warning('Background achievements refresh failed: $e');
     }
   }
 
   Future<UserAchievementsResponse> _fetchMyAchievementsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.achievementsMe);
       final userResponse = UserAchievementsResponse.fromJson(response.data);
 
       // Cache all user achievements
       for (final ua in [...userResponse.earned, ...userResponse.inProgress]) {
-        await _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua));
+        await scope.write(() => _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua)));
       }
 
       // Cache all achievement definitions from locked list
       for (final a in userResponse.locked) {
-        await _db.achievementsDao.upsertAchievement(achievementToLocal(a));
+        await scope.write(() => _db.achievementsDao.upsertAchievement(achievementToLocal(a)));
       }
 
       return userResponse;
@@ -213,20 +218,21 @@ class AchievementRepository {
   }
 
   void _refreshMyAchievementsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.achievementsMe);
       final userResponse = UserAchievementsResponse.fromJson(response.data);
 
       for (final ua in [...userResponse.earned, ...userResponse.inProgress]) {
-        await _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua));
+        await scope.write(() => _db.achievementsDao.upsertUserAchievement(userAchievementToLocal(ua)));
         // Also refresh the definition itself. Without this only locked achievements
         // ever got theirs updated, so the cached name, icon and points of anything
         // the user had earned stayed frozen at whatever they were first cached as.
-        await _db.achievementsDao.upsertAchievement(achievementToLocal(ua.achievement));
+        await scope.write(() => _db.achievementsDao.upsertAchievement(achievementToLocal(ua.achievement)));
       }
 
       for (final a in userResponse.locked) {
-        await _db.achievementsDao.upsertAchievement(achievementToLocal(a));
+        await scope.write(() => _db.achievementsDao.upsertAchievement(achievementToLocal(a)));
       }
     } catch (e) {
       AppLogger.warning('Background user achievements refresh failed: $e');

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/document_model.dart';
 
@@ -197,7 +198,11 @@ class DocumentCard extends StatelessWidget {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppSizes.radiusSm),
         child: CachedNetworkImage(
-          imageUrl: FileUrlHelper.getAuthenticatedUrl(primaryUrl),
+          imageUrl: FileUrlHelper.resolve(primaryUrl),
+          // Private files come from our API, which authorizes each request. The
+          // cache manager attaches the current token and refreshes it on a 401;
+          // headers captured at build time go stale within fifteen minutes.
+          cacheManager: AuthenticatedMediaCacheManager.instance,
           width: 56,
           height: 56,
           fit: BoxFit.cover,

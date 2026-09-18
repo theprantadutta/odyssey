@@ -10,6 +10,7 @@ import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
+import '../../data/models/statistics_model.dart';
 import '../../../subscription/presentation/widgets/upgrade_banner.dart';
 import '../providers/statistics_provider.dart';
 class StatisticsDashboardScreen extends ConsumerWidget {
@@ -397,7 +398,13 @@ class StatisticsDashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '${stats.totalTrips} trips, ${stats.countriesVisited} destinations',
+                      // Not "destinations": no trip carries one yet. What was
+                      // counted here was distinct trip *tags*, so a trip labelled
+                      // "romantic" was reported as a place visited.
+                      stats.destinationDataAvailable
+                          ? '${stats.totalTrips} trips, '
+                              '${stats.countriesVisited} countries'
+                          : _tripSummary(stats),
                       style: AppTypography.bodySmall.copyWith(
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
@@ -625,8 +632,8 @@ class StatisticsDashboardScreen extends ConsumerWidget {
             Expanded(
               child: _buildMiniStat(
                 context,
-                'Total Amount',
-                '\$${stats.totalExpenseAmount.toStringAsFixed(0)}',
+                _spendLabel(stats),
+                _spendValue(stats),
                 AppColors.sunnyYellow,
               ),
             ),
@@ -749,6 +756,29 @@ class StatisticsDashboardScreen extends ConsumerWidget {
         .map((word) => word[0].toUpperCase() + word.substring(1))
         .join(' ');
   }
+
+  /// A trips-and-tags summary, for when no destination data exists.
+  static String _tripSummary(OverallStatistics stats) {
+    final trips = '${stats.totalTrips} '
+        '${stats.totalTrips == 1 ? 'trip' : 'trips'}';
+
+    if (stats.tripTags.isEmpty) return trips;
+
+    return '$trips, ${stats.tripTags.length} '
+        '${stats.tripTags.length == 1 ? 'tag' : 'tags'}';
+  }
+
+  /// Names the currency the spending figure is actually in.
+  ///
+  /// The label used to be a bare "Total Amount" over a sum across every
+  /// currency, rendered with a hard-coded dollar sign.
+  static String _spendLabel(OverallStatistics stats) =>
+      stats.unconvertedExpenseCount > 0
+          ? 'Spent (${stats.reportingCurrency})*'
+          : 'Spent (${stats.reportingCurrency})';
+
+  static String _spendValue(OverallStatistics stats) =>
+      stats.totalExpenseAmount.toStringAsFixed(0);
 }
 
 class _StatsSectionCard extends StatelessWidget {
@@ -864,4 +894,5 @@ class _StatsRow extends StatelessWidget {
       ],
     );
   }
+
 }

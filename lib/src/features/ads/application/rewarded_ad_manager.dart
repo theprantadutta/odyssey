@@ -81,7 +81,20 @@ class RewardedAdManager {
   /// Shows the rewarded ad. Returns `true` if the user earned the reward,
   /// `false` if no ad was available, it couldn't show, or it was dismissed
   /// before completion. Triggers a preload of the next ad afterwards.
-  Future<bool> showRewarded() async {
+  ///
+  /// [intentId] identifies an offer the **server** already recorded for this
+  /// account and feature. It is the only thing that decides what the reward is
+  /// worth: the server reads the account, the feature and the permitted ad unit
+  /// from its own row, so nothing this device puts in the callback can change
+  /// them. [userId] travels alongside it for the network's own reporting.
+  ///
+  /// Returning `true` means the *ad* completed, not that the feature is unlocked:
+  /// the reward reaches the server through the ad network, so the caller still
+  /// has to wait for the grant to appear.
+  Future<bool> showRewarded({
+    required String userId,
+    required String intentId,
+  }) async {
     if (!_enabled || !AdMobConfig.isSupportedPlatform) return false;
     final ad = _ad;
     if (ad == null) {
@@ -89,6 +102,13 @@ class RewardedAdManager {
       return false;
     }
     if (!FullScreenAdLock.instance.canShowFullScreenAd) return false;
+
+    // Set immediately before showing, not at load time: a preloaded ad may have
+    // been warmed up before sign-in, or for a different feature than the one the
+    // user eventually taps.
+    ad.setServerSideOptions(
+      ServerSideVerificationOptions(userId: userId, customData: intentId),
+    );
 
     final completer = Completer<bool>();
     var earned = false;

@@ -42,6 +42,15 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
     return (select(localTrips)..where((t) => t.isDirty.equals(true))).get();
   }
 
+  /// Marks a record as carrying unsent changes.
+  ///
+  /// For a record written from a server copy that still has newer local edits
+  /// queued: the write leaves it clean, and a clean row is never pushed.
+  Future<void> markDirty(String id) {
+    return (update(localTrips)..where((t) => t.id.equals(id)))
+        .write(const LocalTripsCompanion(isDirty: Value(true)));
+  }
+
   Future<void> clearDirty(String id) {
     return (update(localTrips)..where((t) => t.id.equals(id)))
         .write(const LocalTripsCompanion(isDirty: Value(false), isLocalOnly: Value(false)));

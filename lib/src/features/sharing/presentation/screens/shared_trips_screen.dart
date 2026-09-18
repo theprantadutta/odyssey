@@ -12,6 +12,8 @@ import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/trip_share_model.dart';
 import '../providers/sharing_provider.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 class SharedTripsScreen extends ConsumerWidget {
   const SharedTripsScreen({super.key});
@@ -189,7 +191,8 @@ class _SharedTripCard extends StatelessWidget {
                   child: Stack(
                     children: [
                       CachedNetworkImage(
-                        imageUrl: trip.coverImageUrl!,
+                        imageUrl: FileUrlHelper.resolve(trip.coverImageUrl!),
+                        cacheManager: AuthenticatedMediaCacheManager.instance,
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: 140,

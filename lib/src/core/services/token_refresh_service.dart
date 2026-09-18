@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../config/api_config.dart';
+import '../session/account_session.dart';
 import 'logger_service.dart';
 import 'storage_service.dart';
 
@@ -26,6 +28,15 @@ class TokenRefreshService {
     ),
   );
 
+  /// The refresh client, for tests that need to hold a refresh in flight.
+  ///
+  /// Refresh deliberately bypasses `DioClient` to avoid an interceptor loop,
+  /// which also puts it out of reach of the adapter a test installs there. The
+  /// behaviour worth testing - what a refresh does when it outlives its own
+  /// session - cannot be reached any other way.
+  @visibleForTesting
+  Dio get refreshDioForTesting => _refreshDio;
+
   // Lock to prevent multiple simultaneous refresh requests
   Completer<bool>? _refreshCompleter;
   bool _isRefreshing = false;
@@ -42,6 +53,14 @@ class TokenRefreshService {
 
     _isRefreshing = true;
     _refreshCompleter = Completer<bool>();
+
+    // Captured before the request. A refresh outliving its own session is the
+    // most damaging late response in the app: the tokens it writes are the ones
+    // every later request is sent with, so a refresh started by one account and
+    // answered after another has signed in would hand the new session the old
+    // account's credentials. The 401 branch is as bad in the other direction -
+    // it clears auth data, which would sign the *new* account out.
+    final scope = AccountSession().capture();
 
     try {
       final refreshToken = await _storageService.getRefreshToken();
@@ -67,6 +86,15 @@ class TokenRefreshService {
         final expiresIn = data['expires_in'] as int?;
 
         if (newAccessToken != null && newRefreshToken != null) {
+          if (!scope.isCurrent) {
+            // Valid tokens, for an account that is no longer signed in. Storing
+            // them would overwrite whoever is signed in now.
+            AppLogger.auth(
+                'Discarding a token refresh that outlived its session');
+            _completeRefresh(false);
+            return false;
+          }
+
           // Save new tokens
           await _storageService.saveAccessToken(newAccessToken);
           await _storageService.saveRefreshToken(newRefreshToken);
@@ -92,9 +120,17 @@ class TokenRefreshService {
         isError: true,
       );
 
-      // If refresh token is invalid/expired, clear all auth data
+      // If refresh token is invalid/expired, clear all auth data - but only if
+      // it is still this account's auth data. A rejected refresh belonging to a
+      // session that has already ended must not sign out the account that has
+      // since signed in.
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        await _storageService.clearAuthData();
+        if (scope.isCurrent) {
+          await _storageService.clearAuthData();
+        } else {
+          AppLogger.auth(
+              'A rejected refresh outlived its session; auth data left alone');
+        }
       }
 
       _completeRefresh(false);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -10,7 +12,11 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/local_record_reconciler.dart';
 import '../models/activity_model.dart';
+import '../../../../core/session/account_session.dart';
+import '../../../../core/sync/base_version.dart';
+import '../../../../core/sync/sync_service.dart';
 
 /// Activity repository - local-first with background API sync
 class ActivityRepository {
@@ -39,6 +45,7 @@ class ActivityRepository {
 
   /// Get activity by ID - reads from local DB first
   Future<ActivityModel> getActivityById(String id) async {
+    final scope = AccountSession().capture();
     final local = await _db.activitiesDao.getById(id);
     if (local != null && !local.isDeleted) {
       if (ConnectivityService().isOnline) {
@@ -50,7 +57,7 @@ class ActivityRepository {
     try {
       final response = await _dioClient.get('${ApiConfig.activities}/$id');
       final activity = ActivityModel.fromJson(response.data);
-      await _db.activitiesDao.upsert(activityToLocal(activity));
+      await scope.write(() => _db.activitiesDao.upsert(activityToLocal(activity)));
       return activity;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -82,20 +89,15 @@ class ActivityRepository {
       entityType: 'activity',
       entityId: id,
       operation: 'create',
-      payload: request.toJson(),
+      payload: withClientId(id, request.toJson()),
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post('${ApiConfig.activities}/', data: request.toJson());
-        final serverActivity = ActivityModel.fromJson(response.data);
-        await _db.activitiesDao.upsert(activityToLocal(serverActivity));
-        await _db.syncQueueDao.removeForEntity('activity', id);
-        return serverActivity;
-      } catch (e) {
-        AppLogger.warning('Failed to sync activity create, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     return activity;
   }
@@ -123,20 +125,15 @@ class ActivityRepository {
       entityType: 'activity',
       entityId: id,
       operation: 'update',
-      payload: {...updates, '_base_version': existing?.updatedAt.toIso8601String()},
+      payload: {...updates, '_base_version': baseVersionOf(existing)},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.patch('${ApiConfig.activities}/$id', data: updates);
-        final serverActivity = ActivityModel.fromJson(response.data);
-        await _db.activitiesDao.upsert(activityToLocal(serverActivity));
-        await _db.syncQueueDao.removeForEntity('activity', id);
-        return serverActivity;
-      } catch (e) {
-        AppLogger.warning('Failed to sync activity update, will retry: $e');
-      }
-    }
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
 
     final updated = await _db.activitiesDao.getById(id);
     return updated != null ? activityFromLocal(updated) : throw 'Activity not found';
@@ -146,22 +143,28 @@ class ActivityRepository {
   Future<void> deleteActivity(String id) async {
     await _db.activitiesDao.softDelete(id);
 
-    await SyncQueueService().enqueue(
+    final queued = await SyncQueueService().enqueue(
       entityType: 'activity',
       entityId: id,
       operation: 'delete',
       payload: {},
     );
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.delete('${ApiConfig.activities}/$id');
-        await _db.activitiesDao.hardDelete(id);
-        await _db.syncQueueDao.removeForEntity('activity', id);
-      } catch (e) {
-        AppLogger.warning('Failed to sync activity delete, will retry: $e');
-      }
+    // The delete cancelled a create that never reached the server, so there is
+    // nothing to sync and nothing to keep: drop the row instead of leaving a
+    // soft-deleted ghost that is hidden from the user and never syncs away.
+    if (!queued) {
+      await LocalRecordReconciler(_db)
+          .purgeLocalOnly(entityType: 'activity', id: id);
+      return;
     }
+
+    // One write path. The request is made by the sync service, which is
+    // the only place that knows which revision an acknowledgement is for
+    // and how to merge a response with an edit made since. Issuing it here
+    // as well, and then clearing the queue for this entity, is what lost
+    // an edit made while the first request was in flight.
+    unawaited(SyncService().performSync());
   }
 
   /// Reorder activities (for drag-and-drop) - online only with local update
@@ -169,6 +172,7 @@ class ActivityRepository {
     required String tripId,
     required List<ActivityOrder> activityOrders,
   }) async {
+    final scope = AccountSession().capture();
     // Update sort orders locally
     for (final order in activityOrders) {
       await ((_db.update(_db.localActivities))..where((t) => t.id.equals(order.id))).write(
@@ -190,7 +194,7 @@ class ActivityRepository {
         );
         // Clear dirty flags after successful sync
         for (final order in activityOrders) {
-          await _db.activitiesDao.clearDirty(order.id);
+          await scope.write(() => _db.activitiesDao.clearDirty(order.id));
         }
       } catch (e) {
         AppLogger.warning('Failed to sync activity reorder, will retry: $e');
@@ -201,6 +205,7 @@ class ActivityRepository {
   // ─── Private Methods ──────────────────────────────────────────
 
   Future<ActivitiesResponse> _fetchFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.activities,
@@ -209,7 +214,7 @@ class ActivityRepository {
       final activitiesResponse = ActivitiesResponse.fromJson(response.data);
 
       for (final activity in activitiesResponse.activities) {
-        await _db.activitiesDao.upsert(activityToLocal(activity));
+        await scope.write(() => _db.activitiesDao.upsert(activityToLocal(activity)));
       }
 
       return activitiesResponse;
@@ -219,6 +224,7 @@ class ActivityRepository {
   }
 
   void _refreshFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(
         ApiConfig.activities,
@@ -228,7 +234,7 @@ class ActivityRepository {
       for (final activity in activitiesResponse.activities) {
         final existing = await _db.activitiesDao.getById(activity.id);
         if (existing == null || !existing.isDirty) {
-          await _db.activitiesDao.upsert(activityToLocal(activity));
+          await scope.write(() => _db.activitiesDao.upsert(activityToLocal(activity)));
         }
       }
     } catch (e) {
@@ -237,12 +243,13 @@ class ActivityRepository {
   }
 
   void _refreshActivityFromApi(String id) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get('${ApiConfig.activities}/$id');
       final activity = ActivityModel.fromJson(response.data);
       final existing = await _db.activitiesDao.getById(id);
       if (existing == null || !existing.isDirty) {
-        await _db.activitiesDao.upsert(activityToLocal(activity));
+        await scope.write(() => _db.activitiesDao.upsert(activityToLocal(activity)));
       }
     } catch (e) {
       AppLogger.warning('Background activity detail refresh failed: $e');

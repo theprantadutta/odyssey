@@ -4,17 +4,27 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/database/database_service.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/token_refresh_service.dart';
+import '../../../../core/session/account_state_reset.dart';
 import '../../../../core/sync/sync_service.dart';
+import '../../../achievements/presentation/providers/achievements_provider.dart';
+import '../../../map/presentation/providers/map_provider.dart';
+import '../../../sharing/presentation/providers/sharing_provider.dart';
+import '../../../statistics/presentation/providers/statistics_provider.dart';
+import '../../../subscription/presentation/providers/feature_access_provider.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../templates/presentation/providers/templates_provider.dart';
+import '../../../trips/presentation/providers/trips_provider.dart';
+import '../../../notifications/presentation/providers/notification_preference_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../../data/models/account_deletion_receipt.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -124,12 +134,21 @@ class Auth extends _$Auth {
         event == AuthEvent.tokenRefreshFailed) {
       // Only update if currently authenticated to avoid redundant updates
       if (state.isAuthenticated) {
+        final expiredUserId = state.user?.id;
+
         state = state.copyWith(
           isAuthenticated: false,
           isLoading: false,
           user: null,
           error: 'Your session has expired. Please log in again.',
         );
+
+        // An expired session used to clear only the auth tokens, leaving the
+        // previous user's trips, entitlements and unlocks on the device for
+        // whoever signed in next.
+        unawaited(AccountStateReset()
+            .reset(userId: expiredUserId)
+            .then((_) => _resetUserScopedProviders()));
       }
     }
   }
@@ -179,6 +198,10 @@ class Auth extends _$Auth {
         hasAcceptedTerms: hasAcceptedTerms,
         needsOnboarding: !hasCompletedOnboarding,
       );
+
+      // Restored offline, so there is no initial sync to run - but the session
+      // still has to be open, or nothing syncs when connectivity returns.
+      unawaited(AccountStateReset().beginSession(cachedUser.id));
     } else {
       AppLogger.auth('No cached user data available');
       state = state.copyWith(
@@ -399,10 +422,10 @@ class Auth extends _$Auth {
 
       await _authRepository.logout();
 
-      // Clear local database on logout
-      await DatabaseService().clearAllData();
-      SyncService().dispose();
-      SyncService().initialize();
+      // Ends the session, waits for in-flight sync, sets unsynced work aside
+      // under this account and clears everything user-scoped.
+      await AccountStateReset().reset(userId: state.user?.id);
+      _resetUserScopedProviders();
 
       AppLogger.auth('Logout successful');
       final analytics = ref.read(analyticsServiceProvider);
@@ -415,34 +438,70 @@ class Auth extends _$Auth {
     }
   }
 
-  /// Permanently delete the current user's account and all their data.
+  /// Ask the server to delete the current user's account.
   ///
-  /// On success the user is fully signed out and local data is wiped.
-  Future<void> deleteAccount() async {
-    AppLogger.auth('Deleting account');
+  /// Returns the server's receipt. It says the request was accepted and that
+  /// access is gone - not that the data has been removed, which the server
+  /// finishes afterwards and cannot report here. Callers must not present it as
+  /// a completed deletion.
+  ///
+  /// Either way, once the server accepts, the user is fully signed out and local
+  /// data is wiped: there is no account left for it to belong to.
+  Future<AccountDeletionReceipt> deleteAccount() async {
+    AppLogger.auth('Requesting account deletion');
     state = state.copyWith(isLoading: true, error: null);
     try {
       // Unregister device from push notifications before the account is gone.
       await _unregisterDeviceForNotifications();
 
-      await _authRepository.deleteAccount();
+      final receipt = await _authRepository.deleteAccount();
 
-      // Clear local database and reset sync.
-      await DatabaseService().clearAllData();
-      SyncService().dispose();
-      SyncService().initialize();
+      // The account is gone, so unsynced work has nowhere to go: do not keep it.
+      await AccountStateReset().reset(
+        userId: state.user?.id,
+        preserveUnsyncedWork: false,
+      );
+      _resetUserScopedProviders();
 
-      AppLogger.auth('Account deleted');
+      AppLogger.auth('Account deletion accepted: ${receipt.requestId}');
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackLogout());
       unawaited(analytics.setUserId(null));
 
       state = const AuthState(isAuthenticated: false, isLoading: false);
+      return receipt;
     } catch (e) {
-      AppLogger.auth('Account deletion failed: $e', isError: true);
+      AppLogger.auth('Account deletion request failed: $e', isError: true);
       state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
+  }
+
+
+  /// Drops every provider holding data that belonged to the previous account.
+  ///
+  /// The app runs a single root ProviderScope and most of these are keepAlive,
+  /// so without this a second sign-in on the same device reuses the first
+  /// account's trips, entitlements and unlocks. Invalidating rebuilds them
+  /// against the now-empty database and the new session.
+  ///
+  /// Auth itself is deliberately absent: it is the provider driving this.
+  void _resetUserScopedProviders() {
+    ref.invalidate(tripsProvider);
+    ref.invalidate(sharedTripsProvider);
+    ref.invalidate(mapTripsProvider);
+    ref.invalidate(statisticsProvider);
+    ref.invalidate(yearInReviewProvider);
+    ref.invalidate(travelTimelineProvider);
+    ref.invalidate(achievementsProvider);
+    ref.invalidate(leaderboardProvider);
+    ref.invalidate(myTemplatesProvider);
+    ref.invalidate(templateGalleryProvider);
+    ref.invalidate(subscriptionProvider);
+    ref.invalidate(temporaryUnlocksProvider);
+    ref.invalidate(notificationHistoryProvider);
+    ref.invalidate(unreadNotificationCountProvider);
+    ref.invalidate(notificationPreferencesProvider);
   }
 
   /// Clear error
@@ -697,9 +756,18 @@ class Auth extends _$Auth {
   }
 
   /// Trigger initial sync to pull latest data (fire and forget)
+  /// Opens the sync session for the signed-in account and runs the first sync.
+  ///
+  /// The session must be opened before any sync runs: it is what scopes the
+  /// work to this account, restores anything this account left unsynced last
+  /// time, and lets a result arriving after a sign-out be discarded.
   void _triggerInitialSync() {
+    final userId = state.user?.id;
     Future.microtask(() async {
       try {
+        if (userId != null) {
+          await AccountStateReset().beginSession(userId);
+        }
         await SyncService().performInitialSync();
         AppLogger.auth('Initial sync completed');
       } catch (e) {

@@ -10,6 +10,7 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../../common/widgets/pill_tab_bar.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
@@ -598,7 +599,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     if (trip.coverImageUrl != null &&
         trip.coverImageUrl!.isNotEmpty) {
       return CachedNetworkImage(
-        imageUrl: FileUrlHelper.getAuthenticatedUrl(trip.coverImageUrl!),
+        imageUrl: FileUrlHelper.resolve(trip.coverImageUrl!),
+        // Private files come from our API, which authorizes each request. The
+        // cache manager attaches the current token and refreshes it on a 401;
+        // headers captured at build time go stale within fifteen minutes.
+        cacheManager: AuthenticatedMediaCacheManager.instance,
         fit: BoxFit.cover,
         placeholder: (context, url) => _buildPlaceholderCover(),
         errorWidget: (context, url, error) => _buildPlaceholderCover(),

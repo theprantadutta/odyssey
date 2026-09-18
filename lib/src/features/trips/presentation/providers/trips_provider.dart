@@ -66,11 +66,61 @@ TripRepository tripRepository(Ref ref) {
 class Trips extends _$Trips {
   TripRepository get _tripRepository => ref.read(tripRepositoryProvider);
 
+  /// Matches the repository's own default page size.
+  ///
+  /// Republishing has to cover everything the user has already scrolled to, or
+  /// a background sync would silently truncate the list back to one page.
+  static const int _pageSize = 20;
+
+  StreamSubscription<void>? _localChanges;
+
   @override
   TripsState build() {
+    // The database is the visible source of truth.
+    //
+    // A refresh reads local rows, returns them, and updates the database from
+    // the API in the background - so a pull-to-refresh could finish and *then*
+    // the fresh data would arrive, with nothing on screen reacting to it. The
+    // change showed up on the next refresh, or when the screen was reopened.
+    _localChanges?.cancel();
+    _localChanges = _tripRepository.watchLocalTrips().listen(
+      (_) => _republishFromLocal(),
+    );
+
+    ref.onDispose(() => _localChanges?.cancel());
+
     Future.microtask(() => _loadTrips());
     // Start with isLoading: true to show loader immediately
     return const TripsState(isLoading: true);
+  }
+
+  /// Re-reads the visible page from the database after it changed.
+  ///
+  /// Deliberately does not set `isLoading` and does not touch the network: this
+  /// runs when data has already arrived, and flicking a spinner on for a
+  /// background sync would be worse than the staleness it fixes.
+  Future<void> _republishFromLocal() async {
+    final filters = state.filters;
+    final hasFilters = filters.hasActiveFilters || filters.hasCustomSorting;
+
+    try {
+      final response = await _tripRepository.getLocalTrips(
+        page: 1,
+        pageSize: _pageSize * state.currentPage,
+        filters: hasFilters ? filters : null,
+      );
+
+      state = state.copyWith(
+        trips: response.trips,
+        total: response.total,
+        hasMore: response.trips.length < response.total,
+      );
+    } catch (e) {
+      // A failed re-read leaves what is on screen alone. It is still the last
+      // thing that was true, which beats an error over a list the user is
+      // reading.
+      AppLogger.warning('Could not republish trips from the database: $e');
+    }
   }
 
   /// Load trips (first page) with current filters

@@ -90,8 +90,10 @@ class TripShares extends _$TripShares {
       );
       return share;
     } catch (e) {
+      // Rethrown, not swallowed: the caller has to be able to tell "no connection,
+      // nothing sent" from a server refusal, and a null return said neither.
       state = state.copyWith(error: e.toString());
-      return null;
+      rethrow;
     }
   }
 

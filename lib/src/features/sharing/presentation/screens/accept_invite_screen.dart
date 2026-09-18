@@ -6,6 +6,8 @@ import 'package:odyssey/src/common/theme/app_sizes.dart';
 import 'package:odyssey/src/features/sharing/data/models/trip_share_model.dart';
 import 'package:odyssey/src/features/sharing/presentation/providers/sharing_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 class AcceptInviteScreen extends ConsumerWidget {
   final String inviteCode;
@@ -109,7 +111,8 @@ class _InviteTripCard extends StatelessWidget {
               height: 180,
               width: double.infinity,
               child: CachedNetworkImage(
-                imageUrl: invite.tripCoverImageUrl!,
+                imageUrl: FileUrlHelper.resolve(invite.tripCoverImageUrl!),
+                cacheManager: AuthenticatedMediaCacheManager.instance,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: AppColors.oceanTeal.withValues(alpha: 0.1),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../data/models/document_model.dart';
@@ -92,6 +93,33 @@ class TripDocuments extends _$TripDocuments {
     await _loadDocuments();
   }
 
+  /// The attempt that failed, kept so a retry of the same upload can replay it.
+  ///
+  /// A retry has to carry the id of the attempt it is retrying, or the server has
+  /// no way to tell it apart from a new upload - which is how a lost response
+  /// turns into two identical documents, each holding its own copy of the files
+  /// against the owner's storage.
+  ///
+  /// Whether a press is a retry is decided from the request itself rather than
+  /// from a flag the screen has to remember to set and reset. Pressing upload
+  /// again on an unchanged draft is a retry; editing the name, the notes or the
+  /// files makes it a different document, and reusing the id there would hand
+  /// back the *old* one.
+  ({String fingerprint, String operationId})? _failedAttempt;
+
+  static String _fingerprintOf(
+    String name,
+    List<SelectedDocumentFile> files,
+    String? type,
+    String? notes,
+  ) =>
+      [
+        name,
+        type ?? '',
+        notes ?? '',
+        for (final file in files) '${file.file.path}:${file.fileName}',
+      ].join('\u0000');
+
   /// Upload a new document with multiple files
   Future<void> uploadDocument({
     required String name,
@@ -102,15 +130,24 @@ class TripDocuments extends _$TripDocuments {
   }) async {
     AppLogger.action('Uploading document: $name with ${files.length} file(s)');
 
+    final fingerprint = _fingerprintOf(name, files, type, notes);
+
+    final operationId = _failedAttempt?.fingerprint == fingerprint
+        ? _failedAttempt!.operationId
+        : const Uuid().v4();
+
     try {
       await _documentRepository.uploadDocument(
         tripId: tripId,
         name: name,
         files: files,
+        operationId: operationId,
         type: type,
         notes: notes,
         onProgress: onProgress,
       );
+
+      _failedAttempt = null;
 
       AppLogger.info('Document uploaded successfully');
       unawaited(ref.read(analyticsServiceProvider).trackDocumentUploaded(type: type ?? 'other'));
@@ -118,6 +155,10 @@ class TripDocuments extends _$TripDocuments {
       // Reload to get updated grouped data
       await _loadDocuments();
     } catch (e) {
+      // Remembered so the next press of an unchanged draft replays this attempt
+      // instead of starting a second upload of the same files.
+      _failedAttempt = (fingerprint: fingerprint, operationId: operationId);
+
       AppLogger.error('Failed to upload document: $e');
       rethrow;
     }

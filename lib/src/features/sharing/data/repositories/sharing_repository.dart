@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/config/api_config.dart';
 import '../../../../core/database/app_database.dart';
@@ -11,60 +10,60 @@ import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../models/trip_share_model.dart';
+import '../../../../core/session/account_session.dart';
+
+/// Raised when an invitation is attempted with no connection.
+///
+/// Distinct from a generic network error so the UI can say what is actually
+/// wrong - the invitation was not queued and nothing was sent.
+class OfflineInvitationException implements Exception {
+  const OfflineInvitationException();
+
+  String get message =>
+      'Invitations need a connection. Nothing was sent - try again once you are '
+      'back online.';
+
+  @override
+  String toString() => message;
+}
 
 /// Sharing repository - local-first with cache and queued mutations
 class SharingRepository {
   final DioClient _dioClient = DioClient();
   AppDatabase get _db => DatabaseService().database;
 
-  /// Share a trip with another user
+  /// Send an invitation to collaborate on a trip.
+  ///
+  /// Online only, and deliberately so. An invitation emails somebody else and is
+  /// identified by a server-issued invite code; there is nothing honest the device
+  /// can do offline. Queuing it locally used to report "Invite sent" while nothing
+  /// had been sent and the invite code was an empty string, so the "copy link"
+  /// action produced a dead URL.
+  ///
+  /// Throws [OfflineInvitationException] when there is no connection, so the
+  /// caller can say so plainly rather than claim success.
   Future<TripShareModel> shareTrip(
     String tripId,
     TripShareRequest request,
   ) async {
-    final id = const Uuid().v4();
-    final now = DateTime.now().toUtc();
-
-    final share = TripShareModel(
-      id: id,
-      tripId: tripId,
-      ownerId: '',
-      sharedWithEmail: request.email,
-      permission: request.permission,
-      inviteCode: '',
-      status: ShareStatus.pending,
-      createdAt: now,
-    );
-
-    await _db.sharesDao.upsert(tripShareToLocal(share, isDirty: true, isLocalOnly: true));
-
-    await SyncQueueService().enqueue(
-      entityType: 'trip_share',
-      entityId: id,
-      operation: 'create',
-      payload: {'trip_id': tripId, ...request.toJson()},
-    );
-
-    if (ConnectivityService().isOnline) {
-      try {
-        final response = await _dioClient.post(
-          ApiConfig.shareTrip(tripId),
-          data: request.toJson(),
-        );
-        final serverShare = TripShareModel.fromJson(response.data as Map<String, dynamic>);
-        await _db.sharesDao.upsert(tripShareToLocal(serverShare));
-        // Remove the placeholder if server assigned a different ID
-        if (serverShare.id != id) {
-          await _db.sharesDao.hardDelete(id);
-        }
-        await _db.syncQueueDao.removeForEntity('trip_share', id);
-        return serverShare;
-      } catch (e) {
-        AppLogger.warning('Failed to sync share create, will retry: $e');
-      }
+    final scope = AccountSession().capture();
+    if (!ConnectivityService().isOnline) {
+      throw const OfflineInvitationException();
     }
 
-    return share;
+    try {
+      final response = await _dioClient.post(
+        ApiConfig.shareTrip(tripId),
+        data: request.toJson(),
+      );
+      final serverShare =
+          TripShareModel.fromJson(response.data as Map<String, dynamic>);
+      await scope.write(() => _db.sharesDao.upsert(tripShareToLocal(serverShare)));
+      return serverShare;
+    } on DioException catch (e) {
+      AppLogger.error('Failed to send invitation: $e');
+      throw _handleError(e);
+    }
   }
 
   /// Get all shares for a trip - reads from local DB, triggers background refresh
@@ -90,6 +89,7 @@ class SharingRepository {
     String shareId,
     SharePermission permission,
   ) async {
+    final scope = AccountSession().capture();
     final existing = await _db.sharesDao.getById(shareId);
     if (existing != null) {
       await (_db.update(_db.localTripShares)..where((s) => s.id.equals(shareId))).write(
@@ -114,8 +114,8 @@ class SharingRepository {
           data: {'permission': permission.name},
         );
         final serverShare = TripShareModel.fromJson(response.data as Map<String, dynamic>);
-        await _db.sharesDao.upsert(tripShareToLocal(serverShare));
-        await _db.syncQueueDao.removeForEntity('trip_share', shareId);
+        await scope.write(() => _db.sharesDao.upsert(tripShareToLocal(serverShare)));
+        await scope.write(() => _db.syncQueueDao.removeForEntity('trip_share', shareId));
         return serverShare;
       } catch (e) {
         AppLogger.warning('Failed to sync share update, will retry: $e');
@@ -128,6 +128,7 @@ class SharingRepository {
 
   /// Revoke a share
   Future<void> revokeShare(String tripId, String shareId) async {
+    final scope = AccountSession().capture();
     await _db.sharesDao.softDelete(shareId);
 
     await SyncQueueService().enqueue(
@@ -140,8 +141,8 @@ class SharingRepository {
     if (ConnectivityService().isOnline) {
       try {
         await _dioClient.delete('${ApiConfig.tripShares(tripId)}/$shareId');
-        await _db.sharesDao.hardDelete(shareId);
-        await _db.syncQueueDao.removeForEntity('trip_share', shareId);
+        await scope.write(() => _db.sharesDao.hardDelete(shareId));
+        await scope.write(() => _db.syncQueueDao.removeForEntity('trip_share', shareId));
       } catch (e) {
         AppLogger.warning('Failed to sync share revoke, will retry: $e');
       }
@@ -206,12 +207,13 @@ class SharingRepository {
   // --- Private Methods ---
 
   Future<TripSharesResponse> _fetchTripSharesFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.tripShares(tripId));
       final sharesResponse = TripSharesResponse.fromJson(response.data as Map<String, dynamic>);
 
       for (final share in sharesResponse.shares) {
-        await _db.sharesDao.upsert(tripShareToLocal(share));
+        await scope.write(() => _db.sharesDao.upsert(tripShareToLocal(share)));
       }
 
       return sharesResponse;
@@ -221,13 +223,14 @@ class SharingRepository {
   }
 
   void _refreshTripSharesFromApi(String tripId) async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.tripShares(tripId));
       final sharesResponse = TripSharesResponse.fromJson(response.data as Map<String, dynamic>);
       for (final share in sharesResponse.shares) {
         final existing = await _db.sharesDao.getById(share.id);
         if (existing == null || !existing.isDirty) {
-          await _db.sharesDao.upsert(tripShareToLocal(share));
+          await scope.write(() => _db.sharesDao.upsert(tripShareToLocal(share)));
         }
       }
     } catch (e) {
@@ -236,12 +239,13 @@ class SharingRepository {
   }
 
   Future<SharedTripsResponse> _fetchSharedTripsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.sharedWithMe);
       final sharedResponse = SharedTripsResponse.fromJson(response.data as Map<String, dynamic>);
 
       for (final trip in sharedResponse.trips) {
-        await _db.sharesDao.upsertShared(sharedTripToLocal(trip));
+        await scope.write(() => _db.sharesDao.upsertShared(sharedTripToLocal(trip)));
       }
 
       return sharedResponse;
@@ -251,11 +255,12 @@ class SharingRepository {
   }
 
   void _refreshSharedTripsFromApi() async {
+    final scope = AccountSession().capture();
     try {
       final response = await _dioClient.get(ApiConfig.sharedWithMe);
       final sharedResponse = SharedTripsResponse.fromJson(response.data as Map<String, dynamic>);
       for (final trip in sharedResponse.trips) {
-        await _db.sharesDao.upsertShared(sharedTripToLocal(trip));
+        await scope.write(() => _db.sharesDao.upsertShared(sharedTripToLocal(trip)));
       }
     } catch (e) {
       AppLogger.warning('Background shared trips refresh failed: $e');

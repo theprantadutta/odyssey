@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 import '../../data/models/memory_model.dart';
 import '../providers/memories_provider.dart';
@@ -509,7 +510,11 @@ class _PhotoPageState extends State<_PhotoPage>
           maxScale: 4.0,
           child: Center(
             child: CachedNetworkImage(
-              imageUrl: FileUrlHelper.getAuthenticatedUrl(widget.memory.photoUrl),
+              imageUrl: FileUrlHelper.resolve(widget.memory.photoUrl),
+              // Private files come from our API, which authorizes each request. The
+              // cache manager attaches the current token and refreshes it on a 401;
+              // headers captured at build time go stale within fifteen minutes.
+              cacheManager: AuthenticatedMediaCacheManager.instance,
               fit: BoxFit.contain,
               placeholder: (context, url) => const Center(
                 child: CircularProgressIndicator(

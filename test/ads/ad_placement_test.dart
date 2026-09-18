@@ -10,7 +10,7 @@ PageRoute<void> _route(String? name, {bool fullscreenDialog = false}) {
   return PageRouteBuilder<void>(
     settings: RouteSettings(name: name),
     fullscreenDialog: fullscreenDialog,
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    pageBuilder: (_, _, _) => const SizedBox.shrink(),
   );
 }
 

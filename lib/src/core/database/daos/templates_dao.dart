@@ -44,6 +44,15 @@ class TemplatesDao extends DatabaseAccessor<AppDatabase> with _$TemplatesDaoMixi
     return (select(localTemplates)..where((t) => t.isDirty.equals(true))).get();
   }
 
+  /// Marks a record as carrying unsent changes.
+  ///
+  /// For a record written from a server copy that still has newer local edits
+  /// queued: the write leaves it clean, and a clean row is never pushed.
+  Future<void> markDirty(String id) {
+    return (update(localTemplates)..where((t) => t.id.equals(id)))
+        .write(const LocalTemplatesCompanion(isDirty: Value(true)));
+  }
+
   Future<void> clearDirty(String id) {
     return (update(localTemplates)..where((t) => t.id.equals(id)))
         .write(const LocalTemplatesCompanion(isDirty: Value(false), isLocalOnly: Value(false)));

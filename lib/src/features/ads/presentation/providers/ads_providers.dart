@@ -8,6 +8,7 @@ import '../../ad_constants.dart';
 import '../../application/ad_consent_service.dart';
 import '../../application/app_open_ad_manager.dart';
 import '../../application/interstitial_ad_manager.dart';
+import '../../application/reward_offer_controller.dart';
 import '../../application/rewarded_ad_manager.dart';
 
 part 'ads_providers.g.dart';
@@ -51,21 +52,59 @@ Future<bool> adGracePeriodElapsed(Ref ref) async {
 ///
 /// Ads show only when ALL of these hold:
 ///  * the platform supports AdMob (Android/iOS),
-///  * the user is NOT premium (reuses the existing [isPremiumProvider]),
+///  * the account is **known** not to be premium,
 ///  * ad consent has been resolved/obtained,
 ///  * the new-user grace period has elapsed.
 ///
-/// The moment a user upgrades, [isPremiumProvider] flips and this recomputes to
+/// The moment a user upgrades, the entitlement flips and this recomputes to
 /// `false` — every banner collapses and every manager is disabled, reactively.
+///
+/// The second condition reads [isKnownFreeProvider], not `!isPremium`. Those are
+/// different questions while entitlement is still loading, and the difference is
+/// the bug this closes: `isPremium` is false for a subscriber during startup and
+/// after any failed refresh, so a paying user was shown ads until their status
+/// happened to arrive. Unresolved now means no ads, which is the right way to be
+/// wrong.
 ///
 /// Rewarded ads deliberately do NOT use this gate; see [rewardedAdsEnabled].
 @Riverpod(keepAlive: true)
 bool adsEnabled(Ref ref) {
   if (!AdMobConfig.isSupportedPlatform) return false;
-  final isPremium = ref.watch(isPremiumProvider);
+  final knownFree = ref.watch(isKnownFreeProvider);
   final consentReady = ref.watch(adConsentProvider).value ?? false;
   final graceElapsed = ref.watch(adGracePeriodElapsedProvider).value ?? false;
-  return !isPremium && consentReady && graceElapsed;
+  return knownFree && consentReady && graceElapsed;
+}
+
+/// Whether this user must be offered a way to change their ad consent.
+///
+/// True only where UMP required a consent form in the first place. Everywhere
+/// else the privacy form does nothing, and a settings row that opens nothing is
+/// worse than no row.
+///
+/// Depends on [adConsentProvider] so it resolves after the consent flow has run,
+/// rather than reporting `false` merely because nothing has been asked yet.
+@Riverpod(keepAlive: true)
+bool privacyOptionsRequired(Ref ref) {
+  ref.watch(adConsentProvider);
+  return AdConsentService.instance.privacyOptionsRequired;
+}
+
+/// Opens the UMP privacy form and makes the result take effect immediately.
+///
+/// Recomputing is the part that matters: withdrawing consent has to stop the ads
+/// already on screen. Invalidating [adConsentProvider] re-runs the gates, and the
+/// managers listening to them dispose their loaded ads.
+@Riverpod(keepAlive: true)
+Future<void> Function() showPrivacyOptions(Ref ref) {
+  return () async {
+    await AdConsentService.instance.showPrivacyOptions();
+
+    // Both are invalidated: the consent answer itself, and the requirement,
+    // which can change when a user withdraws.
+    ref.invalidate(adConsentProvider);
+    ref.invalidate(privacyOptionsRequiredProvider);
+  };
 }
 
 /// Gate for the anchored bottom banner. [adsEnabled] plus the format switch.
@@ -87,9 +126,13 @@ bool nativeAdsEnabled(Ref ref) =>
 bool rewardedAdsEnabled(Ref ref) {
   if (!AdMobConfig.isSupportedPlatform) return false;
   if (!AdConstants.rewardedEnabled) return false;
-  final isPremium = ref.watch(isPremiumProvider);
+
+  // Same reasoning as [adsEnabled]: offering a subscriber an ad to unlock what
+  // they already pay for is not merely useless, it advertises that we do not
+  // know who they are.
+  final knownFree = ref.watch(isKnownFreeProvider);
   final consentReady = ref.watch(adConsentProvider).value ?? false;
-  return !isPremium && consentReady;
+  return knownFree && consentReady;
 }
 
 /// Interstitial manager, kept in sync with [adsEnabled] and the format switch.
@@ -133,3 +176,12 @@ RewardedAdManager rewardedAdManager(Ref ref) {
   );
   return manager;
 }
+
+/// Runs a watch-to-unlock attempt: offer first, then ad, then confirmation.
+///
+/// Kept alive so a reward earned on one screen can still be resolved after that
+/// screen is gone - the confirmation arrives through the ad network, on its own
+/// schedule, not the user interface's.
+@Riverpod(keepAlive: true)
+RewardOfferController rewardOfferController(Ref ref) =>
+    RewardOfferController(adManager: ref.watch(rewardedAdManagerProvider));

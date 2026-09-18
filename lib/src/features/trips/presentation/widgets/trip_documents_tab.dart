@@ -13,6 +13,8 @@ import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../documents/presentation/screens/document_upload_screen.dart';
 import '../../../documents/presentation/screens/pdf_viewer_screen.dart';
 import '../../../documents/presentation/widgets/document_list_widget.dart';
+import '../../../../core/network/authenticated_media_fetch.dart';
+import '../../../../core/utils/file_url_helper.dart';
 
 class TripDocumentsTab extends ConsumerWidget {
   final String tripId;
@@ -561,7 +563,8 @@ class _DocumentImageViewerState extends State<_DocumentImageViewer> {
             maxScale: 4.0,
             child: Center(
               child: CachedNetworkImage(
-                imageUrl: widget.images[index],
+                imageUrl: FileUrlHelper.resolve(widget.images[index]),
+                cacheManager: AuthenticatedMediaCacheManager.instance,
                 fit: BoxFit.contain,
                 placeholder: (context, url) => const Center(
                   child: CircularProgressIndicator(

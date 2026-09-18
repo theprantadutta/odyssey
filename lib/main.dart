@@ -20,7 +20,6 @@ import 'src/core/services/app_update_service.dart';
 import 'src/core/services/connectivity_service.dart';
 import 'src/core/services/logger_service.dart';
 import 'src/core/services/notification_service.dart';
-import 'src/core/sync/sync_service.dart';
 import 'src/features/subscription/presentation/providers/purchase_provider.dart';
 
 Future<void> main() async {
@@ -78,7 +77,8 @@ Future<void> main() async {
   // Initialize offline infrastructure
   await DatabaseService().initialize();
   await ConnectivityService().initialize();
-  SyncService().initialize();
+  // The sync session is opened per account once someone is signed in; starting
+  // it here would run unscoped work before we know whose it is.
 
   runApp(
     const ProviderScope(

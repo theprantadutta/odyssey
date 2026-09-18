@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/config/api_config.dart';
+import 'package:uuid/uuid.dart';
+import '../models/upload_outcome.dart';
 import '../models/memory_model.dart';
 
 /// Selected media file with type information
@@ -49,8 +51,14 @@ class MemoryRepository {
 
   /// Upload a new memory with multiple media files (photos and/or videos)
   /// At least caption or one file must be provided
+  /// [operationId] identifies this upload attempt and must stay the same across
+  /// retries. The server resolves a repeat to the memory it already created, so a
+  /// lost response costs one request instead of a second full upload and a
+  /// duplicate memory. Callers that retry must pass the id they used the first
+  /// time; omitting it generates a fresh one, which is right for a new attempt.
   Future<MemoryModel> uploadMemory({
     required String tripId,
+    String? operationId,
     List<SelectedMediaFile>? mediaFiles,
     String? location,
     double? latitude,
@@ -62,6 +70,7 @@ class MemoryRepository {
     try {
       final formData = FormData.fromMap({
         'trip_id': tripId,
+        'operation_id': operationId ?? const Uuid().v4(),
         if (location != null && location.isNotEmpty) 'location': location,
         if (latitude != null) 'latitude': latitude.toString(),
         if (longitude != null) 'longitude': longitude.toString(),
@@ -90,7 +99,15 @@ class MemoryRepository {
 
       return MemoryModel.fromJson(response.data);
     } on DioException catch (e) {
-      throw _handleError(e);
+      // Classified rather than flattened to a string: the caller has to be able
+      // to tell "try again" from "this will never work until you free up space".
+      throw UploadFailure.fromResponse(
+        statusCode: e.response?.statusCode,
+        body: e.response?.data is Map<String, dynamic>
+            ? e.response!.data as Map<String, dynamic>
+            : null,
+        fallbackMessage: _handleError(e),
+      );
     }
   }
 

@@ -28,6 +28,15 @@ class SharesDao extends DatabaseAccessor<AppDatabase> with _$SharesDaoMixin {
     return (select(localTripShares)..where((s) => s.isDirty.equals(true))).get();
   }
 
+  /// Marks a record as carrying unsent changes.
+  ///
+  /// For a record written from a server copy that still has newer local edits
+  /// queued: the write leaves it clean, and a clean row is never pushed.
+  Future<void> markDirty(String id) {
+    return (update(localTripShares)..where((t) => t.id.equals(id)))
+        .write(const LocalTripSharesCompanion(isDirty: Value(true)));
+  }
+
   Future<void> clearDirty(String id) {
     return (update(localTripShares)..where((s) => s.id.equals(id)))
         .write(const LocalTripSharesCompanion(isDirty: Value(false), isLocalOnly: Value(false)));

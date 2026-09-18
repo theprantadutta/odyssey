@@ -1,0 +1,27 @@
+{
+  "total_trips": 3,
+  "completed_trips": 1,
+  "ongoing_trips": 1,
+  "planned_trips": 1,
+  "total_activities": 12,
+  "total_memories": 5,
+  "total_expenses": 4,
+  "total_expense_amount": 150.50,
+  "reporting_currency": "EUR",
+  "expense_totals_by_currency": {
+    "EUR": 150.50,
+    "USD": 100
+  },
+  "unconverted_expense_count": 2,
+  "countries_visited": 0,
+  "destination_data_available": false,
+  "total_days_of_travel": 21,
+  "planned_days_ahead": 7,
+  "trip_tags": [
+    "beach",
+    "family"
+  ],
+  "unique_destinations": [],
+  "activities_by_category": {},
+  "expenses_by_category": {}
+}

@@ -5,6 +5,7 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
+import '../../../subscription/presentation/widgets/temporary_unlock_banner.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/statistics_provider.dart';
 import '../../data/models/statistics_model.dart';
@@ -56,6 +57,8 @@ class YearInReviewScreen extends ConsumerWidget {
           ),
         ],
       ),
+      bottomNavigationBar:
+          const TemporaryUnlockBanner(feature: PremiumFeature.yearInReview),
       body: reviewState.isLoading && reviewState.stats == null
           ? const Center(child: CircularProgressIndicator())
           : reviewState.error != null && reviewState.stats == null
@@ -97,7 +100,8 @@ class YearInReviewScreen extends ConsumerWidget {
         const SizedBox(height: AppSizes.space24),
 
         // Highlights
-        if (stats.longestTripTitle != null || stats.mostActiveMonth != null)
+        if (stats.mostActiveMonth != null ||
+            stats.mostUsedExpenseCategory != null)
           _buildHighlights(context, stats),
 
         // Destinations
@@ -118,11 +122,9 @@ class YearInReviewScreen extends ConsumerWidget {
           _buildExpenses(context, stats),
         ],
 
-        // Achievements
-        if (stats.achievementsEarned > 0) ...[
-          const SizedBox(height: AppSizes.space24),
-          _buildAchievements(context, stats),
-        ],
+        // Achievements are not part of the year-in-review payload, so there is
+        // nothing here to show. The section was reading fields no endpoint
+        // sends.
 
         const SizedBox(height: AppSizes.space32),
       ],
@@ -165,8 +167,15 @@ class YearInReviewScreen extends ConsumerWidget {
             children: [
               _buildHeaderStat(context, '${stats.totalTrips}', 'Trips'),
               _buildHeaderStat(context, '${stats.totalDaysTraveled}', 'Days'),
-              _buildHeaderStat(
-                  context, '${stats.citiesVisited.length}', 'Cities'),
+              // Destinations are not recorded yet, so a "Cities" tile could
+              // only ever read zero - which looks like a measurement rather
+              // than an absence. Shown only once there is something to count.
+              if (stats.destinationDataAvailable)
+                _buildHeaderStat(
+                    context, '${stats.topDestinations.length}', 'Places')
+              else
+                _buildHeaderStat(
+                    context, '${stats.totalActivities}', 'Activities'),
             ],
           ),
         ],
@@ -217,18 +226,22 @@ class YearInReviewScreen extends ConsumerWidget {
           Icons.photo_camera,
           AppColors.lavenderDream,
         ),
+        // Achievement figures are not part of this payload. These two tiles
+        // read fields no endpoint sends, so they rendered zeros that looked
+        // like measurements. Replaced with spending, which the server does
+        // report - named in its own currency rather than a bare number.
         _buildStatTile(
           context,
-          '${stats.achievementsEarned}',
-          'Achievements',
-          Icons.emoji_events,
+          '${stats.totalSpent.toStringAsFixed(0)} ${stats.reportingCurrency}',
+          'Spent',
+          Icons.payments_outlined,
           AppColors.sunnyYellow,
         ),
         _buildStatTile(
           context,
-          '+${stats.newAchievementPoints}',
-          'Points Earned',
-          Icons.stars,
+          '${stats.totalActivities}',
+          'Activities',
+          Icons.hiking,
           AppColors.mintGreen,
         ),
       ],
@@ -273,41 +286,32 @@ class YearInReviewScreen extends ConsumerWidget {
   }
 
   Widget _buildHighlights(BuildContext context, YearInReviewStats stats) {
+    // The longest trip is not part of the payload; it was read from a field no
+    // endpoint sends. What is here is what the server actually reports.
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(AppSizes.space16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.auto_awesome, color: AppColors.sunnyYellow),
-                const SizedBox(width: AppSizes.space8),
-                Text(
-                  'Highlights',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ],
+            Text(
+              'Highlights',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: AppSizes.space16),
-            if (stats.longestTripTitle != null)
-              _buildHighlightRow(
-                context,
-                Icons.flight_takeoff,
-                'Longest Trip',
-                '${stats.longestTripTitle} (${stats.longestTripDays} days)',
-              ),
+            const SizedBox(height: AppSizes.space12),
             if (stats.mostActiveMonth != null)
               _buildHighlightRow(
                 context,
-                Icons.calendar_today,
-                'Most Active Month',
+                Icons.calendar_month,
+                'Busiest month',
                 stats.mostActiveMonth!,
+              ),
+            if (stats.mostUsedExpenseCategory != null)
+              _buildHighlightRow(
+                context,
+                Icons.category_outlined,
+                'Most spent on',
+                stats.mostUsedExpenseCategory!,
               ),
           ],
         ),
@@ -316,38 +320,26 @@ class YearInReviewScreen extends ConsumerWidget {
   }
 
   Widget _buildHighlightRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
+      BuildContext context, IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.space12),
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.space4),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.grey.shade600),
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: AppSizes.space12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
-              ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
-            ],
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          const Spacer(),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
           ),
         ],
       ),
     );
   }
+
 
   Widget _buildDestinations(BuildContext context, YearInReviewStats stats) {
     return Card(
@@ -527,44 +519,6 @@ class YearInReviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAchievements(BuildContext context, YearInReviewStats stats) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.sunnyYellow, AppColors.coralBurst],
-        ),
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.emoji_events, size: 48, color: Colors.white),
-          const SizedBox(width: AppSizes.space16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${stats.achievementsEarned} Achievements Unlocked',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '+${stats.newAchievementPoints} points earned this year',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildPaywallScreen(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;

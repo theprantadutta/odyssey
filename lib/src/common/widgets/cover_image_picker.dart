@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_typography.dart';
+import '../../core/network/authenticated_media_fetch.dart';
 import '../../core/utils/file_url_helper.dart';
 
 /// Mode for cover image selection
@@ -293,7 +294,11 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
               _mode == CoverImageMode.url)
             // URL preview
             CachedNetworkImage(
-              imageUrl: FileUrlHelper.getAuthenticatedUrl(_urlController.text.trim()),
+              imageUrl: FileUrlHelper.resolve(_urlController.text.trim()),
+              // Private files come from our API, which authorizes each request. The
+              // cache manager attaches the current token and refreshes it on a 401;
+              // headers captured at build time go stale within fifteen minutes.
+              cacheManager: AuthenticatedMediaCacheManager.instance,
               fit: BoxFit.cover,
               placeholder: (_, _) => _buildLoadingPlaceholder(),
               errorWidget: (_, _, _) => _buildErrorPlaceholder(),
