@@ -360,3 +360,118 @@ class DotPill extends StatelessWidget {
     );
   }
 }
+
+/// A [SegmentedControl] that scrolls when there are more tabs than fit.
+///
+/// The design draws three equal tabs. Trip detail has seven panels of real
+/// functionality, and collapsing them would mean dropping features, so the
+/// control keeps its shape — track, hairline, filled selected pill — and lets
+/// the row scroll instead. The selected tab is kept in view as it changes.
+class ScrollableSegmentedControl extends StatefulWidget {
+  const ScrollableSegmentedControl({
+    super.key,
+    required this.labels,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> labels;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<ScrollableSegmentedControl> createState() =>
+      _ScrollableSegmentedControlState();
+}
+
+class _ScrollableSegmentedControlState
+    extends State<ScrollableSegmentedControl> {
+  final ScrollController _controller = ScrollController();
+  final Map<String, GlobalKey> _keys = {};
+
+  @override
+  void didUpdateWidget(covariant ScrollableSegmentedControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+    }
+  }
+
+  void _revealSelected() {
+    final key = _keys[widget.selected];
+    final context = key?.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: AppSizes.durationState,
+      curve: AppSizes.curveState,
+      alignment: 0.5,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.space4),
+      decoration: BoxDecoration(
+        color: t.track,
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+        border: Border.all(color: t.hairline),
+      ),
+      child: SingleChildScrollView(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < widget.labels.length; i++) ...[
+              if (i > 0) const SizedBox(width: AppSizes.space4),
+              Builder(
+                builder: (context) {
+                  final label = widget.labels[i];
+                  final on = label == widget.selected;
+                  final key = _keys.putIfAbsent(label, GlobalKey.new);
+
+                  return Pressable(
+                    key: key,
+                    onTap: () => widget.onSelected(label),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                    tint: false,
+                    selected: on,
+                    semanticLabel: label,
+                    child: AnimatedContainer(
+                      duration: AppSizes.durationState,
+                      curve: AppSizes.curveState,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 11,
+                      ),
+                      decoration: BoxDecoration(
+                        color: on ? t.invert : Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          AppSizes.radiusFull,
+                        ),
+                      ),
+                      child: Text(
+                        label,
+                        style: (on ? AppTypography.tab : AppTypography.chip)
+                            .copyWith(color: on ? t.onInvert : t.ink2),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
