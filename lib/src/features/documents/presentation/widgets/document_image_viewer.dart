@@ -1,38 +1,35 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 
-
-/// Simple image viewer for document images
+/// A document's images, full screen.
+///
+/// Dark in both themes for the same reason the photo and PDF viewers are: the
+/// content is a rectangle of someone else's white, and a paper surround leaves
+/// no edge between it and the app.
 class DocumentImageViewer extends StatefulWidget {
-  final List<String> images;
-  final String title;
-
   const DocumentImageViewer({
     super.key,
     required this.images,
     required this.title,
   });
 
+  final List<String> images;
+  final String title;
+
   @override
   State<DocumentImageViewer> createState() => _DocumentImageViewerState();
 }
 
 class _DocumentImageViewerState extends State<DocumentImageViewer> {
-  late PageController _pageController;
+  final PageController _pageController = PageController();
   int _currentPage = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
 
   @override
   void dispose() {
@@ -42,119 +39,83 @@ class _DocumentImageViewerState extends State<DocumentImageViewer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final topInset = MediaQuery.viewPaddingOf(context).top;
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
     return Scaffold(
-      backgroundColor: colorScheme.onSurface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.onSurface,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).pop();
-          },
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-            child: const Icon(
-              Icons.close_rounded,
-              size: 20,
-              color: Colors.white,
+      backgroundColor: AppColors.obsidian,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: widget.images.length,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              itemBuilder: (context, index) => InteractiveViewer(
+                minScale: 1.0,
+                maxScale: 4.0,
+                child: Center(
+                  child: CachedNetworkImage(
+                    imageUrl: FileUrlHelper.resolve(widget.images[index]),
+                    // Private files come from our API, which authorizes each
+                    // request; the manager attaches the current token and
+                    // refreshes it on a 401.
+                    cacheManager: AuthenticatedMediaCacheManager.instance,
+                    fit: BoxFit.contain,
+                    placeholder: (_, _) => const SizedBox.shrink(),
+                    errorWidget: (_, _, _) => Text(
+                      'That page would not load',
+                      style: AppTypography.rowMeta.copyWith(
+                        color: AppColors.onPhoto2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        title: Column(
-          children: [
-            Text(
-              widget.title,
-              style: AppTypography.labelLarge.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (widget.images.length > 1)
-              Text(
-                '${_currentPage + 1} of ${widget.images.length}',
-                style: AppTypography.caption.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
+
+          Positioned(
+            left: AppSizes.screenPadding,
+            right: AppSizes.screenPadding,
+            top: topInset + AppSizes.space14,
+            child: Row(
+              children: [
+                CircleButton(
+                  glyph: '✕',
+                  style: CircleStyle.glass,
+                  onPressed: () => Navigator.of(context).pop(),
+                  semanticLabel: 'Close',
                 ),
-              ),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.images.length,
-        onPageChanged: (index) {
-          setState(() => _currentPage = index);
-        },
-        itemBuilder: (context, index) {
-          return InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Center(
-              child: CachedNetworkImage(
-                imageUrl: FileUrlHelper.resolve(widget.images[index]),
-                cacheManager: AuthenticatedMediaCacheManager.instance,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
+                const SizedBox(width: AppSizes.space12),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.onPhoto,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                errorWidget: (context, url, error) => Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.broken_image_rounded,
-                      size: 64,
-                      color: theme.hintColor,
-                    ),
-                    const SizedBox(height: AppSizes.space16),
-                    Text(
-                      'Failed to load image',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
+              ],
+            ),
+          ),
+
+          if (widget.images.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomInset + AppSizes.space20,
+              child: Center(
+                child: PhotoPill(
+                  label: '${_currentPage + 1} of ${widget.images.length}',
+                  showDot: false,
                 ),
               ),
             ),
-          );
-        },
+        ],
       ),
-      bottomNavigationBar: widget.images.length > 1
-          ? SafeArea(
-              child: Container(
-                padding: const EdgeInsets.all(AppSizes.space16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    widget.images.length,
-                    (index) => Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: index == _currentPage
-                            ? AppColors.lavenderDream
-                            : Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
     );
   }
 }

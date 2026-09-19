@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdfx/pdfx.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:pdfx/pdfx.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
 
-/// Screen for viewing PDF documents
+/// A document, full screen.
+///
+/// Always dark regardless of theme: a PDF page is its own white rectangle, and
+/// a paper-coloured surround would leave no edge between the page and the app.
 class PdfViewerScreen extends StatefulWidget {
-  final String url;
-  final String title;
-
   const PdfViewerScreen({
     super.key,
     required this.url,
     required this.title,
   });
+
+  final String url;
+  final String title;
 
   @override
   State<PdfViewerScreen> createState() => _PdfViewerScreenState();
@@ -55,24 +60,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       // against the trip's current permissions.
       final fileUrl = FileUrlHelper.resolve(widget.url);
 
-      // The authenticated manager, not the default one: it attaches the current
-      // token and refreshes it on a 401. A document opened after a while of
-      // reading locally cached trip data would otherwise be fetched with an
-      // expired token and simply fail to open.
-      final cacheManager = AuthenticatedMediaCacheManager.instance;
-      final fileStream = cacheManager.getFileStream(
+      // The authenticated manager, not the default one: it attaches the
+      // current token and refreshes it on a 401. A document opened after a
+      // while of reading locally cached trip data would otherwise be fetched
+      // with an expired token and simply fail to open.
+      final stream = AuthenticatedMediaCacheManager.instance.getFileStream(
         fileUrl,
         withProgress: true,
       );
 
       String? filePath;
-
-      await for (final result in fileStream) {
+      await for (final result in stream) {
         if (result is DownloadProgress) {
           if (mounted) {
-            setState(() {
-              _downloadProgress = result.progress ?? 0.0;
-            });
+            setState(() => _downloadProgress = result.progress ?? 0.0);
           }
         } else if (result is FileInfo) {
           filePath = result.file.path;
@@ -80,125 +81,119 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         }
       }
 
-      if (filePath == null) {
-        throw Exception('Failed to download PDF');
-      }
+      if (filePath == null) throw Exception('Failed to download PDF');
 
-      // Load PDF document from cached file
       final document = await PdfDocument.openFile(filePath);
       _totalPages = document.pagesCount;
+      _pdfController = PdfControllerPinch(document: Future.value(document));
 
-      _pdfController = PdfControllerPinch(
-        document: Future.value(document),
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Failed to load PDF: $e';
+          _error = 'That document would not open.';
         });
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.charcoal,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
+  void _step(int delta) {
+    HapticFeedback.selectionClick();
+    const duration = Duration(milliseconds: 300);
+    if (delta > 0) {
+      _pdfController?.nextPage(duration: duration, curve: Curves.easeInOut);
+    } else {
+      _pdfController?.previousPage(duration: duration, curve: Curves.easeInOut);
+    }
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppColors.charcoal,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      leading: IconButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).pop();
-        },
-        icon: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-          child: const Icon(
-            Icons.close_rounded,
-            size: 20,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+  @override
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.viewPaddingOf(context).top;
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
+    return Scaffold(
+      backgroundColor: AppColors.obsidian,
+      body: Stack(
         children: [
-          Text(
-            widget.title,
-            style: AppTypography.labelLarge.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+          Positioned.fill(child: _buildBody()),
+
+          Positioned(
+            left: AppSizes.screenPadding,
+            right: AppSizes.screenPadding,
+            top: topInset + AppSizes.space14,
+            child: Row(
+              children: [
+                CircleButton(
+                  glyph: '←',
+                  style: CircleStyle.glass,
+                  onPressed: () => Navigator.of(context).pop(),
+                  semanticLabel: 'Back',
+                ),
+                const SizedBox(width: AppSizes.space12),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.onPhoto,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-          if (_totalPages > 0)
-            Text(
-              'Page $_currentPage of $_totalPages',
-              style: AppTypography.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
+
+          if (_totalPages > 1 && _pdfController != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: bottomInset + AppSizes.space20,
+              child: Center(
+                child: GlassBar(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleButton(
+                        glyph: '←',
+                        size: AppSizes.circleSm,
+                        style: CircleStyle.glass,
+                        onPressed: _currentPage > 1 ? () => _step(-1) : null,
+                        semanticLabel: 'Previous page',
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.space14,
+                        ),
+                        child: Text(
+                          '$_currentPage / $_totalPages',
+                          style: AppTypography.numeral.copyWith(
+                            color: AppColors.onPhoto,
+                          ),
+                        ),
+                      ),
+                      CircleButton(
+                        glyph: '→',
+                        size: AppSizes.circleSm,
+                        style: CircleStyle.glass,
+                        onPressed: _currentPage < _totalPages
+                            ? () => _step(1)
+                            : null,
+                        semanticLabel: 'Next page',
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
       ),
-      centerTitle: true,
-      actions: [
-        if (_pdfController != null) ...[
-          IconButton(
-            onPressed: _currentPage > 1
-                ? () {
-                    HapticFeedback.selectionClick();
-                    _pdfController?.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                : null,
-            icon: Icon(
-              Icons.chevron_left_rounded,
-              color: _currentPage > 1
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.3),
-            ),
-          ),
-          IconButton(
-            onPressed: _currentPage < _totalPages
-                ? () {
-                    HapticFeedback.selectionClick();
-                    _pdfController?.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                : null,
-            icon: Icon(
-              Icons.chevron_right_rounded,
-              color: _currentPage < _totalPages
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.3),
-            ),
-          ),
-        ],
-      ],
     );
   }
 
@@ -208,39 +203,21 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_downloadProgress > 0 && _downloadProgress < 1) ...[
-              SizedBox(
-                width: 120,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                  child: LinearProgressIndicator(
-                    value: _downloadProgress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
-                    minHeight: 6,
-                  ),
-                ),
+            SizedBox(
+              width: 120,
+              child: ProgressTrack(
+                value: _downloadProgress,
+                trackColor: const Color(0x1AFFFFFF),
+                fillColor: AppColors.accent,
               ),
-              const SizedBox(height: AppSizes.space16),
-              Text(
-                'Downloading... ${(_downloadProgress * 100).toInt()}%',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ] else ...[
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
-              ),
-              const SizedBox(height: AppSizes.space16),
-              Text(
-                'Loading PDF...',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
+            ),
+            const SizedBox(height: AppSizes.space14),
+            Text(
+              _downloadProgress > 0 && _downloadProgress < 1
+                  ? 'Fetching · ${(_downloadProgress * 100).round()}%'
+                  : 'Opening…',
+              style: AppTypography.rowMeta.copyWith(color: AppColors.onPhoto2),
+            ),
           ],
         ),
       );
@@ -249,60 +226,26 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     if (_error != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(AppSizes.space20),
+          padding: const EdgeInsets.all(AppSizes.space24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(AppSizes.space16),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  size: 48,
-                  color: AppColors.error,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space16),
-              Text(
-                'Unable to load PDF',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space8),
               Text(
                 _error!,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
                 textAlign: TextAlign.center,
+                style: AppTypography.subtitle.copyWith(
+                  color: AppColors.onPhoto,
+                ),
               ),
-              const SizedBox(height: AppSizes.space20),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _loadPdf();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.space20,
-                    vertical: AppSizes.space12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.lavenderDream,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                  child: Text(
-                    'Try Again',
-                    style: AppTypography.labelLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+              const SizedBox(height: AppSizes.space18),
+              PillButton(
+                label: 'Try again',
+                style: PillStyle.brand,
+                expand: false,
+                onPressed: _loadPdf,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.space24,
+                  vertical: AppSizes.space14,
                 ),
               ),
             ],
@@ -311,34 +254,24 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       );
     }
 
-    if (_pdfController == null) {
-      return const SizedBox.shrink();
-    }
+    if (_pdfController == null) return const SizedBox.shrink();
 
     return PdfViewPinch(
       controller: _pdfController!,
-      onPageChanged: (page) {
-        setState(() {
-          _currentPage = page;
-        });
-      },
+      onPageChanged: (page) => setState(() => _currentPage = page),
       builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
         options: const DefaultBuilderOptions(),
-        documentLoaderBuilder: (_) => const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
-          ),
-        ),
-        pageLoaderBuilder: (_) => const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
-          ),
-        ),
+        documentLoaderBuilder: (_) => const SizedBox.shrink(),
+        pageLoaderBuilder: (_) => const SizedBox.shrink(),
         errorBuilder: (_, error) => Center(
-          child: Text(
-            error.toString(),
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.error,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.space24),
+            child: Text(
+              'That page would not render.',
+              textAlign: TextAlign.center,
+              style: AppTypography.subtitle.copyWith(
+                color: AppColors.onPhoto2,
+              ),
             ),
           ),
         ),
