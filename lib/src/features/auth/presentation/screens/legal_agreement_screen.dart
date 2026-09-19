@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/markdown_style.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../providers/auth_provider.dart';
 
@@ -123,16 +125,14 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
                       borderRadius: BorderRadius.circular(AppSizes.radiusTile),
                       border: Border.all(color: t.hairline),
                     ),
-                    child: SingleChildScrollView(
+                    // The documents ship as Markdown, so they render as
+                    // Markdown — plain text puts '#' and '**' on screen. The
+                    // stylesheet maps every slot onto this design's own type
+                    // roles so the renderer brings no scale of its own.
+                    child: Markdown(
+                      data: body,
                       padding: const EdgeInsets.all(AppSizes.space18),
-                      child: Text(
-                        // Rendered as plain text rather than Markdown. The
-                        // documents are read once, at a gate, and a Markdown
-                        // renderer here would pull its own type scale into a
-                        // screen that has one.
-                        body,
-                        style: AppTypography.body.copyWith(color: t.ink2),
-                      ),
+                      styleSheet: odysseyMarkdownStyle(context),
                     ),
                   ),
           ),

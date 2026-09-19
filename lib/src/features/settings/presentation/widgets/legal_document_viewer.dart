@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/markdown_style.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../common/theme/app_typography.dart';
 
@@ -92,26 +93,7 @@ class _LegalDocumentViewerState extends State<LegalDocumentViewer> {
                       AppSizes.screenPadding,
                       AppSizes.scrollBottom,
                     ),
-                    styleSheet: MarkdownStyleSheet(
-                      h1: AppTypography.statSmall.copyWith(color: t.ink),
-                      h2: AppTypography.sectionHeading.copyWith(color: t.ink),
-                      h3: AppTypography.rowTitle.copyWith(color: t.ink),
-                      p: AppTypography.body.copyWith(color: t.ink2),
-                      listBullet: AppTypography.body.copyWith(color: t.ink2),
-                      strong: AppTypography.body.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: t.ink,
-                      ),
-                      em: AppTypography.body.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: t.ink3,
-                      ),
-                      horizontalRuleDecoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: t.hairline),
-                        ),
-                      ),
-                    ),
+                    styleSheet: odysseyMarkdownStyle(context),
                   ),
           ),
         ],
