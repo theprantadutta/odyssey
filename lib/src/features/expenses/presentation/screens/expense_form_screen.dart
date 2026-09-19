@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
 import '../../../../common/constants/currencies.dart';
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
-import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/form_section_card.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expenses_provider.dart';
 
-/// Screen for creating/editing an expense
+/// Add or edit an expense.
 class ExpenseFormScreen extends ConsumerStatefulWidget {
-  final String tripId;
-  final ExpenseModel? expense;
-
   const ExpenseFormScreen({
     super.key,
     required this.tripId,
     this.expense,
   });
+
+  final String tripId;
+  final ExpenseModel? expense;
 
   @override
   ConsumerState<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
@@ -32,38 +34,28 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _selectedCategory = 'other';
-  String _selectedCurrency = 'USD';
-  DateTime _selectedDate = DateTime.now();
+  ExpenseCategory _category = ExpenseCategory.other;
+  String _currency = 'USD';
+  DateTime _date = DateTime.now();
   bool _isSubmitting = false;
 
   bool get _isEditing => widget.expense != null;
 
-  static const _categories = [
-    ('food', 'Food', '🍔'),
-    ('transport', 'Transport', '🚗'),
-    ('accommodation', 'Accommodation', '🏨'),
-    ('activities', 'Activities', '🎯'),
-    ('shopping', 'Shopping', '🛍️'),
-    ('other', 'Other', '📝'),
-  ];
-
-
   @override
   void initState() {
     super.initState();
-    if (_isEditing) {
-      _titleController.text = widget.expense!.title;
-      _amountController.text = widget.expense!.amount.toStringAsFixed(2);
-      _selectedCategory = widget.expense!.category;
-      _selectedCurrency = widget.expense!.currency;
-      _notesController.text = widget.expense!.notes ?? '';
-      try {
-        _selectedDate = DateTime.parse(widget.expense!.date);
-      } catch (e) {
-        _selectedDate = DateTime.now();
-      }
-    }
+    if (!_isEditing) return;
+
+    final expense = widget.expense!;
+    _titleController.text = expense.title;
+    _amountController.text = expense.amount.toStringAsFixed(2);
+    _notesController.text = expense.notes ?? '';
+    _currency = expense.currency;
+    _category = ExpenseCategory.values.firstWhere(
+      (c) => c.name == expense.category,
+      orElse: () => ExpenseCategory.other,
+    );
+    _date = DateTime.tryParse(expense.date) ?? DateTime.now();
   }
 
   @override
@@ -74,454 +66,46 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  double? get _amount => double.tryParse(_amountController.text.trim());
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSizes.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Amount and Currency
-              _buildAmountSection(),
-              const SizedBox(height: AppSizes.space20),
+  bool get _canSubmit =>
+      _titleController.text.trim().isNotEmpty &&
+      (_amount ?? 0) > 0 &&
+      !_isSubmitting;
 
-              // Title
-              _buildTitleField(),
-              const SizedBox(height: AppSizes.space16),
-
-              // Category
-              _buildCategorySelector(),
-              const SizedBox(height: AppSizes.space16),
-
-              // Date
-              _buildDateField(),
-              const SizedBox(height: AppSizes.space16),
-
-              // Notes
-              _buildNotesField(),
-              const SizedBox(height: AppSizes.space32),
-
-              // Submit button
-              _buildSubmitButton(),
-            ],
-          ),
-        ),
-      ),
-    );
+  String get _submitLabel {
+    if (_titleController.text.trim().isEmpty) return 'Name the expense';
+    if ((_amount ?? 0) <= 0) return 'Enter an amount';
+    return _isEditing ? 'Save changes' : 'Add to the budget';
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return AppBar(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.close_rounded, color: colorScheme.onSurface),
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).pop();
-        },
-      ),
-      title: Text(
-        _isEditing ? 'Edit Expense' : 'Add Expense',
-        style: AppTypography.headlineSmall.copyWith(
-          color: colorScheme.onSurface,
-        ),
-      ),
-      centerTitle: true,
-    );
-  }
-
-  Widget _buildAmountSection() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FormSectionCard(
-      title: 'Amount',
-      icon: Icons.attach_money_rounded,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Currency dropdown
-            Container(
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                border: Border.all(
-                  color: theme.hintColor.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedCurrency,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.space12,
-                  ),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  items: commonCurrencies.map((c) {
-                    return DropdownMenuItem(
-                      value: c.code,
-                      child: Text(
-                        '${c.symbol} ${c.code}',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedCurrency = value);
-                    }
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            // Amount input
-            Expanded(
-              child: TextFormField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: AppTypography.headlineLarge.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-                decoration: InputDecoration(
-                  hintText: '0.00',
-                  hintStyle: AppTypography.headlineLarge.copyWith(
-                    color: theme.hintColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: theme.hintColor.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: theme.hintColor.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: const BorderSide(
-                      color: AppColors.sunnyYellow,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(AppSizes.space16),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Required';
-                  }
-                  final amount = double.tryParse(value);
-                  if (amount == null || amount <= 0) {
-                    return 'Invalid amount';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTitleField() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FormSectionCard(
-      title: 'Title',
-      icon: Icons.title_rounded,
-      children: [
-        TextFormField(
-          controller: _titleController,
-          decoration: InputDecoration(
-            hintText: 'e.g., Lunch at local restaurant',
-            hintStyle: AppTypography.bodyMedium.copyWith(
-              color: theme.hintColor,
-            ),
-            filled: true,
-            fillColor: colorScheme.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: const BorderSide(
-                color: AppColors.sunnyYellow,
-                width: 2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-                width: 2,
-              ),
-            ),
-            contentPadding: const EdgeInsets.all(AppSizes.space16),
-          ),
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurface,
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Title is required';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategorySelector() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FormSectionCard(
-      title: 'Category',
-      icon: Icons.category_rounded,
-      children: [
-        Wrap(
-          spacing: AppSizes.space8,
-          runSpacing: AppSizes.space8,
-          children: _categories.map((cat) {
-            final isSelected = _selectedCategory == cat.$1;
-            return GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedCategory = cat.$1);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space16,
-                  vertical: AppSizes.space12,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.sunnyYellow : colorScheme.surface,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.goldenGlow
-                        : theme.hintColor.withValues(alpha: 0.3),
-                    width: isSelected ? 2 : 1.5,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(cat.$3, style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: AppSizes.space8),
-                    Text(
-                      cat.$2,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateField() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FormSectionCard(
-      title: 'Date',
-      icon: Icons.calendar_today_rounded,
-      children: [
-        GestureDetector(
-          onTap: _selectDate,
-          child: Container(
-            padding: const EdgeInsets.all(AppSizes.space16),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              border: Border.all(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_rounded,
-                  color: AppColors.goldenGlow,
-                  size: 20,
-                ),
-                const SizedBox(width: AppSizes.space12),
-                Text(
-                  DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate),
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotesField() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FormSectionCard(
-      title: 'Notes (Optional)',
-      icon: Icons.notes_rounded,
-      children: [
-        TextFormField(
-          controller: _notesController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: 'Add any additional details...',
-            hintStyle: AppTypography.bodyMedium.copyWith(
-              color: theme.hintColor,
-            ),
-            filled: true,
-            fillColor: colorScheme.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: BorderSide(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              borderSide: const BorderSide(
-                color: AppColors.sunnyYellow,
-                width: 2,
-              ),
-            ),
-            contentPadding: const EdgeInsets.all(AppSizes.space16),
-          ),
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _isSubmitting ? null : _handleSubmit,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.sunnyYellow,
-          foregroundColor: colorScheme.onSurface,
-          disabledBackgroundColor: colorScheme.surfaceContainerHighest,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-        ),
-        child: _isSubmitting
-            ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colorScheme.onSurface,
-                ),
-              )
-            : Text(
-                _isEditing ? 'Save Changes' : 'Add Expense',
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Future<void> _selectDate() async {
-    HapticFeedback.lightImpact();
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final date = await showDatePicker(
+  Future<void> _pickDate() async {
+    HapticFeedback.selectionClick();
+    final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _date,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: theme.copyWith(
-            colorScheme: colorScheme.copyWith(
-              primary: AppColors.sunnyYellow,
-              onPrimary: colorScheme.onSurface,
-              surface: colorScheme.surface,
-              onSurface: colorScheme.onSurface,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      lastDate: DateTime(2100),
     );
+    if (picked != null) setState(() => _date = picked);
+  }
 
-    if (date != null) {
-      setState(() => _selectedDate = date);
-    }
+  Future<void> _pickCurrency() async {
+    final picked =
+        await showOdysseyPicker<({String code, String name, String symbol})>(
+          context: context,
+          title: 'Currency',
+          options: commonCurrencies,
+          labelOf: (c) => '${c.symbol} ${c.code}',
+          selected: commonCurrencies.firstWhere(
+            (c) => c.code == _currency,
+            orElse: () => commonCurrencies.first,
+          ),
+        );
+    if (picked != null && mounted) setState(() => _currency = picked.code);
   }
 
   Future<void> _handleSubmit() async {
-    // Proactive limit check for new expenses only
     if (!_isEditing) {
       final currentCount =
           ref.read(tripExpensesProvider(widget.tripId)).expenses.length;
@@ -531,6 +115,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
         currentCount: currentCount,
       );
       if (!canCreate) return;
+      if (!mounted) return;
     }
 
     if (!_formKey.currentState!.validate()) return;
@@ -540,69 +125,147 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
 
     try {
       final notifier = ref.read(tripExpensesProvider(widget.tripId).notifier);
+      final notes = _notesController.text.trim();
 
       if (_isEditing) {
-        await notifier.updateExpense(
-          widget.expense!.id,
-          {
-            'title': _titleController.text,
-            'amount': double.tryParse(_amountController.text) ?? 0.0,
-            'currency': _selectedCurrency,
-            'category': _selectedCategory,
-            'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-            'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
-          },
-        );
+        await notifier.updateExpense(widget.expense!.id, {
+          'title': _titleController.text.trim(),
+          'amount': _amount ?? 0.0,
+          'currency': _currency,
+          'category': _category.name,
+          'date': DateFormat('yyyy-MM-dd').format(_date),
+          'notes': notes.isEmpty ? null : notes,
+        });
       } else {
         await notifier.createExpense(
           ExpenseRequest(
             tripId: widget.tripId,
-            title: _titleController.text,
-            amount: double.tryParse(_amountController.text) ?? 0.0,
-            currency: _selectedCurrency,
-            category: _selectedCategory,
-            date: DateFormat('yyyy-MM-dd').format(_selectedDate),
-            notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+            title: _titleController.text.trim(),
+            amount: _amount ?? 0.0,
+            currency: _currency,
+            category: _category.name,
+            date: DateFormat('yyyy-MM-dd').format(_date),
+            notes: notes.isEmpty ? null : notes,
           ),
         );
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Text(_isEditing ? 'Expense updated!' : 'Expense added!'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-        Navigator.of(context).pop();
-      }
+      if (!mounted) return;
+      showOdysseyMessage(
+        context,
+        _isEditing ? 'Expense updated.' : 'Expense added.',
+      );
+      Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      showOdysseyMessage(context, 'That did not save: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _handleDelete() async {
+    final confirmed = await showOdysseyConfirm(
+      context: context,
+      title: 'Delete expense',
+      body: ['This removes "${widget.expense!.title}" from the budget.'],
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed || !mounted) return;
+
+    await ref
+        .read(tripExpensesProvider(widget.tripId).notifier)
+        .deleteExpense(widget.expense!.id);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OdysseyFormScreen(
+      formKey: _formKey,
+      onChanged: () => setState(() {}),
+      caption: _isEditing ? 'Editing' : null,
+      title: _isEditing ? 'Edit expense' : 'New expense',
+      submitLabel: _submitLabel,
+      onSubmit: _canSubmit ? _handleSubmit : null,
+      isLoading: _isSubmitting,
+      secondaryLabel: _isEditing ? 'Delete expense' : null,
+      onSecondary: _isEditing ? _handleDelete : null,
+      children: [
+        FieldCard(
+          label: 'What was it',
+          controller: _titleController,
+          hint: 'Dinner at Gion',
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.next,
+          validator: (value) => Validators.required(value, fieldName: 'Title'),
+        ),
+        const SizedBox(height: AppSizes.space12),
+
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: FieldCard(
+                label: 'Amount',
+                controller: _amountController,
+                hint: '0.00',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  final parsed = double.tryParse((value ?? '').trim());
+                  if (parsed == null || parsed <= 0) {
+                    return 'Enter an amount above zero';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(width: AppSizes.space10),
+            Expanded(
+              child: ValueCard(
+                label: 'Currency',
+                value: _currency,
+                onTap: _isSubmitting ? null : _pickCurrency,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.space12),
+
+        ValueCard(
+          label: 'When',
+          value: TripFormat.longDate(_date),
+          onTap: _pickDate,
+        ),
+        const SizedBox(height: AppSizes.space20),
+
+        FormGroup(
+          label: 'Category',
+          child: ChipWrap(
+            labels: ExpenseCategory.values.map((c) => c.displayName).toList(),
+            selected: _category.displayName,
+            onSelected: (label) => setState(() {
+              _category = ExpenseCategory.values.firstWhere(
+                (c) => c.displayName == label,
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: AppSizes.space20),
+
+        FieldCard(
+          label: 'Notes',
+          controller: _notesController,
+          hint: 'Optional',
+          maxLines: 3,
+          minLines: 1,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+      ],
+    );
   }
 }
