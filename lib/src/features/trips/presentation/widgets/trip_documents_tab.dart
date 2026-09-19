@@ -1,319 +1,102 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../documents/data/models/document_model.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
 import '../../../documents/presentation/screens/document_upload_screen.dart';
 import '../../../documents/presentation/screens/pdf_viewer_screen.dart';
-import '../../../documents/presentation/widgets/document_list_widget.dart';
-import '../../../../core/network/authenticated_media_fetch.dart';
-import '../../../../core/utils/file_url_helper.dart';
+import '../../../documents/presentation/widgets/document_image_viewer.dart';
 
-class TripDocumentsTab extends ConsumerWidget {
+/// The travel wallet — screen 3j.
+///
+/// A boarding-pass card for the trip's ticket, filter chips, and file rows
+/// with an extension-labelled thumb.
+class TripDocumentsTab extends ConsumerStatefulWidget {
+  const TripDocumentsTab({super.key, required this.tripId});
+
   final String tripId;
 
-  const TripDocumentsTab({
-    super.key,
-    required this.tripId,
-  });
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final documentsState = ref.watch(tripDocumentsProvider(tripId));
+  ConsumerState<TripDocumentsTab> createState() => _TripDocumentsTabState();
+}
 
-    return Stack(
-      children: [
-        // Main content
-        _buildContent(context, ref, documentsState, theme, colorScheme),
-        // FAB
-        Positioned(
-          right: AppSizes.space16,
-          bottom: AppSizes.space16,
-          child: _buildFAB(context),
-        ),
-      ],
-    );
-  }
+class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
+  static const String _allFilters = 'All';
+  String _filter = _allFilters;
 
-  Widget _buildContent(
-    BuildContext context,
-    WidgetRef ref,
-    DocumentsState state,
-    ThemeData theme,
-    ColorScheme colorScheme,
-  ) {
-    // Loading state
-    if (state.isLoading && state.documents.isEmpty) {
-      return _buildLoadingState(colorScheme);
-    }
+  static String _typeLabel(String raw) => DocumentType.values
+      .firstWhere((t) => t.name == raw, orElse: () => DocumentType.other)
+      .displayName;
 
-    // Error state
-    if (state.error != null && state.documents.isEmpty) {
-      return _buildErrorState(context, ref, state.error!, colorScheme);
-    }
-
-    // Empty state
-    if (state.documents.isEmpty) {
-      return NoDocumentsState(
-        onUpload: () => _navigateToUpload(context),
-      );
-    }
-
-    // Documents list
-    return RefreshIndicator(
-      color: AppColors.lavenderDream,
-      onRefresh: () async {
-        await ref.read(tripDocumentsProvider(tripId).notifier).refresh();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(
-          top: AppSizes.space16,
-          bottom: AppSizes.space80,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Summary header
-            _buildSummaryHeader(state),
-            const SizedBox(height: AppSizes.space16),
-
-            // Documents grouped by type
-            DocumentListWidget(
-              groupedDocuments: state.groupedDocuments,
-              onDocumentTap: (doc) => _openDocument(context, doc),
-              onDocumentDelete: (doc) => _showDeleteDialog(context, ref, doc),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryHeader(DocumentsState state) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.space16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.lavenderDream,
-              AppColors.lavenderDream.withValues(alpha: 0.8),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.lavenderDream.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-              child: const Icon(
-                Icons.folder_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Documents',
-                    style: AppTypography.titleMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space4),
-                  Text(
-                    '${state.total} ${state.total == 1 ? 'document' : 'documents'} • ${state.groupedDocuments.length} ${state.groupedDocuments.length == 1 ? 'category' : 'categories'}',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingState(ColorScheme colorScheme) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const OrbitalLoader(size: 64),
-          const SizedBox(height: 20),
-          Text(
-            'Loading documents...',
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-              ),
-              child: const Icon(
-                Icons.error_outline_rounded,
-                size: 40,
-                color: AppColors.error,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space24),
-            Text(
-              'Failed to load documents',
-              style: AppTypography.headlineMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space8),
-            Text(
-              error,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space24),
-            TextButton.icon(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                ref.read(tripDocumentsProvider(tripId).notifier).refresh();
-              },
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.lavenderDream,
-                backgroundColor: AppColors.lavenderDream.withValues(alpha: 0.1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space20,
-                  vertical: AppSizes.space12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFAB(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        _navigateToUpload(context);
-      },
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.lavenderDream,
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.lavenderDream.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.upload_file_rounded,
-          color: Colors.white,
-          size: 28,
-        ),
-      ),
-    );
-  }
-
-  void _navigateToUpload(BuildContext context) {
+  void _upload() {
+    HapticFeedback.lightImpact();
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: TaskRoutes.settings(TaskRoutes.documentUpload),
-        builder: (context) => DocumentUploadScreen(tripId: tripId),
+        builder: (context) => DocumentUploadScreen(tripId: widget.tripId),
       ),
     );
   }
 
-  Future<void> _openDocument(BuildContext context, DocumentModel document) async {
+  Future<void> _delete(DocumentModel document) async {
+    final confirmed = await showOdysseyConfirm(
+      context: context,
+      title: 'Delete document',
+      body: [
+        'This removes "${document.name}" and any files attached to it. '
+            'It cannot be undone.',
+      ],
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed || !mounted) return;
+
+    await ref
+        .read(tripDocumentsProvider(widget.tripId).notifier)
+        .deleteDocument(document.id);
+  }
+
+  Future<void> _open(DocumentModel document) async {
     HapticFeedback.lightImpact();
 
     final primaryFile = document.primaryFile;
     final url = document.primaryUrl;
 
-    // Check for both null and empty strings
     if (url == null || url.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('No file available for this document. Upload a file to view it.'),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
+      showOdysseyMessage(
+        context,
+        'Nothing attached to this one yet. Upload a file to view it.',
+      );
       return;
     }
 
-    // Check if it's a PDF - open in PDF viewer
     if (primaryFile?.isPdf == true) {
       Navigator.of(context).push(
         MaterialPageRoute(
           settings: TaskRoutes.settings(TaskRoutes.pdfViewer),
-          builder: (context) => PdfViewerScreen(
-            url: url,
+          builder: (context) =>
+              PdfViewerScreen(url: url, title: document.name),
+        ),
+      );
+      return;
+    }
+
+    if (primaryFile?.isImage == true) {
+      final images = document.files.where((f) => f.isImage).toList();
+      if (images.isEmpty) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          settings: TaskRoutes.settings(TaskRoutes.photoViewer),
+          builder: (context) => DocumentImageViewer(
+            images: images.map((f) => f.url).toList(),
             title: document.name,
           ),
         ),
@@ -321,302 +104,301 @@ class TripDocumentsTab extends ConsumerWidget {
       return;
     }
 
-    // Check if it's an image - open in image viewer
-    if (primaryFile?.isImage == true) {
-      _openImageViewer(context, document);
-      return;
-    }
-
-    // For other files, open externally
+    // Anything else goes to whatever the platform has for it.
     final uri = Uri.parse(url);
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Could not open document'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-            ),
-          );
-        }
+      } else if (mounted) {
+        showOdysseyMessage(context, 'Nothing on this device can open that.');
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error opening document: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
+      if (mounted) showOdysseyMessage(context, 'That would not open: $e');
     }
   }
 
-  void _openImageViewer(BuildContext context, DocumentModel document) {
-    // Get all image files from the document
-    final imageFiles = document.files.where((f) => f.isImage).toList();
-    if (imageFiles.isEmpty) return;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final state = ref.watch(tripDocumentsProvider(widget.tripId));
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: TaskRoutes.settings(TaskRoutes.photoViewer),
-        builder: (context) => _DocumentImageViewer(
-          images: imageFiles.map((f) => f.url).toList(),
-          title: document.name,
+    if (state.isLoading && state.documents.isEmpty) {
+      return const Column(
+        children: [
+          Skeleton(width: double.infinity, height: 190, radius: AppSizes.radiusHero),
+          SizedBox(height: AppSizes.space12),
+          Skeleton.row(),
+        ],
+      );
+    }
+
+    if (state.error != null && state.documents.isEmpty) {
+      return OdysseyErrorState(
+        message: state.error!,
+        onRetry: () =>
+            ref.read(tripDocumentsProvider(widget.tripId).notifier).refresh(),
+      );
+    }
+
+    if (state.documents.isEmpty) {
+      return OdysseyEmptyState(
+        message: 'The wallet is empty. Tickets and bookings live here.',
+        actionLabel: 'Upload a document',
+        onAction: _upload,
+      );
+    }
+
+    // The boarding pass is the trip's ticket, if it has one. It is the one
+    // document the design gives its own card, because it is the one you open
+    // standing at a gate.
+    final ticket = state.documents
+        .where((d) => d.type == DocumentType.ticket.name)
+        .firstOrNull;
+
+    final types = <String>{
+      _allFilters,
+      ...state.documents.map((d) => _typeLabel(d.type)),
+    }.toList();
+
+    final visible = _filter == _allFilters
+        ? state.documents
+        : state.documents
+              .where((d) => _typeLabel(d.type) == _filter)
+              .toList();
+
+    final offline = state.documents.where((d) => d.files.isNotEmpty).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Travel wallet',
+          style: AppTypography.screenTitle.copyWith(color: t.ink),
+        ),
+        const SizedBox(height: AppSizes.space8),
+        Text(
+          '${state.documents.length} '
+          '${state.documents.length == 1 ? 'file' : 'files'} · '
+          '$offline available offline',
+          style: AppTypography.meta.copyWith(color: t.ink3),
+        ),
+        const SizedBox(height: AppSizes.space18),
+
+        if (ticket != null) ...[
+          _BoardingPassCard(document: ticket, onTap: () => _open(ticket)),
+          const SizedBox(height: AppSizes.space18),
+        ],
+
+        if (types.length > 2) ...[
+          ChipRow(
+            labels: types,
+            selected: _filter,
+            activeStyle: ChipActiveStyle.action,
+            onSelected: (value) => setState(() => _filter = value),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: AppSizes.space16),
+        ],
+
+        for (var i = 0; i < visible.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSizes.space10),
+          _DocumentRow(
+            document: visible[i],
+            onTap: () => _open(visible[i]),
+            onLongPress: () => _delete(visible[i]),
+          ),
+        ],
+
+        const SizedBox(height: AppSizes.space14),
+        PillButton(
+          label: 'Upload a document',
+          style: PillStyle.dashed,
+          onPressed: _upload,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ],
+    );
+  }
+}
+
+/// The ticket, given its own card: the boarding-pass gradient, the route set
+/// large, and a barcode strip.
+class _BoardingPassCard extends StatelessWidget {
+  const _BoardingPassCard({required this.document, required this.onTap});
+
+  final DocumentModel document;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusHero),
+      tint: false,
+      child: PhotoSurface(
+        gradient: AppColors.boardingPassGradient,
+        radius: AppSizes.radiusHero,
+        scrim: false,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.space20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: EyebrowLabel(
+                      'Boarding pass',
+                      color: AppColors.onPhoto3,
+                    ),
+                  ),
+                  if (document.files.isNotEmpty) const OdysseyBadge('SAVED'),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space12),
+              Text(
+                document.name,
+                style: AppTypography.route.copyWith(color: AppColors.onPhoto),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (document.notes != null && document.notes!.isNotEmpty) ...[
+                const SizedBox(height: AppSizes.space10),
+                Text(
+                  document.notes!,
+                  style: AppTypography.meta.copyWith(
+                    color: AppColors.onPhoto2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const SizedBox(height: AppSizes.space20),
+              // A decorative strip, not a scannable code. The real barcode
+              // lives inside the attached file, which is what tapping opens.
+              const _BarcodeStrip(),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  void _showDeleteDialog(
-    BuildContext context,
-    WidgetRef ref,
-    DocumentModel document,
-  ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Delete Document',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${document.name}"? This action cannot be undone.',
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.onSurfaceVariant,
+class _BarcodeStrip extends StatelessWidget {
+  const _BarcodeStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    // A fixed pattern rather than a random one, so the card does not reshuffle
+    // itself on every rebuild.
+    const opacities = [1.0, 0.7, 0.35, 1.0, 0.35, 0.7, 1.0, 0.35, 1.0, 0.7];
+
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          for (var i = 0; i < 42; i++) ...[
+            if (i > 0) const SizedBox(width: 2.5),
+            Expanded(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.onPhoto.withValues(
+                    alpha: opacities[i % opacities.length] * 0.85,
+                  ),
+                ),
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              HapticFeedback.mediumImpact();
-              Navigator.of(context).pop();
-              try {
-                await ref
-                    .read(tripDocumentsProvider(tripId).notifier)
-                    .deleteDocument(document.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.white),
-                          SizedBox(width: AppSizes.space12),
-                          Text('Document deleted'),
-                        ],
-                      ),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to delete: $e'),
-                      backgroundColor: AppColors.error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(
-              'Delete',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.error,
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Simple image viewer for document images
-class _DocumentImageViewer extends StatefulWidget {
-  final List<String> images;
-  final String title;
-
-  const _DocumentImageViewer({
-    required this.images,
-    required this.title,
+/// One file: an extension-labelled thumb, the name, and its format and size.
+class _DocumentRow extends StatelessWidget {
+  const _DocumentRow({
+    required this.document,
+    required this.onTap,
+    required this.onLongPress,
   });
 
-  @override
-  State<_DocumentImageViewer> createState() => _DocumentImageViewerState();
-}
-
-class _DocumentImageViewerState extends State<_DocumentImageViewer> {
-  late PageController _pageController;
-  int _currentPage = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  final DocumentModel document;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Scaffold(
-      backgroundColor: colorScheme.onSurface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.onSurface,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).pop();
-          },
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-            child: const Icon(
-              Icons.close_rounded,
-              size: 20,
-              color: Colors.white,
-            ),
-          ),
+    final t = context.odyssey;
+    final file = document.primaryFile;
+
+    final meta = [
+      _TripDocumentsTabState._typeLabel(document.type),
+      if (file != null && file.formattedSize.isNotEmpty) file.formattedSize,
+      if (document.notes != null && document.notes!.isNotEmpty) document.notes!,
+    ].join(' · ');
+
+    return Pressable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: t.card,
+          borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+          border: Border.all(color: t.hairline),
         ),
-        title: Column(
+        child: Row(
           children: [
-            Text(
-              widget.title,
-              style: AppTypography.labelLarge.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+            Container(
+              width: 42,
+              height: 52,
+              alignment: Alignment.bottomCenter,
+              padding: const EdgeInsets.only(bottom: 6),
+              decoration: BoxDecoration(
+                color: t.cardAlt,
+                borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+                border: Border.all(color: t.hairline),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              child: Text(
+                (file?.extension ?? '').toUpperCase(),
+                style: AppTypography.fileExt.copyWith(color: t.ink3),
+              ),
             ),
-            if (widget.images.length > 1)
-              Text(
-                '${_currentPage + 1} of ${widget.images.length}',
-                style: AppTypography.caption.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
+            const SizedBox(width: AppSizes.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    document.name,
+                    style: AppTypography.rowTitle.copyWith(color: t.ink),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(width: AppSizes.space8),
+            Text(
+              '→',
+              style: AppTypography.glyph.copyWith(fontSize: 16, color: t.ink3),
+            ),
           ],
         ),
-        centerTitle: true,
       ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.images.length,
-        onPageChanged: (index) {
-          setState(() => _currentPage = index);
-        },
-        itemBuilder: (context, index) {
-          return InteractiveViewer(
-            minScale: 0.5,
-            maxScale: 4.0,
-            child: Center(
-              child: CachedNetworkImage(
-                imageUrl: FileUrlHelper.resolve(widget.images[index]),
-                cacheManager: AuthenticatedMediaCacheManager.instance,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.lavenderDream),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.broken_image_rounded,
-                      size: 64,
-                      color: theme.hintColor,
-                    ),
-                    const SizedBox(height: AppSizes.space16),
-                    Text(
-                      'Failed to load image',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: widget.images.length > 1
-          ? SafeArea(
-              child: Container(
-                padding: const EdgeInsets.all(AppSizes.space16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    widget.images.length,
-                    (index) => Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: index == _currentPage
-                            ? AppColors.lavenderDream
-                            : Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : null,
     );
   }
 }
