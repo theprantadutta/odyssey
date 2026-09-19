@@ -245,11 +245,37 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
 
     final detail = Scaffold(
       backgroundColor: t.canvas,
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(child: _buildCover(trip)),
-          SliverToBoxAdapter(child: _buildSheet(trip)),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(child: _buildCover(trip)),
+              SliverToBoxAdapter(child: _buildSheet(trip)),
+            ],
+          ),
+          // Once the cover scrolls away the sheet runs under the status bar,
+          // and its headings would collide with the clock. The cover's own
+          // scrim covers the same ground while it is still on screen.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedBuilder(
+              animation: _scrollController,
+              builder: (context, child) {
+                final offset = _scrollController.hasClients
+                    ? _scrollController.offset
+                    : 0.0;
+                // Fades in over the last 80px before the sheet reaches the top.
+                final progress =
+                    ((offset - (AppSizes.coverHeight - 160)) / 80)
+                        .clamp(0.0, 1.0);
+                return Opacity(opacity: progress, child: child!);
+              },
+              child: StatusBarFade(color: t.canvas),
+            ),
+          ),
         ],
       ),
     );

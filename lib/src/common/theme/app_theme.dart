@@ -414,6 +414,15 @@ class AppTheme {
 
       splashFactory: InkSparkle.splashFactory,
 
+      // No scrollbars. "Chrome reduced to floating glass pills" leaves no room
+      // for a grey rail down the edge of every screen, and on a phone the
+      // gesture already tells the user where they are.
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbVisibility: WidgetStatePropertyAll(false),
+        thickness: WidgetStatePropertyAll(0),
+        thumbColor: WidgetStatePropertyAll(Colors.transparent),
+      ),
+
       // A quiet horizontal fade on every platform. Cupertino's slide builder
       // no longer ships in `package:flutter/material.dart` (Material and
       // Cupertino are being split into standalone packages), and the design's

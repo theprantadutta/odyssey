@@ -226,6 +226,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '${AppRoutes.tripDetail}/:id',
+        builder: (context, state) {
+          final tripId = state.pathParameters['id']!;
+          final trip = state.extra as TripModel?;
+          return TripDetailScreen(tripId: tripId, initialTrip: trip);
+        },
+        routes: [
+          GoRoute(
+            path: 'shares',
+            builder: (context, state) {
+              final tripId = state.pathParameters['id']!;
+              final tripTitle = state.uri.queryParameters['title'] ?? 'Trip';
+              return ManageSharesScreen(
+                tripId: tripId,
+                tripTitle: tripTitle,
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
         path: AppRoutes.sharedTrips,
         builder: (context, state) => const SharedTripsScreen(),
       ),
@@ -277,40 +298,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Trips — the full list, with trip detail pushed on top of it so
-          // going back from a trip lands on the list rather than on Home.
+          // Trips — the full list. Trip detail is deliberately *not* nested
+          // here: the design draws it full screen with its own back button,
+          // and keeping it in the shell put the floating nav over its content
+          // while leaving whichever tab launched it lit.
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: AppRoutes.trips,
                 builder: (context, state) => const TripsDashboardScreen(),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    builder: (context, state) {
-                      final tripId = state.pathParameters['id']!;
-                      final trip = state.extra as TripModel?;
-                      return TripDetailScreen(
-                        tripId: tripId,
-                        initialTrip: trip,
-                      );
-                    },
-                    routes: [
-                      GoRoute(
-                        path: 'shares',
-                        builder: (context, state) {
-                          final tripId = state.pathParameters['id']!;
-                          final tripTitle =
-                              state.uri.queryParameters['title'] ?? 'Trip';
-                          return ManageSharesScreen(
-                            tripId: tripId,
-                            tripTitle: tripTitle,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
               ),
             ],
           ),

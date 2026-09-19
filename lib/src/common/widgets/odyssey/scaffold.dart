@@ -23,6 +23,7 @@ class OdysseyScaffold extends StatelessWidget {
     this.extendBehindNav = false,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
+    this.topFade = true,
   });
 
   final Widget body;
@@ -34,6 +35,18 @@ class OdysseyScaffold extends StatelessWidget {
   final Color? backgroundColor;
   final bool resizeToAvoidBottomInset;
 
+  /// Fades the canvas in behind the status bar.
+  ///
+  /// Content starts *under* the overlaid status bar in this design, which is
+  /// fine at rest — the first row sits at 62px, well clear of it. It stops
+  /// being fine once the screen scrolls: without this, headings run straight
+  /// under the clock. The fade is the same device the sticky footer uses at
+  /// the other end.
+  ///
+  /// Turn it off for a screen that puts a photograph under the status bar on
+  /// purpose, where the scrim is already doing this job.
+  final bool topFade;
+
   @override
   Widget build(BuildContext context) {
     final t = context.odyssey;
@@ -43,8 +56,49 @@ class OdysseyScaffold extends StatelessWidget {
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       extendBody: extendBehindNav,
       extendBodyBehindAppBar: true,
-      body: body,
+      body: topFade
+          ? Stack(
+              children: [
+                body,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: StatusBarFade(color: backgroundColor ?? t.canvas),
+                ),
+              ],
+            )
+          : body,
       bottomNavigationBar: bottomBar,
+    );
+  }
+}
+
+/// The canvas fading out from under the status bar, so scrolling content does
+/// not collide with the clock on a design that has no app bars.
+class StatusBarFade extends StatelessWidget {
+  const StatusBarFade({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.viewPaddingOf(context).top + AppSizes.space14;
+
+    return IgnorePointer(
+      child: SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [color, color, color.withValues(alpha: 0)],
+              stops: const [0, 0.55, 1],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

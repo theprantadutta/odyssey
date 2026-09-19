@@ -158,7 +158,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
             Positioned(
               left: 14,
               right: 14,
-              bottom: 16 + MediaQuery.viewPaddingOf(context).bottom,
+              bottom: AppSizes.space12 + navBarHeight(context),
               child: _SelectedPinCard(
                 trip: _selected!,
                 onOpen: () => context.push(
@@ -172,7 +172,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
             Positioned(
               left: AppSizes.screenPadding,
               right: AppSizes.screenPadding,
-              bottom: 40,
+              bottom: AppSizes.space12 + navBarHeight(context),
               child: GlassBar(
                 radius: AppSizes.radiusCard,
                 padding: const EdgeInsets.all(AppSizes.space16),
@@ -187,7 +187,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
             Positioned(
               left: AppSizes.screenPadding,
               right: AppSizes.screenPadding,
-              bottom: 40,
+              bottom: AppSizes.space12 + navBarHeight(context),
               child: GlassBar(
                 radius: AppSizes.radiusCard,
                 padding: const EdgeInsets.all(AppSizes.space18),
@@ -231,7 +231,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
           Positioned(
             left: AppSizes.screenPadding,
             right: AppSizes.screenPadding,
-            bottom: 44 + MediaQuery.viewPaddingOf(context).bottom,
+            bottom: AppSizes.space16 + navBarHeight(context),
             child: OdysseyCard(
               radius: AppSizes.radiusHero,
               padding: const EdgeInsets.all(AppSizes.space20),
@@ -259,15 +259,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
               ),
             ),
           ),
-          Positioned(
-            left: AppSizes.screenPadding,
-            top: 58,
-            child: CircleButton(
-              glyph: '←',
-              onPressed: () => context.pop(),
-              semanticLabel: 'Back',
-            ),
-          ),
+          // No back button: this is a tab root, so there is nothing to pop.
         ],
       ),
     );

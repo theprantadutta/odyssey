@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/utils/trip_format.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../data/models/trip_model.dart';
@@ -138,8 +137,6 @@ class TripStatusChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.odyssey;
-
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.screenPadding),
@@ -158,13 +155,6 @@ class TripStatusChips extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(width: AppSizes.space8),
-          // The count sits outside the chips so the row still reads as a
-          // single-select control rather than a set of badges.
-          Text(
-            '${counts[selected] ?? 0}',
-            style: AppTypography.caption.copyWith(color: t.ink3),
-          ),
         ],
       ),
     );

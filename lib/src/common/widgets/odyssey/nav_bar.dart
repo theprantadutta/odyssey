@@ -163,3 +163,17 @@ double navScrollSpacer(BuildContext context) {
   final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
   return AppSizes.navSpacer + bottomInset;
 }
+
+/// How tall the floating nav actually is, including its own bottom padding.
+///
+/// Use this to pin something above the nav — a map's selected-pin card, a
+/// paywall on a tab root — rather than guessing at a constant.
+double navBarHeight(BuildContext context) {
+  final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+  // 7px bar padding + 12px item padding, top and bottom, around a 13px mark.
+  const bar = 7 + 12 + 13 + 12 + 7;
+  final outer = bottomInset > 0
+      ? AppSizes.space10 + bottomInset
+      : AppSizes.navBottomInset;
+  return bar + outer;
+}
