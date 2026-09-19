@@ -223,9 +223,7 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
                 ],
                 _TemplateRow(
                   template: templates[i],
-                  onTap: () =>
-                      _openDetail(templates[i], owned: !discovering),
-                  onUse: () => _use(templates[i]),
+                  onTap: () => _openDetail(templates[i], owned: !discovering),
                 ),
                 const SizedBox(height: AppSizes.space10),
               ],
@@ -264,16 +262,16 @@ class _CategoryChips extends StatelessWidget {
   }
 }
 
+/// One template in the list.
+///
+/// Deliberately has no filled button. A lime call to action on every row is a
+/// wall of accent, and a one-accent system spends its force that way — the
+/// emphatic action lives on the detail sheet this row opens.
 class _TemplateRow extends StatelessWidget {
-  const _TemplateRow({
-    required this.template,
-    required this.onTap,
-    required this.onUse,
-  });
+  const _TemplateRow({required this.template, required this.onTap});
 
   final TripTemplateModel template;
   final VoidCallback onTap;
-  final VoidCallback onUse;
 
   @override
   Widget build(BuildContext context) {
@@ -345,12 +343,6 @@ class _TemplateRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: AppSizes.space14),
-            PillButton(
-              label: 'Build a trip from this',
-              onPressed: onUse,
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
-            ),
           ],
         ),
       ),

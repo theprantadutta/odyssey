@@ -156,13 +156,14 @@ class SettingsNavRow extends StatelessWidget {
               const SizedBox(width: AppSizes.space10),
               trailing!,
             ] else if (showChevron && onTap != null) ...[
-              const SizedBox(width: AppSizes.space8),
-              Text(
-                '›',
-                style: AppTypography.glyph.copyWith(
-                  fontSize: 15,
-                  color: t.ink3,
-                ),
+              const SizedBox(width: AppSizes.space6),
+              // An icon rather than the design's '›' glyph: Space Grotesk has
+              // no U+203A and fell back to a chunky '>'. The handoff says to
+              // substitute the codebase's icon set at the same size.
+              Icon(
+                Icons.chevron_right_rounded,
+                size: AppSizes.iconMd,
+                color: t.ink3,
               ),
             ],
           ],

@@ -45,6 +45,10 @@ class _StatisticsDashboardScreenState
     final t = context.odyssey;
     final state = ref.watch(statisticsProvider);
 
+    // Behind the paywall the range control switches between two sets of
+    // numbers the user cannot see, so it is not offered.
+    final gated = state.isPremiumRequired && state.statistics == null;
+
     return Scaffold(
       backgroundColor: t.canvas,
       body: RefreshIndicator(
@@ -71,15 +75,16 @@ class _StatisticsDashboardScreenState
                     style: AppTypography.screenTitle.copyWith(color: t.ink),
                   ),
                 ),
-                SegmentedControl(
-                  labels: const [_thisYear, _allTime],
-                  selected: _range,
-                  expand: false,
-                  onSelected: (value) {
-                    HapticFeedback.selectionClick();
-                    setState(() => _range = value);
-                  },
-                ),
+                if (!gated)
+                  SegmentedControl(
+                    labels: const [_thisYear, _allTime],
+                    selected: _range,
+                    expand: false,
+                    onSelected: (value) {
+                      HapticFeedback.selectionClick();
+                      setState(() => _range = value);
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: AppSizes.space20),
@@ -96,7 +101,7 @@ class _StatisticsDashboardScreenState
                   Skeleton.row(),
                 ],
               )
-            else if (state.isPremiumRequired && state.statistics == null)
+            else if (gated)
               _PremiumGate(
                 feature: state.premiumFeatureName ?? 'Full statistics',
                 onTap: () => context.push(AppRoutes.subscription),
