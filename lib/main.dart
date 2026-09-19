@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -23,7 +24,11 @@ import 'src/core/services/notification_service.dart';
 import 'src/features/subscription/presentation/providers/purchase_provider.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Hold the native splash until the Dart splash screen is on screen and can
+  // take over without a seam. It lifts in SplashScreen.initState.
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
