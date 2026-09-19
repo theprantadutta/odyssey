@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/widgets/temporary_unlock_banner.dart';
-import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../providers/map_provider.dart';
-import '../widgets/trip_marker.dart';
 
+/// Map & memories — screen 3g.
+///
+/// The map fills the screen with floating glass controls over it; selecting a
+/// pin swaps the card at the foot. Pins are 15px idle and 22px lime when
+/// selected, with the one shadow this system allows.
 class WorldMapScreen extends ConsumerStatefulWidget {
   const WorldMapScreen({super.key});
 
@@ -24,500 +31,436 @@ class WorldMapScreen extends ConsumerStatefulWidget {
 
 class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   final MapController _mapController = MapController();
-  TripLocation? _selectedTrip;
-  bool _showStats = true;
+  TripLocation? _selected;
+
+  /// The dark and light tile sets. OpenStreetMap's standard raster tiles are
+  /// light, so the dark theme inverts and desaturates them rather than pulling
+  /// in a second tile provider — which keeps attribution and caching the same.
+  static const String _tileUrl =
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  void _zoom(double delta) {
+    HapticFeedback.selectionClick();
+    final camera = _mapController.camera;
+    _mapController.move(camera.center, camera.zoom + delta);
+  }
+
+  void _fitToTrips(List<TripLocation> locations) {
+    final located = locations.where((l) => l.hasLocation).toList();
+    if (located.isEmpty) return;
+
+    HapticFeedback.selectionClick();
+    _mapController.fitCamera(
+      CameraFit.coordinates(
+        coordinates: located
+            .map((l) => LatLng(l.latitude!, l.longitude!))
+            .toList(),
+        padding: const EdgeInsets.all(64),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final mapState = ref.watch(mapTripsProvider);
-    final hasAccess =
-        ref.watch(featureAccessProvider(PremiumFeature.worldMap));
+    final t = context.odyssey;
+    final state = ref.watch(mapTripsProvider);
+    final hasAccess = ref.watch(featureAccessProvider(PremiumFeature.worldMap));
 
-    // Show paywall for users without access (free + no active rewarded unlock).
-    if (!hasAccess) {
-      return _buildPaywallScreen(context);
-    }
+    if (!hasAccess) return _buildPaywall(context);
+
+    final located = state.tripLocations.where((l) => l.hasLocation).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('World Map'),
-        actions: [
-          IconButton(
-            icon: Icon(_showStats ? Icons.info : Icons.info_outline),
-            onPressed: () {
-              setState(() {
-                _showStats = !_showStats;
-              });
-            },
-            tooltip: 'Toggle stats',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.read(mapTripsProvider.notifier).refresh();
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      // A temporary unlock looks exactly like Premium until the day it stops
+      backgroundColor: t.canvas,
+      extendBody: true,
+      // A temporary unlock looks exactly like Pro until the day it stops
       // working. Saying how long is left turns "it broke" into "it ran out".
       bottomNavigationBar:
           const TemporaryUnlockBanner(feature: PremiumFeature.worldMap),
       body: Stack(
         children: [
-          // Map
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: const LatLng(20.0, 0.0),
-              initialZoom: 2.0,
-              minZoom: 1.0,
-              maxZoom: 18.0,
-              onTap: (tapPosition, point) {
-                setState(() {
-                  _selectedTrip = null;
-                });
-              },
+          Positioned.fill(
+            child: _MapCanvas(
+              controller: _mapController,
+              tileUrl: _tileUrl,
+              locations: located,
+              selected: _selected,
+              onSelect: (trip) => setState(() => _selected = trip),
+              onClearSelection: () => setState(() => _selected = null),
             ),
-            children: [
-              // OpenStreetMap tiles
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.odyssey.app',
-              ),
-              // Required by the OpenStreetMap licence: the tile data is ODbL and
-              // must be credited wherever it is shown.
-              RichAttributionWidget(
-                showFlutterMapAttribution: false,
-                attributions: [
-                  TextSourceAttribution(
-                    'OpenStreetMap contributors',
-                    onTap: () => launchUrl(
-                      Uri.parse('https://www.openstreetmap.org/copyright'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                ],
-              ),
-              // Trip markers
-              MarkerLayer(
-                markers: _buildMarkers(mapState),
-              ),
-            ],
           ),
 
-          // Loading indicator
-          if (mapState.isLoading)
-            const Positioned(
-              top: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSizes.space12),
+          // --- header ---
+          Positioned(
+            left: AppSizes.screenPadding,
+            right: AppSizes.screenPadding,
+            top: 58,
+            child: Row(
+              children: [
+                Expanded(
+                  child: GlassBar(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 11,
+                    ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                        Expanded(
+                          child: Text(
+                            'Where you have been',
+                            style: AppTypography.caption.copyWith(color: t.ink),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        SizedBox(width: AppSizes.space12),
-                        Text('Loading trips...'),
+                        Text(
+                          '${located.length}',
+                          style: AppTypography.numeral.copyWith(color: t.ink3),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
-
-          // Error message
-          if (mapState.error != null)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Card(
-                color: Colors.red.shade100,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSizes.space12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error, color: Colors.red),
-                      const SizedBox(width: AppSizes.space8),
-                      Expanded(
-                        child: Text(
-                          mapState.error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          ref.read(mapTripsProvider.notifier).refresh();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Stats overlay
-          if (_showStats && !mapState.isLoading)
-            Positioned(
-              top: 16,
-              left: 16,
-              child: MapStatsOverlay(mapState: mapState),
-            ),
-
-          // Selected trip info card
-          if (_selectedTrip != null)
-            Positioned(
-              bottom: 24,
-              left: 16,
-              right: 16,
-              child: Center(
-                child: TripInfoCard(
-                  trip: _selectedTrip!,
-                  onTap: () {
-                    context.push('${AppRoutes.tripDetail}/${_selectedTrip!.tripId}');
-                  },
-                  onClose: () {
-                    setState(() {
-                      _selectedTrip = null;
-                    });
-                  },
-                ),
-              ),
-            ),
-
-          // Empty state
-          //
-          // Keyed on `mappable`, not on the trip list: a user with ten trips and
-          // no recorded coordinates has an empty map, and telling them "no trips
-          // yet" would be wrong twice over. The message below distinguishes the
-          // two cases.
-          if (!mapState.isLoading && mapState.mappable.isEmpty)
-            Center(
-              child: Card(
-                margin: const EdgeInsets.all(AppSizes.space24),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSizes.space24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.map_outlined,
-                        size: 64,
-                        color: theme.hintColor,
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-                      Text(
-                        mapState.unmapped.isEmpty
-                            ? 'No trips on the map yet'
-                            : 'No locations recorded yet',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSizes.space8),
-                      Text(
-                        mapState.unmapped.isEmpty
-                            ? 'Trips appear here once their memories have a location'
-                            : '${mapState.unmapped.length} '
-                                '${mapState.unmapped.length == 1 ? 'trip has' : 'trips have'} '
-                                'no location yet. Add a photo with a place to one '
-                                'of its memories and it will appear here.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.hintColor,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-                      if (mapState.unmapped.isEmpty)
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            context.push(AppRoutes.createTrip);
-                          },
-                          icon: const Icon(Icons.add),
-                          label: const Text('Create Trip'),
-                        )
-                      else
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            context.push('${AppRoutes.tripDetail}/'
-                                '${mapState.unmapped.first.tripId}');
-                          },
-                          icon: const Icon(Icons.add_location_alt_outlined),
-                          label: const Text('Add a location'),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Zoom controls
-          Positioned(
-            right: 16,
-            bottom: _selectedTrip != null ? 140 : 24,
-            child: Column(
-              children: [
-                _buildZoomButton(Icons.add, () {
-                  final currentZoom = _mapController.camera.zoom;
-                  _mapController.move(
-                    _mapController.camera.center,
-                    currentZoom + 1,
-                  );
-                }),
-                const SizedBox(height: AppSizes.space8),
-                _buildZoomButton(Icons.remove, () {
-                  final currentZoom = _mapController.camera.zoom;
-                  _mapController.move(
-                    _mapController.camera.center,
-                    currentZoom - 1,
-                  );
-                }),
-                const SizedBox(height: AppSizes.space16),
-                _buildZoomButton(Icons.my_location, () {
-                  // Reset to world view
-                  _mapController.move(const LatLng(20.0, 0.0), 2.0);
-                }),
               ],
             ),
           ),
 
-          // Legend
+          // --- controls ---
           Positioned(
-            bottom: _selectedTrip != null ? 140 : 24,
-            left: 16,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSizes.space8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLegendItem('Planned', AppColors.sunnyYellow),
-                    _buildLegendItem('Ongoing', AppColors.oceanTeal),
-                    _buildLegendItem('Completed', AppColors.mintGreen),
-                  ],
+            right: 18,
+            top: 120,
+            child: Column(
+              children: [
+                SquareButton(
+                  glyph: '+',
+                  onPressed: () => _zoom(1),
+                  semanticLabel: 'Zoom in',
+                ),
+                const SizedBox(height: AppSizes.space8),
+                SquareButton(
+                  glyph: '−',
+                  onPressed: () => _zoom(-1),
+                  semanticLabel: 'Zoom out',
+                ),
+                const SizedBox(height: AppSizes.space8),
+                SquareButton(
+                  icon: Icons.my_location_rounded,
+                  accent: true,
+                  onPressed: () => _fitToTrips(state.tripLocations),
+                  semanticLabel: 'Fit to trips',
+                ),
+              ],
+            ),
+          ),
+
+          // --- selected pin card ---
+          if (_selected != null)
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 16 + MediaQuery.viewPaddingOf(context).bottom,
+              child: _SelectedPinCard(
+                trip: _selected!,
+                onOpen: () => context.push(
+                  '${AppRoutes.tripDetail}/${_selected!.tripId}',
+                ),
+                onClose: () => setState(() => _selected = null),
+              ),
+            ),
+
+          if (state.isLoading && state.tripLocations.isEmpty)
+            Positioned(
+              left: AppSizes.screenPadding,
+              right: AppSizes.screenPadding,
+              bottom: 40,
+              child: GlassBar(
+                radius: AppSizes.radiusCard,
+                padding: const EdgeInsets.all(AppSizes.space16),
+                child: Text(
+                  'Finding your trips…',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.rowMeta.copyWith(color: t.ink2),
+                ),
+              ),
+            )
+          else if (located.isEmpty && _selected == null)
+            Positioned(
+              left: AppSizes.screenPadding,
+              right: AppSizes.screenPadding,
+              bottom: 40,
+              child: GlassBar(
+                radius: AppSizes.radiusCard,
+                padding: const EdgeInsets.all(AppSizes.space18),
+                child: Text(
+                  'No trip on the map yet. Give one a destination and it '
+                  'lands here.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.rowMeta.copyWith(color: t.ink2),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaywall(BuildContext context) {
+    final t = context.odyssey;
+
+    return Scaffold(
+      backgroundColor: t.canvas,
+      body: Stack(
+        children: [
+          // The map is shown behind, unusable, so what is being offered is
+          // visible rather than described.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.35,
+                child: _MapCanvas(
+                  controller: MapController(),
+                  tileUrl: _tileUrl,
+                  locations: const [],
+                  selected: null,
+                  onSelect: (_) {},
+                  onClearSelection: () {},
                 ),
               ),
             ),
           ),
+          Positioned(
+            left: AppSizes.screenPadding,
+            right: AppSizes.screenPadding,
+            bottom: 44 + MediaQuery.viewPaddingOf(context).bottom,
+            child: OdysseyCard(
+              radius: AppSizes.radiusHero,
+              padding: const EdgeInsets.all(AppSizes.space20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const EyebrowLabel('Pro'),
+                  const SizedBox(height: AppSizes.space12),
+                  Text(
+                    'The world map',
+                    style: AppTypography.statSmall.copyWith(color: t.ink),
+                  ),
+                  const SizedBox(height: AppSizes.space10),
+                  Text(
+                    'Every trip you have taken, pinned where it happened.',
+                    style: AppTypography.subtitle.copyWith(color: t.ink2),
+                  ),
+                  const SizedBox(height: AppSizes.space18),
+                  PillButton(
+                    label: 'See Pro',
+                    onPressed: () => context.push(AppRoutes.subscription),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: AppSizes.screenPadding,
+            top: 58,
+            child: CircleButton(
+              glyph: '←',
+              onPressed: () => context.pop(),
+              semanticLabel: 'Back',
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  List<Marker> _buildMarkers(MapState mapState) {
-    // `mappable`, not `tripLocations`: trips with no recorded location are kept
-    // in the state now so the map can account for them, and the force-unwraps
-    // below would throw on the first one.
-    return mapState.mappable.map((trip) {
-      final isSelected = _selectedTrip?.tripId == trip.tripId;
-      return Marker(
-        point: LatLng(trip.latitude!, trip.longitude!),
-        width: isSelected ? 50 : 40,
-        height: isSelected ? 50 : 40,
-        child: TripMarker(
-          trip: trip,
-          isSelected: isSelected,
-          onTap: () {
-            setState(() {
-              _selectedTrip = trip;
-            });
-            // Animate to the selected marker
-            _mapController.move(
-              LatLng(trip.latitude!, trip.longitude!),
-              _mapController.camera.zoom < 4 ? 4 : _mapController.camera.zoom,
-            );
-          },
-        ),
+/// The map itself, with the tiles tuned to the theme.
+class _MapCanvas extends StatelessWidget {
+  const _MapCanvas({
+    required this.controller,
+    required this.tileUrl,
+    required this.locations,
+    required this.selected,
+    required this.onSelect,
+    required this.onClearSelection,
+  });
+
+  final MapController controller;
+  final String tileUrl;
+  final List<TripLocation> locations;
+  final TripLocation? selected;
+  final ValueChanged<TripLocation> onSelect;
+  final VoidCallback onClearSelection;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    Widget tiles = TileLayer(
+      urlTemplate: tileUrl,
+      userAgentPackageName: 'com.odyssey.app',
+    );
+
+    // OSM's standard tiles are light. Inverting and desaturating them gives a
+    // dark map without a second tile source, which keeps one attribution and
+    // one cache. The hue rotation puts the greens and blues back the right way
+    // round after the inversion.
+    if (t.isDark) {
+      tiles = ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          -0.60, -0.20, -0.05, 0, 225,
+          -0.15, -0.65, -0.05, 0, 225,
+          -0.10, -0.20, -0.55, 0, 225,
+          0, 0, 0, 1, 0,
+        ]),
+        child: tiles,
       );
-    }).toList();
-  }
+    }
 
-  Widget _buildZoomButton(IconData icon, VoidCallback onPressed) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Material(
-      elevation: 2,
-      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-          ),
-          child: Icon(icon, color: colorScheme.onSurfaceVariant),
+    return ColoredBox(
+      color: t.mapBase,
+      child: FlutterMap(
+        mapController: controller,
+        options: MapOptions(
+          initialCenter: const LatLng(20.0, 0.0),
+          initialZoom: 2.0,
+          onTap: (_, _) => onClearSelection(),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1),
-            ),
+          tiles,
+          MarkerLayer(
+            markers: [
+              for (final trip in locations)
+                Marker(
+                  point: LatLng(trip.latitude!, trip.longitude!),
+                  width: 44,
+                  height: 44,
+                  child: _MapPin(
+                    selected: selected?.tripId == trip.tripId,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onSelect(trip);
+                    },
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaywallScreen(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('World Map'),
-      ),
-      body: Stack(
-        children: [
-          // Blurred preview map
-          FlutterMap(
-            options: const MapOptions(
-              initialCenter: LatLng(20.0, 0.0),
-              initialZoom: 2.0,
-              interactionOptions: InteractionOptions(flags: 0), // Disable interaction
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.odyssey.app',
+          RichAttributionWidget(
+            showFlutterMapAttribution: false,
+            attributions: [
+              TextSourceAttribution(
+                'OpenStreetMap contributors',
+                onTap: () => launchUrl(
+                  Uri.parse('https://openstreetmap.org/copyright'),
+                ),
               ),
             ],
           ),
-          // Blur overlay
-          Container(
-            color: colorScheme.surface.withValues(alpha: 0.8),
+        ],
+      ),
+    );
+  }
+}
+
+/// A pin. Idle is a small pale disc with a ring in the canvas-inverse colour;
+/// selected grows to 22px, turns lime, and gains the one shadow in the system.
+class _MapPin extends StatelessWidget {
+  const _MapPin({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final ring = t.isDark ? AppColors.obsidian : Colors.white;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Center(
+        child: AnimatedContainer(
+          duration: AppSizes.durationPin,
+          curve: AppSizes.curveState,
+          width: selected ? AppSizes.pinSelected : AppSizes.pinIdle,
+          height: selected ? AppSizes.pinSelected : AppSizes.pinIdle,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.accent
+                : (t.isDark
+                      ? const Color(0xE6F2F2EF)
+                      : AppColors.obsidian),
+            shape: BoxShape.circle,
+            border: Border.all(color: ring, width: AppSizes.pinRing),
+            boxShadow: selected ? AppColors.activePinGlow : null,
           ),
-          // The tiles are still on screen behind the blur, so they still need
-          // crediting. Plain text rather than RichAttributionWidget: that widget
-          // reads MapController from its context, so it only works inside a
-          // FlutterMap - where the blur would render it unreadable anyway.
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: GestureDetector(
-              onTap: () => launchUrl(
-                Uri.parse('https://www.openstreetmap.org/copyright'),
-                mode: LaunchMode.externalApplication,
-              ),
-              child: Text(
-                '© OpenStreetMap contributors',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 10,
+        ),
+      ),
+    );
+  }
+}
+
+/// The card that swaps to whichever pin is selected.
+class _SelectedPinCard extends StatelessWidget {
+  const _SelectedPinCard({
+    required this.trip,
+    required this.onOpen,
+    required this.onClose,
+  });
+
+  final TripLocation trip;
+  final VoidCallback onOpen;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final start = TripFormat.parse(trip.startDate);
+    final end = TripFormat.parse(trip.endDate);
+
+    return GlassBar(
+      radius: AppSizes.radiusCard,
+      blur: AppSizes.glassBlurLight,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      child: Row(
+        children: [
+          PhotoSurface(
+            imageUrl: trip.coverImageUrl,
+            seed: trip.tripId,
+            width: 48,
+            height: 48,
+            radius: AppSizes.radiusChip,
+            scrim: false,
+          ),
+          const SizedBox(width: AppSizes.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  trip.title,
+                  style: AppTypography.rowTitle.copyWith(color: t.ink),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (trip.destination != null &&
+                        trip.destination!.isNotEmpty)
+                      trip.destination!,
+                    TripFormat.dateRange(start, end),
+                  ].join(' · '),
+                  style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          // Premium prompt
-          Center(
-            child: Container(
-              margin: const EdgeInsets.all(AppSizes.space24),
-              padding: const EdgeInsets.all(AppSizes.space24),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.onSurface.withValues(alpha: 0.1),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
-                      ),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.map,
-                      color: colorScheme.onSurface,
-                      size: 40,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space16),
-                  Text(
-                    'World Map',
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space8),
-                  Text(
-                    'See your trips on an interactive world map, placed by the locations recorded on your memories.',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSizes.space24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => PaywallUtils.showPaywall(
-                        context,
-                        featureName: 'World Map',
-                        featureIcon: Icons.map,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.sunnyYellow,
-                        foregroundColor: AppColors.charcoal,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSizes.space16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                        ),
-                      ),
-                      child: const Text(
-                        'Upgrade to Premium',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space12),
-                  // Free alternative: watch a rewarded ad for 24h access.
-                  const WatchAdToUnlockButton(feature: PremiumFeature.worldMap),
-                ],
-              ),
-            ),
-          ),
+          const SizedBox(width: AppSizes.space10),
+          ArrowCircle(size: AppSizes.circleAction, onTap: onOpen),
         ],
       ),
     );
