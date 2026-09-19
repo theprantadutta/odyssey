@@ -78,6 +78,10 @@ class _PressableState extends State<Pressable> {
 
     if (widget.tint) {
       result = Stack(
+        // Passthrough, not the default loose fit: a Stack hands its
+        // non-positioned children loose constraints, so a card that should
+        // fill an Expanded shrank to its content instead.
+        fit: StackFit.passthrough,
         children: [
           result,
           Positioned.fill(

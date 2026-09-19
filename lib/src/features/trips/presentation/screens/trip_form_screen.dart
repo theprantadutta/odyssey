@@ -155,13 +155,16 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
     return 'Create · $_nights ${_nights == 1 ? 'night' : 'nights'}';
   }
 
-  /// The step counter. Three real gates: a name, a start, an end.
-  int get _completedSteps {
+  /// Which of the three gates the user is working on: a name, a start, an end.
+  ///
+  /// One-based, because "Step 0 of 3" reads as though nothing counts yet. Once
+  /// all three are filled it stays at 3 rather than rolling over.
+  int get _currentStep {
     var done = 0;
     if (_titleController.text.trim().isNotEmpty) done++;
     if (_startDate != null) done++;
     if (_endDate != null) done++;
-    return done;
+    return (done + 1).clamp(1, 3);
   }
 
   /// The selected style chip, if exactly one of the known styles is tagged.
@@ -323,9 +326,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                 ),
                 children: [
                   ScreenHeader(
-                    title: _isEditing
-                        ? 'Editing'
-                        : 'Step $_completedSteps of 3',
+                    title: _isEditing ? 'Editing' : 'Step $_currentStep of 3',
                     leadingGlyph: '✕',
                     onBack: () => Navigator.of(context).maybePop(),
                   ),
