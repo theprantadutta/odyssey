@@ -337,5 +337,33 @@ void main() {
       await pump(tester, const AvatarCircle(name: null));
       expect(find.text('?'), findsOneWidget);
     });
+
+    testWidgets('a loading stat card states nothing', (tester) async {
+      // The readiness tile falls back to 'no list' when a trip has no packing
+      // list, which is indistinguishable from one that has not loaded. While
+      // it is loading the tile must say neither.
+      await pump(
+        tester,
+        const StatCard(
+          value: '—',
+          label: 'no list',
+          highlight: true,
+          loading: true,
+        ),
+      );
+      expect(find.text('no list'), findsNothing);
+      expect(find.text('—'), findsNothing);
+      expect(find.byType(Skeleton), findsNWidgets(2));
+    });
+
+    testWidgets('a loaded stat card states its value', (tester) async {
+      await pump(
+        tester,
+        const StatCard(value: '89%', label: 'ready', highlight: true),
+      );
+      expect(find.text('89%'), findsOneWidget);
+      expect(find.text('ready'), findsOneWidget);
+      expect(find.byType(Skeleton), findsNothing);
+    });
   });
 }

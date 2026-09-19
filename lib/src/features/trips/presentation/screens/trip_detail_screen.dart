@@ -427,6 +427,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 child: StatCard(
                   value: '${activities.total}',
                   label: activities.total == 1 ? 'plan' : 'plans',
+                  loading: activities.isLoading,
                 ),
               ),
               const SizedBox(width: AppSizes.space10),
@@ -439,6 +440,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   value: readiness != null ? '$readiness%' : '—',
                   label: readiness != null ? 'ready' : 'no list',
                   highlight: true,
+                  // 'no list' is what an empty packing list looks like, and
+                  // that is indistinguishable from one that has not loaded
+                  // yet. Waiting is not an answer, so say nothing until the
+                  // count is real.
+                  loading: packing.isLoading,
                 ),
               ),
             ],

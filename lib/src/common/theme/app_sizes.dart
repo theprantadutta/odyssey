@@ -260,6 +260,12 @@ class AppSizes {
   /// One sweep of the indeterminate wait track.
   static const Duration durationWaitSweep = Duration(milliseconds: 1400);
 
+  /// The skeleton bars standing in for a stat tile's numeral and its label.
+  static const double statSkeletonValue = 52;
+  static const double statSkeletonValueHeight = 22;
+  static const double statSkeletonLabel = 34;
+  static const double statSkeletonLabelHeight = 9;
+
   /// The brand mark on a full-screen wait.
   static const double markWait = 56;
 

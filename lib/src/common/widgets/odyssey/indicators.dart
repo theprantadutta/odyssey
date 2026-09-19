@@ -318,22 +318,27 @@ class Skeleton extends StatefulWidget {
     this.width,
     this.height = 16,
     this.radius = AppSizes.radiusChipXs,
+    this.color,
   });
 
   /// A skeleton shaped like a list row.
-  const Skeleton.row({super.key})
+  const Skeleton.row({super.key, this.color})
       : width = double.infinity,
         height = 74,
         radius = AppSizes.radiusRow;
 
   /// A skeleton shaped like a feature tile.
-  const Skeleton.tile({super.key, this.height = 150})
+  const Skeleton.tile({super.key, this.height = 150, this.color})
       : width = double.infinity,
         radius = AppSizes.radiusTile;
 
   final double? width;
   final double height;
   final double radius;
+
+  /// Overrides the card tone. Needed on the lime tile, where the usual
+  /// [OdysseyTokens.cardAlt] is invisible.
+  final Color? color;
 
   @override
   State<Skeleton> createState() => _SkeletonState();
@@ -361,7 +366,7 @@ class _SkeletonState extends State<Skeleton>
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: t.cardAlt,
+        color: widget.color ?? t.cardAlt,
         borderRadius: BorderRadius.circular(widget.radius),
       ),
     );
@@ -467,6 +472,7 @@ class StatCard extends StatelessWidget {
     required this.value,
     required this.label,
     this.highlight = false,
+    this.loading = false,
   });
 
   final String value;
@@ -475,11 +481,22 @@ class StatCard extends StatelessWidget {
   /// Fills with lime in both themes — the "82% ready" tile.
   final bool highlight;
 
+  /// Draws the numeral and its label as skeletons, keeping the tile the size it
+  /// will be. A stat that has not arrived yet must not be stated: the readiness
+  /// tile defaults to "no list", and showing that for the second before the
+  /// packing list loads reads as an answer rather than a wait.
+  final bool loading;
+
   @override
   Widget build(BuildContext context) {
     final t = context.odyssey;
     final fg = highlight ? AppColors.onAccent : t.ink;
     final labelColor = highlight ? AppColors.onAccent2 : t.ink3;
+    // On lime the card tone disappears, so the skeleton is drawn in the tile's
+    // own foreground at low alpha instead.
+    final skeletonColor = highlight
+        ? AppColors.onAccent.withValues(alpha: 0.25)
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.space14),
@@ -492,18 +509,33 @@ class StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: AppTypography.statSmall.copyWith(color: fg),
-            maxLines: 1,
-          ),
-          const SizedBox(height: AppSizes.space6),
-          Text(
-            label,
-            style: AppTypography.statLabel.copyWith(color: labelColor),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          if (loading) ...[
+            Skeleton(
+              width: AppSizes.statSkeletonValue,
+              height: AppSizes.statSkeletonValueHeight,
+              color: skeletonColor,
+            ),
+            const SizedBox(height: AppSizes.space10),
+            Skeleton(
+              width: AppSizes.statSkeletonLabel,
+              height: AppSizes.statSkeletonLabelHeight,
+              color: skeletonColor,
+            ),
+            const SizedBox(height: 3),
+          ] else ...[
+            Text(
+              value,
+              style: AppTypography.statSmall.copyWith(color: fg),
+              maxLines: 1,
+            ),
+            const SizedBox(height: AppSizes.space6),
+            Text(
+              label,
+              style: AppTypography.statLabel.copyWith(color: labelColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
