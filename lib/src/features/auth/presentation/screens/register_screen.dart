@@ -123,6 +123,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return AuthScaffold(
       headline: 'Start the\njournal.',
       subtitle: 'One account holds every trip you take.',
+      // Creating the account server-side takes a couple of seconds after
+      // the Google sheet closes, with nothing on the form to show for it.
+      busy: isBusy,
+      busyLabel: 'Setting up your account',
       form: Form(
         key: _formKey,
         child: Column(

@@ -113,6 +113,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return AuthScaffold(
       headline: 'Welcome\nback.',
       subtitle: 'Sign in and pick the journey back up.',
+      // The Google sheet closes well before the session exists, and the
+      // form behind it is inert in the meantime. Say so rather than look
+      // frozen.
+      busy: isBusy,
+      busyLabel: 'Signing you in',
       form: Form(
         key: _formKey,
         child: Column(

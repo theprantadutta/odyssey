@@ -11,6 +11,8 @@
 /// ```
 library;
 
+export 'brand_mark.dart';
+export 'busy_overlay.dart';
 export 'buttons.dart';
 export 'chips.dart';
 export 'form_screen.dart';

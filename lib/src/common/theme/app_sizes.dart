@@ -257,6 +257,15 @@ class AppSizes {
   /// Skeleton pulse.
   static const Duration durationPulse = Duration(milliseconds: 1200);
 
+  /// One sweep of the indeterminate wait track.
+  static const Duration durationWaitSweep = Duration(milliseconds: 1400);
+
+  /// The brand mark on a full-screen wait.
+  static const double markWait = 56;
+
+  static const double waitTrackWidth = 140;
+  static const double waitTrackHeight = 3;
+
   // Legacy duration names.
   static const Duration durationMicro = Duration(milliseconds: 100);
   static const Duration durationFast = durationState;

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
-import '../../../../common/widgets/odyssey/brand_mark.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 
 /// What this app is, who made it, and which build you are on.

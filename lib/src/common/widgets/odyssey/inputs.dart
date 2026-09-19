@@ -236,7 +236,13 @@ class _FieldCardState extends State<FieldCard> {
         focusedErrorBorder: InputBorder.none,
         disabledBorder: InputBorder.none,
         hintText: widget.hint,
-        hintStyle: AppTypography.fieldValue.copyWith(color: t.ink3),
+        hintStyle: AppTypography.fieldValue.copyWith(
+          color: t.ink3,
+          // Reset explicitly: the decorator merges the field's own style under
+          // this one, so the 0.2em tracking meant for ●●●●●●●● would otherwise
+          // stretch the placeholder out as well.
+          letterSpacing: AppTypography.fieldValue.letterSpacing ?? 0,
+        ),
         filled: false,
       ),
       onChanged: (value) {
