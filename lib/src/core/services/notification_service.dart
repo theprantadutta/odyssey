@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'logger_service.dart';
 import 'startup_prompt_queue.dart';
@@ -56,8 +57,17 @@ class NotificationService {
     // Initialize local notifications
     await _initializeLocalNotifications();
 
-    // Request permissions
-    await requestPermission();
+    // Deliberately no permission request here.
+    //
+    // This runs from main(), so asking here put the iOS system dialog on screen
+    // during launch, before the person had seen anything of the app. App Review
+    // rejects that, and it is also the surest way to get a refusal - which is
+    // permanent, because the dialog is only ever shown once.
+    //
+    // The request now lives behind our own explanation sheet; see
+    // NotificationPermissionPolicy and showNotificationPermissionSheet. Setting
+    // up the handlers below does not require permission, so a person who has not
+    // decided yet still gets a fully working app.
 
     // Set up foreground message handler
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -132,6 +142,37 @@ class NotificationService {
 
     AppLogger.info('Notification permission: ${settings.authorizationStatus}');
     return granted;
+  }
+
+  /// Whether notifications are allowed right now, without asking for them.
+  Future<bool> hasPermission() async {
+    try {
+      final settings = await _messaging.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (e) {
+      AppLogger.error('Could not read notification settings', e);
+      return false;
+    }
+  }
+
+  /// Opens this app's page in the system settings.
+  ///
+  /// The only route left once the OS dialog has been answered: it is shown once,
+  /// and after that `requestPermission` returns the existing answer without
+  /// presenting anything.
+  ///
+  /// Through Geolocator, which looks odd until you notice the alternative is a
+  /// second permissions package for one method. `openAppSettings` is not about
+  /// location - it opens the app's own settings page on both platforms, and that
+  /// page is where the notification toggle lives. Named for what it does here.
+  Future<bool> openSystemNotificationSettings() async {
+    try {
+      return await Geolocator.openAppSettings();
+    } catch (e) {
+      AppLogger.error('Could not open the system settings', e);
+      return false;
+    }
   }
 
   /// Get the current FCM token

@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/api_config.dart';
 import '../utils/authenticated_media.dart';
+import '../../features/notifications/application/notification_permission_policy.dart';
 
 /// Secure storage service for sensitive data (JWT tokens, etc.)
-class StorageService {
+class StorageService implements NotificationPrimingStore {
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   StorageService._internal();
@@ -97,6 +98,46 @@ class StorageService {
     return value == 'true';
   }
 
+  // Notification permission priming
+  //
+  // How many times the explanation sheet has been shown, and when it last was.
+  // Both are needed because the app re-raises the subject after a decline, and
+  // "not too often" cannot be decided from a count alone.
+  static const String _notificationAskCountKey = 'notification_primer_ask_count';
+  static const String _notificationLastAskedKey = 'notification_primer_last_asked_at';
+
+  @override
+  Future<int> getNotificationAskCount() async {
+    final value = await _storage.read(key: _notificationAskCountKey);
+    return int.tryParse(value ?? '') ?? 0;
+  }
+
+  @override
+  Future<DateTime?> getNotificationLastAskedAt() async {
+    final value = await _storage.read(key: _notificationLastAskedKey);
+    final ms = int.tryParse(value ?? '');
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  @override
+  Future<void> recordNotificationAsked(int count, DateTime at) async {
+    await _storage.write(key: _notificationAskCountKey, value: count.toString());
+    await _storage.write(
+      key: _notificationLastAskedKey,
+      value: at.millisecondsSinceEpoch.toString(),
+    );
+  }
+
+  /// Forgets the priming history.
+  ///
+  /// Called on sign-out: these record one person's answers, and whoever signs in
+  /// next has not answered anything.
+  @override
+  Future<void> clearNotificationPriming() async {
+    await _storage.delete(key: _notificationAskCountKey);
+    await _storage.delete(key: _notificationLastAskedKey);
+  }
+
   // Terms & Conditions / Privacy Policy (legal agreement acceptance)
   //
   // Bump this whenever privacy.md or terms.md change materially. Users who
@@ -161,6 +202,12 @@ class StorageService {
     await deleteUserId();
     await _storage.delete(key: ApiConfig.accessTokenExpiryKey);
     await deleteUserData();
+
+    // The priming counters record one person's answers about notifications.
+    // Whoever signs in next has not answered anything, and inheriting a
+    // "already asked three times, stop asking" state from the previous account
+    // would silently deny them the prompt for good.
+    await clearNotificationPriming();
   }
 
   // Clear all data (full reset)

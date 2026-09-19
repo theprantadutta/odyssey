@@ -84,11 +84,19 @@ class Notifications extends _$Notifications {
         onForegroundMessage: onForegroundMessage,
       );
 
-      // Request permission
-      final hasPermission = await _notificationService.requestPermission();
+      // Read the current answer; do not ask for one.
+      //
+      // Asking here would put the system dialog on screen as a side effect of
+      // starting up, which is what App Review rejects and what spends the
+      // one-shot prompt before the person knows what it is for. The asking is
+      // done by showNotificationPermissionSheet, at a moment that warrants it.
+      final hasPermission = await _notificationService.hasPermission();
 
-      // Get FCM token
-      final token = await _notificationService.getToken();
+      // Only meaningful once notifications are allowed: on iOS there is no APNS
+      // token to derive one from until then, so asking early logs a failure and
+      // returns null. Fetched again by grantedPermission() the moment the answer
+      // changes.
+      final token = hasPermission ? await _notificationService.getToken() : null;
 
       // Listen for token refresh
       _tokenRefreshSubscription = _notificationService.onTokenRefresh.listen(
@@ -182,10 +190,43 @@ class Notifications extends _$Notifications {
   }
 
   /// Request notification permissions again
+  ///
+  /// Callers should present the explanation sheet first. This raises the system
+  /// dialog directly, and that dialog is only ever shown once.
   Future<bool> requestPermission() async {
     final hasPermission = await _notificationService.requestPermission();
-    state = state.copyWith(hasPermission: hasPermission);
-    unawaited(ref.read(analyticsServiceProvider).trackNotificationPermission(granted: hasPermission));
+    await _applyPermission(hasPermission);
     return hasPermission;
+  }
+
+  /// Records an answer obtained elsewhere - the explanation sheet, or a return
+  /// from the system settings app.
+  ///
+  /// The token matters as much as the flag. On iOS there is no FCM token until
+  /// notifications are allowed, so the one read at startup was null for everyone
+  /// who had not yet decided; without fetching it here, a person could grant
+  /// permission and still never be reachable, because nothing would register a
+  /// device until the next cold start.
+  Future<void> grantedPermission(bool granted) => _applyPermission(granted);
+
+  Future<void> _applyPermission(bool granted) async {
+    state = state.copyWith(hasPermission: granted);
+
+    unawaited(ref
+        .read(analyticsServiceProvider)
+        .trackNotificationPermission(granted: granted));
+
+    if (!granted) return;
+
+    final token = await _notificationService.getToken();
+    if (token == null) return;
+
+    state = state.copyWith(fcmToken: token);
+
+    try {
+      await _deviceRepository.registerDevice(fcmToken: token);
+    } catch (e) {
+      AppLogger.error('Could not register this device after a permission grant', e);
+    }
   }
 }

@@ -19,6 +19,7 @@ import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../notifications/presentation/widgets/notification_badge.dart';
+import '../../../notifications/presentation/widgets/notification_permission_prompt.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/dashboard_walkthrough_steps.dart';
 import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
@@ -47,6 +48,10 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   final _quickFiltersKey = GlobalKey();
   final _fabKey = GlobalKey();
 
+  /// One sheet at a time. Creating a trip while the startup check is still
+  /// counting down would otherwise queue a second one behind the first.
+  bool _askingAboutNotifications = false;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +75,41 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
         }
       });
     });
+
+    _maybeAskAboutNotifications(occasion: 'dashboard-with-trips');
+  }
+
+  /// Raises notifications once the person has a trip for them to be about.
+  ///
+  /// Deliberately not at launch, and deliberately not on an empty dashboard.
+  /// The system permission dialog can be shown once, so the moment it is spent
+  /// decides the answer forever - and "would you like reminders" means nothing
+  /// to someone who has not yet made the thing that would be reminded about.
+  ///
+  /// The wait is longer than the walkthrough's so the two cannot overlap; a
+  /// coach mark and a bottom sheet competing for the same screen is how people
+  /// dismiss both without reading either.
+  Future<void> _maybeAskAboutNotifications({
+    required String occasion,
+    Duration delay = const Duration(milliseconds: 2500),
+  }) async {
+    if (_askingAboutNotifications) return;
+    _askingAboutNotifications = true;
+
+    try {
+      await Future<void>.delayed(delay);
+      if (!mounted) return;
+
+      final trips = ref.read(tripsProvider).trips;
+      if (trips.isEmpty) return;
+
+      if (ref.read(walkthroughProvider).isActive) return;
+      if (!mounted) return;
+
+      await maybeAskAboutNotifications(context, ref, occasion: occasion);
+    } finally {
+      _askingAboutNotifications = false;
+    }
   }
 
   @override
@@ -226,6 +266,26 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A trip has just been created - from the form, or pulled down by a sync.
+    //
+    // This is the occasion worth asking on: the person has made the thing that
+    // reminders and shared-trip notifications are about. The form screen pops
+    // itself on success, so asking there would fight the navigation; the
+    // dashboard is where they land either way.
+    //
+    // The policy still decides whether this becomes a sheet. Someone who has
+    // already declined recently is not asked again just because they made
+    // another trip.
+    ref.listen(tripsProvider, (previous, next) {
+      if (previous == null) return;
+      if (next.trips.length <= previous.trips.length) return;
+
+      _maybeAskAboutNotifications(
+        occasion: 'trip-created',
+        delay: const Duration(milliseconds: 1200),
+      );
+    });
+
     final tripsState = ref.watch(tripsProvider);
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
