@@ -28,6 +28,8 @@ import '../../features/notifications/presentation/screens/notification_settings_
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/subscription/presentation/screens/subscription_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
+import 'app_shell.dart';
 
 /// Route paths
 class AppRoutes {
@@ -38,6 +40,7 @@ class AppRoutes {
   static const String register = '/register';
   static const String onboarding = '/onboarding';
   static const String home = '/';
+  static const String trips = '/trips';
   static const String createTrip = '/create-trip';
   static const String editTrip = '/edit-trip';
   static const String tripDetail = '/trips';
@@ -176,6 +179,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // --- Full-screen routes, outside the tab shell -------------------
+      // Auth, onboarding and anything that takes over the screen. These have
+      // their own back affordance and deliberately hide the floating nav.
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
@@ -205,10 +211,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
-        path: AppRoutes.home,
-        builder: (context, state) => const TripsDashboardScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.createTrip,
         builder: (context, state) => const TripFormScreen(),
       ),
@@ -216,32 +218,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '${AppRoutes.editTrip}/:id',
         builder: (context, state) => const TripFormScreen(),
       ),
-      // Trip detail route
-      GoRoute(
-        path: '${AppRoutes.tripDetail}/:id',
-        builder: (context, state) {
-          final tripId = state.pathParameters['id']!;
-          final trip = state.extra as TripModel?;
-          return TripDetailScreen(tripId: tripId, initialTrip: trip);
-        },
-        routes: [
-          // Manage shares route nested under trip
-          GoRoute(
-            path: 'shares',
-            builder: (context, state) {
-              final tripId = state.pathParameters['id']!;
-              final tripTitle = state.uri.queryParameters['title'] ?? 'Trip';
-              return ManageSharesScreen(tripId: tripId, tripTitle: tripTitle);
-            },
-          ),
-        ],
-      ),
-      // Shared trips screen
-      GoRoute(
-        path: AppRoutes.sharedTrips,
-        builder: (context, state) => const SharedTripsScreen(),
-      ),
-      // Accept invite route
       GoRoute(
         path: '${AppRoutes.acceptInvite}/:code',
         builder: (context, state) {
@@ -249,17 +225,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           return AcceptInviteScreen(inviteCode: code);
         },
       ),
-      // Templates route
+      GoRoute(
+        path: AppRoutes.sharedTrips,
+        builder: (context, state) => const SharedTripsScreen(),
+      ),
       GoRoute(
         path: AppRoutes.templates,
         builder: (context, state) => const TemplateGalleryScreen(),
       ),
-      // Achievements route
       GoRoute(
         path: AppRoutes.achievements,
         builder: (context, state) => const AchievementsScreen(),
       ),
-      // Statistics routes
       GoRoute(
         path: AppRoutes.statistics,
         builder: (context, state) => const StatisticsDashboardScreen(),
@@ -270,30 +247,94 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // World Map route
-      GoRoute(
-        path: AppRoutes.worldMap,
-        builder: (context, state) => const WorldMapScreen(),
-      ),
-      // Notifications route
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationHistoryScreen(),
       ),
-      // Notification settings route
       GoRoute(
         path: AppRoutes.notificationSettings,
         builder: (context, state) => const NotificationSettingsScreen(),
       ),
-      // Settings route
-      GoRoute(
-        path: AppRoutes.settings,
-        builder: (context, state) => const SettingsScreen(),
-      ),
-      // Subscription route
       GoRoute(
         path: AppRoutes.subscription,
         builder: (context, state) => const SubscriptionScreen(),
+      ),
+
+      // --- The tab shell -----------------------------------------------
+      // Four branches, each with its own navigator, so switching tabs keeps
+      // whatever the user had pushed on the one they left.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          // Home — the dashboard: next trip, quick filters, recent trips.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+
+          // Trips — the full list, with trip detail pushed on top of it so
+          // going back from a trip lands on the list rather than on Home.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.trips,
+                builder: (context, state) => const TripsDashboardScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) {
+                      final tripId = state.pathParameters['id']!;
+                      final trip = state.extra as TripModel?;
+                      return TripDetailScreen(
+                        tripId: tripId,
+                        initialTrip: trip,
+                      );
+                    },
+                    routes: [
+                      GoRoute(
+                        path: 'shares',
+                        builder: (context, state) {
+                          final tripId = state.pathParameters['id']!;
+                          final tripTitle =
+                              state.uri.queryParameters['title'] ?? 'Trip';
+                          return ManageSharesScreen(
+                            tripId: tripId,
+                            tripTitle: tripTitle,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Map — geotagged memories on the world map.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.worldMap,
+                builder: (context, state) => const WorldMapScreen(),
+              ),
+            ],
+          ),
+
+          // You — profile, appearance, preferences.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.settings,
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );
