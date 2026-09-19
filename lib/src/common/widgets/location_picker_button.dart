@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/odyssey_tokens.dart';
 import '../theme/app_typography.dart';
