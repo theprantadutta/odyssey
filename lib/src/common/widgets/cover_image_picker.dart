@@ -252,7 +252,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             const SizedBox(width: AppSizes.space8),
             Text(
               label,
-              style: AppTypography.labelMedium.copyWith(
+              style: AppTypography.chip.copyWith(
                 color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -350,7 +350,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             _mode == CoverImageMode.upload
                 ? 'Select an image to upload'
                 : 'Enter an image URL',
-            style: AppTypography.bodySmall.copyWith(
+            style: AppTypography.rowMeta.copyWith(
               color: hintColor,
             ),
           ),
@@ -398,16 +398,16 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
       controller: _urlController,
       enabled: widget.enabled,
       onChanged: _onUrlChanged,
-      style: AppTypography.bodyLarge.copyWith(
+      style: AppTypography.body.copyWith(
         color: colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         labelText: 'Image URL',
         hintText: 'https://images.unsplash.com/...',
-        labelStyle: AppTypography.bodyMedium.copyWith(
+        labelStyle: AppTypography.subtitle.copyWith(
           color: colorScheme.onSurfaceVariant,
         ),
-        hintStyle: AppTypography.bodyMedium.copyWith(
+        hintStyle: AppTypography.subtitle.copyWith(
           color: theme.hintColor,
         ),
         prefixIcon: Icon(Icons.link_rounded, color: colorScheme.onSurfaceVariant),
@@ -493,7 +493,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
             const SizedBox(width: AppSizes.space8),
             Text(
               label,
-              style: AppTypography.labelMedium.copyWith(
+              style: AppTypography.chip.copyWith(
                 color: widget.enabled ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),

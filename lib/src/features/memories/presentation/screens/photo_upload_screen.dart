@@ -356,9 +356,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
             Expanded(
               child: ValueCard(
                 label: 'At',
-                value: _takenAtTime == null
-                    ? null
-                    : _takenAtTime!.format(context),
+                value: _takenAtTime?.format(context),
                 onTap: _pickTime,
               ),
             ),

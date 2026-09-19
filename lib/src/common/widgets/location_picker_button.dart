@@ -126,7 +126,7 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
             Expanded(
               child: Text(
                 message,
-                style: AppTypography.bodySmall.copyWith(color: Colors.white),
+                style: AppTypography.rowMeta.copyWith(color: Colors.white),
               ),
             ),
           ],
