@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
+import '../theme/odyssey_tokens.dart';
+import 'odyssey/indicators.dart';
 import '../theme/app_typography.dart';
 import '../../core/network/authenticated_media_fetch.dart';
 import '../../core/utils/file_url_helper.dart';
@@ -140,7 +142,6 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to pick image: $e'),
-            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -239,7 +240,6 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
         decoration: BoxDecoration(
           color: isSelected ? colorScheme.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-          boxShadow: isSelected ? AppSizes.softShadow : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -317,7 +317,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.charcoal.withValues(alpha: 0.7),
+                    color: AppColors.photoChipBg,
                     borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                   ),
                   child: const Icon(
@@ -360,10 +360,12 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
   }
 
   Widget _buildLoadingPlaceholder() {
-    return const Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(AppColors.sunnyYellow),
-      ),
+    // A skeleton block rather than a spinner — this system allows a spinner
+    // only on button submit.
+    return const Skeleton(
+      width: double.infinity,
+      height: double.infinity,
+      radius: AppSizes.radiusTile,
     );
   }
 
@@ -374,15 +376,14 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
         children: [
           Icon(
             Icons.broken_image_outlined,
-            size: 48,
-            color: AppColors.error.withValues(alpha: 0.7),
+            size: 32,
+            color: context.odyssey.ink3,
           ),
           const SizedBox(height: AppSizes.space8),
+          // No error colour exists here; the copy says what is wrong.
           Text(
-            'Invalid image URL',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.error,
-            ),
+            'That link is not an image',
+            style: AppTypography.rowMeta.copyWith(color: context.odyssey.ink3),
           ),
         ],
       ),

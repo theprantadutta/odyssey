@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
-import '../theme/app_typography.dart';
+import '../theme/odyssey_tokens.dart';
+import 'odyssey/chips.dart';
 
 /// Reusable card component for form sections
 ///
@@ -48,56 +48,28 @@ class FormSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final t = context.odyssey;
 
     return Container(
-      padding: padding ?? const EdgeInsets.all(AppSizes.space20),
+      padding: padding ?? const EdgeInsets.all(AppSizes.space18),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: AppSizes.softShadow,
+        color: t.card,
+        borderRadius: BorderRadius.circular(AppSizes.radiusTile),
+        border: Border.all(color: t.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showHeader) ...[
-            _buildHeader(context),
-            const SizedBox(height: AppSizes.space16),
+            // The old header paired a coloured icon chip with a title. This
+            // system signals a section with a mono eyebrow instead, so the
+            // icon and its tint are dropped rather than recoloured.
+            EyebrowLabel(title),
+            const SizedBox(height: AppSizes.space14),
           ],
           ...children,
         ],
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconBackgroundColor ?? AppColors.lemonLight,
-            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-          ),
-          child: Icon(
-            icon,
-            color: iconColor ?? AppColors.sunnyYellow,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: AppSizes.space12),
-        Expanded(
-          child: Text(
-            title,
-            style: AppTypography.titleMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
