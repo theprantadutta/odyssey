@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../common/theme/app_colors.dart';
+
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/empty_state.dart';
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/app_router.dart';
-import '../providers/notification_history_provider.dart';
-import '../widgets/notification_item.dart';
 import '../../data/models/notification_history_model.dart';
+import '../providers/notification_history_provider.dart';
 
+/// Everything the app has told you, newest first.
 class NotificationHistoryScreen extends ConsumerStatefulWidget {
   const NotificationHistoryScreen({super.key});
 
@@ -28,8 +29,6 @@ class _NotificationHistoryScreenState
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-
-    // Load notifications when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(notificationHistoryProvider.notifier).loadNotifications();
     });
@@ -53,13 +52,11 @@ class _NotificationHistoryScreenState
     await ref.read(notificationHistoryProvider.notifier).refresh();
   }
 
-  void _handleNotificationTap(NotificationHistoryModel notification) {
-    // Mark as read
+  void _handleTap(NotificationHistoryModel notification) {
     if (!notification.isRead) {
       ref.read(notificationHistoryProvider.notifier).markAsRead(notification.id);
     }
 
-    // Navigate based on notification type
     switch (notification.type) {
       case 'trip_invite':
       case 'invite_expiring':
@@ -67,7 +64,6 @@ class _NotificationHistoryScreenState
         if (inviteCode != null) {
           context.push('${AppRoutes.acceptInvite}/$inviteCode');
         }
-        break;
       case 'invite_accepted':
       case 'invite_declined':
       case 'share_revoked':
@@ -78,368 +74,234 @@ class _NotificationHistoryScreenState
       case 'expense_added':
       case 'trip_reminder':
         final tripId = notification.relatedTripId;
-        if (tripId != null) {
-          context.push('${AppRoutes.tripDetail}/$tripId');
-        }
-        break;
+        if (tripId != null) context.push('${AppRoutes.tripDetail}/$tripId');
       case 'achievement_earned':
         context.push(AppRoutes.achievements);
-        break;
       default:
-        // Unknown notification type, do nothing
+        // Nothing to open for a type this build does not know about.
         break;
     }
   }
 
-  void _handleDeleteNotification(String notificationId) async {
-    final success = await ref
+  Future<void> _handleDelete(NotificationHistoryModel notification) async {
+    HapticFeedback.selectionClick();
+    final ok = await ref
         .read(notificationHistoryProvider.notifier)
-        .deleteNotification(notificationId);
-
-    if (!mounted) return;
-
-    final colorScheme = Theme.of(context).colorScheme;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Notification deleted' : 'Failed to delete notification'),
-        backgroundColor: success ? colorScheme.onSurface : AppColors.coralBurst,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        ),
-        action: SnackBarAction(
-          label: 'Dismiss',
-          textColor: AppColors.sunnyYellow,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
-  }
-
-  void _handleMarkAllAsRead() async {
-    HapticFeedback.mediumImpact();
-
-    final state = ref.read(notificationHistoryProvider);
-    if (state.unreadCount == 0) return;
-
-    final success = await ref.read(notificationHistoryProvider.notifier).markAllAsRead();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: AppSizes.space12),
-              Text(success
-                  ? 'All notifications marked as read'
-                  : 'Failed to mark notifications as read'),
-            ],
-          ),
-          backgroundColor: success ? AppColors.success : AppColors.coralBurst,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-        ),
-      );
+        .deleteNotification(notification.id);
+    if (!ok && mounted) {
+      showOdysseyMessage(context, 'That one would not clear. Try again.');
     }
   }
 
-  void _handleClearAll() async {
-    HapticFeedback.mediumImpact();
+  Future<void> _handleMarkAllRead() async {
+    HapticFeedback.lightImpact();
+    final ok = await ref
+        .read(notificationHistoryProvider.notifier)
+        .markAllAsRead();
+    if (!ok && mounted) {
+      showOdysseyMessage(context, 'Could not mark those as read.');
+    }
+  }
 
-    final colorScheme = Theme.of(context).colorScheme;
-    final confirmed = await showDialog<bool>(
+  Future<void> _handleClearAll() async {
+    final confirmed = await showOdysseyConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Clear All Notifications',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete all notifications? This cannot be undone.',
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
-            child: Text(
-              'Clear All',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.coralBurst,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: 'Clear all',
+      body: const ['This removes every notification from the list.'],
+      confirmLabel: 'Clear all',
     );
+    if (!confirmed || !mounted) return;
 
-    if (confirmed == true && mounted) {
-      final success = await ref
-          .read(notificationHistoryProvider.notifier)
-          .deleteAllNotifications();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success
-                ? 'All notifications cleared'
-                : 'Failed to clear notifications'),
-            backgroundColor: success ? AppColors.success : AppColors.coralBurst,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
+    final ok = await ref
+        .read(notificationHistoryProvider.notifier)
+        .deleteAllNotifications();
+    if (!ok && mounted) {
+      showOdysseyMessage(context, 'Could not clear those. Try again.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
     final state = ref.watch(notificationHistoryProvider);
+    final unread = state.notifications.where((n) => !n.isRead).length;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Notifications',
-          style: AppTypography.titleLarge.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          if (state.unreadCount > 0)
-            TextButton.icon(
-              onPressed: _handleMarkAllAsRead,
-              icon: const Icon(
-                Icons.done_all_rounded,
-                size: 20,
-                color: AppColors.skyBlue,
-              ),
-              label: Text(
-                'Mark all read',
-                style: AppTypography.labelMedium.copyWith(
-                  color: AppColors.skyBlue,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          if (state.notifications.isNotEmpty)
-            PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert_rounded,
-                color: colorScheme.onSurface,
-              ),
-              onSelected: (value) {
-                if (value == 'clear_all') {
-                  _handleClearAll();
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'clear_all',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_sweep_rounded,
-                        size: 20,
-                        color: AppColors.coralBurst,
-                      ),
-                      const SizedBox(width: AppSizes.space8),
-                      Text(
-                        'Clear all',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.coralBurst,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(width: AppSizes.space4),
-        ],
-      ),
+    return OdysseyScaffold(
       body: RefreshIndicator(
+        color: t.action,
+        backgroundColor: Color.alphaBlend(t.card, t.canvas),
         onRefresh: _handleRefresh,
-        color: AppColors.sunnyYellow,
-        backgroundColor: colorScheme.surface,
-        child: _buildBody(state),
+        child: ListView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(
+            AppSizes.screenPadding,
+            AppSizes.contentTop,
+            AppSizes.screenPadding,
+            AppSizes.scrollBottom,
+          ),
+          children: [
+            ScreenHeader(
+              onBack: () => context.pop(),
+              trailing: state.notifications.isEmpty
+                  ? null
+                  : CircleButton(
+                      icon: Icons.more_horiz_rounded,
+                      onPressed: () async {
+                        final action = await showOdysseyPicker<String>(
+                          context: context,
+                          title: 'Notifications',
+                          options: const ['Mark all as read', 'Clear all'],
+                          labelOf: (value) => value,
+                        );
+                        if (!mounted || action == null) return;
+                        if (action == 'Clear all') {
+                          await _handleClearAll();
+                        } else {
+                          await _handleMarkAllRead();
+                        }
+                      },
+                      semanticLabel: 'Notification options',
+                    ),
+            ),
+            const SizedBox(height: AppSizes.space20),
+            Text(
+              'Notifications',
+              style: AppTypography.screenTitle.copyWith(color: t.ink),
+            ),
+            if (unread > 0) ...[
+              const SizedBox(height: AppSizes.space8),
+              Text(
+                '$unread unread',
+                style: AppTypography.meta.copyWith(color: t.limeText),
+              ),
+            ],
+            const SizedBox(height: AppSizes.space20),
+
+            if (state.isLoading && state.notifications.isEmpty)
+              const Column(
+                children: [
+                  Skeleton.row(),
+                  SizedBox(height: AppSizes.space10),
+                  Skeleton.row(),
+                ],
+              )
+            else if (state.error != null && state.notifications.isEmpty)
+              OdysseyErrorState(
+                message: state.error!,
+                onRetry: _handleRefresh,
+              )
+            else if (state.notifications.isEmpty)
+              const OdysseyEmptyState(
+                message: 'Nothing yet. Reminders and invites land here.',
+              )
+            else
+              for (final group in state.groupedByDate) ...[
+                EyebrowLabel(group.label),
+                const SizedBox(height: AppSizes.space12),
+                for (final notification in group.notifications) ...[
+                  _NotificationRow(
+                    notification: notification,
+                    onTap: () => _handleTap(notification),
+                    onDelete: () => _handleDelete(notification),
+                  ),
+                  const SizedBox(height: AppSizes.space10),
+                ],
+                const SizedBox(height: AppSizes.space14),
+              ],
+
+            if (state.isLoadingMore) const Skeleton.row(),
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildBody(NotificationHistoryState state) {
-    if (state.isLoading && state.notifications.isEmpty) {
-      return const Center(
-        child: BouncingDotsLoader(),
-      );
-    }
+/// One notification. Unread carries a lime dot rather than a tinted card —
+/// the list is long, and tinting every unread row would flood the screen.
+class _NotificationRow extends StatelessWidget {
+  const _NotificationRow({
+    required this.notification,
+    required this.onTap,
+    required this.onDelete,
+  });
 
-    if (state.error != null && state.notifications.isEmpty) {
-      return Center(
-        child: ErrorState(
-          message: state.error!,
-          onRetry: _handleRefresh,
+  final NotificationHistoryModel notification;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final unread = !notification.isRead;
+
+    return Dismissible(
+      key: ValueKey(notification.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: AppSizes.space20),
+          child: Text(
+            'Clear',
+            style: AppTypography.caption.copyWith(color: t.ink3),
+          ),
         ),
-      );
-    }
-
-    if (state.notifications.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return _buildNotificationsList(state);
-  }
-
-  Widget _buildEmptyState() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      ),
+      child: Pressable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: t.card,
+            borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+            border: Border.all(color: t.hairline),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(AppSizes.space24),
-                decoration: BoxDecoration(
-                  color: AppColors.skyBlue.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.notifications_off_outlined,
-                  size: 64,
-                  color: AppColors.skyBlue,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space24),
-              Text(
-                'No notifications yet',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space8),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.space32),
-                child: Text(
-                  "When you receive notifications about trips, shares, and achievements, they'll appear here.",
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                padding: const EdgeInsets.only(top: 5),
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: unread ? t.action : Colors.transparent,
+                    shape: BoxShape.circle,
                   ),
-                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: AppSizes.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: AppTypography.rowTitle.copyWith(
+                        color: unread ? t.ink : t.ink2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      notification.body,
+                      style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                      maxLines: 3,
+                    ),
+                    if (notification.relatedTripTitle != null) ...[
+                      const SizedBox(height: AppSizes.space8),
+                      MonoTag(notification.relatedTripTitle!),
+                    ],
+                  ],
                 ),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationsList(NotificationHistoryState state) {
-    final groups = state.groupedByDate;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return CustomScrollView(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        for (final group in groups) ...[
-          // Section header
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.space16,
-                AppSizes.space16,
-                AppSizes.space16,
-                AppSizes.space8,
-              ),
-              child: Text(
-                group.label,
-                style: AppTypography.labelLarge.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          // Notification items
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final notification = group.notifications[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSizes.space12),
-                    child: NotificationItem(
-                      notification: notification,
-                      onTap: () => _handleNotificationTap(notification),
-                      onDelete: () =>
-                          _handleDeleteNotification(notification.id),
-                      onMarkAsRead: notification.isRead
-                          ? null
-                          : () => ref
-                              .read(notificationHistoryProvider.notifier)
-                              .markAsRead(notification.id),
-                    ),
-                  );
-                },
-                childCount: group.notifications.length,
-              ),
-            ),
-          ),
-        ],
-        // Loading indicator
-        if (state.isLoadingMore)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(AppSizes.space24),
-              child: Center(child: BouncingDotsLoader()),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
