@@ -332,14 +332,21 @@ class _PackingRow extends StatelessWidget {
     );
   }
 
-  /// The mono tag is 9px and sits at the row's edge, so it takes the first
-  /// four letters rather than wrapping a long category name.
-  static String _shortTag(String category) {
-    final parsed = PackingCategory.values.firstWhere(
-      (c) => c.name == category,
-      orElse: () => PackingCategory.other,
-    );
-    final name = parsed.displayName;
-    return name.length <= 5 ? name : name.substring(0, 4);
-  }
+  /// The mono row tag, as a four-letter code.
+  ///
+  /// Truncating the display name gave "OTHE" and "TOIL", which read as typos.
+  /// These are chosen words, the way the design's own DOCS / TECH / WEAR / CARE
+  /// are.
+  static String _shortTag(String category) =>
+      switch (PackingCategory.values.firstWhere(
+        (c) => c.name == category,
+        orElse: () => PackingCategory.other,
+      )) {
+        PackingCategory.clothes => 'WEAR',
+        PackingCategory.toiletries => 'CARE',
+        PackingCategory.electronics => 'TECH',
+        PackingCategory.documents => 'DOCS',
+        PackingCategory.medicine => 'MEDS',
+        PackingCategory.other => 'MISC',
+      };
 }

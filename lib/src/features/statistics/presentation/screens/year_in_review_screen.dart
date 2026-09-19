@@ -111,11 +111,12 @@ class YearInReviewScreen extends ConsumerWidget {
     final symbol = _symbolFor(stats.reportingCurrency);
 
     final monthEntries = stats.tripsByMonth.entries.toList();
-    final categoryEntries =
-        (stats.expensesByCategory.entries.toList()
-              ..sort((a, b) => b.value.compareTo(a.value)))
-            .take(6)
-            .toList();
+    final categorySegments = BarSegment.capped(
+      (stats.expensesByCategory.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value)))
+          .map((e) => BarSegment(label: e.key, value: e.value))
+          .toList(),
+    );
 
     return [
       HeroTile(
@@ -226,7 +227,7 @@ class YearInReviewScreen extends ConsumerWidget {
         ),
       ],
 
-      if (categoryEntries.isNotEmpty) ...[
+      if (categorySegments.isNotEmpty) ...[
         const SizedBox(height: AppSizes.space12),
         OdysseyCard(
           radius: AppSizes.radiusHero,
@@ -237,19 +238,11 @@ class YearInReviewScreen extends ConsumerWidget {
               const EyebrowLabel('Where it went'),
               const SizedBox(height: AppSizes.space16),
               SegmentedBar(
-                segments: [
-                  for (final entry in categoryEntries)
-                    BarSegment(label: entry.key, value: entry.value),
-                ],
+                segments: categorySegments,
                 height: AppSizes.categoryBarHeight,
               ),
               const SizedBox(height: AppSizes.space14),
-              BarLegend(
-                segments: [
-                  for (final entry in categoryEntries)
-                    BarSegment(label: entry.key, value: entry.value),
-                ],
-              ),
+              BarLegend(segments: categorySegments),
             ],
           ),
         ),

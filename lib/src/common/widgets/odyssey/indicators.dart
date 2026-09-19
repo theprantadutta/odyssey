@@ -76,6 +76,29 @@ class BarSegment {
 
   /// Defaults to the matching tone of the theme's 4-tone data ramp.
   final Color? color;
+
+  /// Folds a list down to at most four slices, rolling the tail into one.
+  ///
+  /// The ramp has four tones and wraps, so a fifth category comes back round
+  /// to the first and two legend swatches end up identical. Rolling the tail
+  /// up keeps every swatch distinct and the total honest.
+  static List<BarSegment> capped(
+    List<BarSegment> segments, {
+    int max = 4,
+    String tailLabel = 'Other',
+  }) {
+    if (segments.length <= max) return segments;
+
+    final head = segments.take(max - 1).toList();
+    final tail = segments.skip(max - 1);
+    return [
+      ...head,
+      BarSegment(
+        label: tailLabel,
+        value: tail.fold<double>(0, (sum, s) => sum + s.value),
+      ),
+    ];
+  }
 }
 
 /// The multi-tone category bar used by the spend panel and the budget total —
@@ -104,6 +127,10 @@ class SegmentedBar extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Row(
+        // Stretch, not the default centre: a DecoratedBox with no child gets
+        // loose constraints from a centred Row and collapses to nothing, which
+        // is exactly how this bar went missing.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var i = 0; i < segments.length; i++) ...[
             if (i > 0) SizedBox(width: gap),

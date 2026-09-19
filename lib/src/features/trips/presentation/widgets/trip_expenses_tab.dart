@@ -126,11 +126,11 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
       final label = _categoryLabel(expense.category);
       totals[label] = (totals[label] ?? 0) + expense.amount;
     }
-    final segments =
-        (totals.entries.toList()
-              ..sort((a, b) => b.value.compareTo(a.value)))
-            .map((e) => BarSegment(label: e.key, value: e.value))
-            .toList();
+    final segments = BarSegment.capped(
+      (totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+          .map((e) => BarSegment(label: e.key, value: e.value))
+          .toList(),
+    );
 
     final categories = <String>[_allCategories, ...segments.map((s) => s.label)];
     final visible = _category == _allCategories
@@ -222,11 +222,16 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
             expense: visible[i],
             symbol: symbol,
             // The chip takes the tone its category has in the bar above, so
-            // the row and the chart agree on what colour "food" is.
+            // the row and the chart agree on what colour "food" is. A category
+            // folded into the bar's "Other" slice is not in the list, so it
+            // takes that slice's tone.
             tone: t.rampAt(
-              segments.indexWhere(
+              switch (segments.indexWhere(
                 (s) => s.label == _categoryLabel(visible[i].category),
-              ),
+              )) {
+                -1 => segments.length - 1,
+                final index => index,
+              },
             ),
             onTap: () => _editExpense(visible[i]),
             onLongPress: () => _deleteExpense(visible[i]),
