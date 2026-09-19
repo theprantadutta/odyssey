@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../common/theme/app_typography.dart';
 
 /// Full-screen viewer for legal documents (Privacy Policy, Terms & Conditions).
@@ -43,71 +44,78 @@ class _LegalDocumentViewerState extends State<LegalDocumentViewer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.title,
-          style: AppTypography.headlineMedium.copyWith(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
+    return OdysseyScaffold(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.screenPadding,
+              AppSizes.contentTop,
+              AppSizes.screenPadding,
+              AppSizes.space18,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ScreenHeader(onBack: () => Navigator.of(context).pop()),
+                const SizedBox(height: AppSizes.space18),
+                Text(
+                  widget.title,
+                  style: AppTypography.screenTitle.copyWith(color: t.ink),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.sunnyYellow),
-            )
-          : Markdown(
-              data: _content,
-              padding: const EdgeInsets.all(AppSizes.space16),
-              styleSheet: MarkdownStyleSheet(
-                h1: AppTypography.headlineLarge.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-                h2: AppTypography.headlineSmall.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                h3: AppTypography.titleMedium.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                p: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.6,
-                ),
-                listBullet: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                strong: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                em: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-                horizontalRuleDecoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: colorScheme.outlineVariant,
-                      width: 1,
+          Expanded(
+            child: _isLoading
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSizes.screenPadding,
+                    ),
+                    child: Column(
+                      children: [
+                        Skeleton(width: double.infinity, height: 14),
+                        SizedBox(height: AppSizes.space10),
+                        Skeleton(width: double.infinity, height: 14),
+                        SizedBox(height: AppSizes.space10),
+                        Skeleton(width: double.infinity, height: 14),
+                      ],
+                    ),
+                  )
+                : Markdown(
+                    data: _content,
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSizes.screenPadding,
+                      0,
+                      AppSizes.screenPadding,
+                      AppSizes.scrollBottom,
+                    ),
+                    styleSheet: MarkdownStyleSheet(
+                      h1: AppTypography.statSmall.copyWith(color: t.ink),
+                      h2: AppTypography.sectionHeading.copyWith(color: t.ink),
+                      h3: AppTypography.rowTitle.copyWith(color: t.ink),
+                      p: AppTypography.body.copyWith(color: t.ink2),
+                      listBullet: AppTypography.body.copyWith(color: t.ink2),
+                      strong: AppTypography.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: t.ink,
+                      ),
+                      em: AppTypography.body.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: t.ink3,
+                      ),
+                      horizontalRuleDecoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: t.hairline),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
+          ),
+        ],
+      ),
     );
   }
 }

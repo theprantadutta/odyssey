@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../common/animations/animation_constants.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../data/models/walkthrough_step_model.dart';
 import 'spotlight_painter.dart';
@@ -51,30 +50,30 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
-      curve: AppAnimations.fadeIn,
+      curve: AppSizes.curveState,
     );
 
     // Spotlight breathing glow
     _glowController = AnimationController(
-      duration: AppAnimations.pulse,
+      duration: AppSizes.durationPulse,
       vsync: this,
     )..repeat(reverse: true);
 
     // Tooltip slide-in on step change
     _tooltipController = AnimationController(
-      duration: AppAnimations.medium,
+      duration: AppSizes.durationPanel,
       vsync: this,
     );
     _tooltipSlideAnimation = Tween<double>(begin: 20, end: 0).animate(
       CurvedAnimation(
         parent: _tooltipController,
-        curve: AppAnimations.bouncyEnter,
+        curve: AppSizes.curveState,
       ),
     );
     _tooltipFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _tooltipController,
-        curve: AppAnimations.fadeIn,
+        curve: AppSizes.curveState,
       ),
     );
 

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../theme/app_sizes.dart';
 import '../theme/odyssey_tokens.dart';
 import '../theme/app_typography.dart';
-import '../animations/animation_constants.dart';
 import '../../core/services/location_service.dart';
 
 /// A button that fetches the current GPS location and populates lat/lng controllers
@@ -37,14 +36,14 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: AppAnimations.micro,
+      duration: AppSizes.durationPress,
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
     ).animate(CurvedAnimation(
       parent: _scaleController,
-      curve: AppAnimations.buttonPress,
+      curve: AppSizes.curveState,
     ));
   }
 
@@ -165,7 +164,7 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
           return Transform.scale(
             scale: _scaleAnimation.value,
             child: AnimatedContainer(
-              duration: AppAnimations.fast,
+              duration: AppSizes.durationState,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.space16,
                 vertical: AppSizes.space12,

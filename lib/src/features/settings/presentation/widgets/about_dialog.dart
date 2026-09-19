@@ -1,176 +1,130 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../../common/theme/app_colors.dart';
+
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/custom_button.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/brand_mark.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 
-/// Shows the About Odyssey dialog
+/// What this app is, who made it, and which build you are on.
 Future<void> showAboutOdysseyDialog({
   required BuildContext context,
   required String appVersion,
 }) {
-  return showDialog(
+  return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (context) => AboutOdysseyDialog(appVersion: appVersion),
   );
 }
 
 class AboutOdysseyDialog extends StatelessWidget {
+  const AboutOdysseyDialog({super.key, required this.appVersion});
+
   final String appVersion;
-
-  const AboutOdysseyDialog({
-    super.key,
-    required this.appVersion,
-  });
-
-  Future<void> _openDeveloperLink() async {
-    final uri = Uri.parse('https://pranta.dev');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
-    return Dialog(
-      backgroundColor: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.screenPadding,
+        AppSizes.space24,
+        AppSizes.screenPadding,
+        AppSizes.space24,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space24),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(t.sheet, t.canvas),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusSheet),
+        ),
+        border: Border(top: BorderSide(color: t.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.skyBlue.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline_rounded,
-                    color: AppColors.skyBlue,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSizes.space12),
-                Text(
-                  'About Odyssey',
-                  style: AppTypography.headlineSmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSizes.space24),
+            Center(child: const OdysseyMark(size: 64)),
+            const SizedBox(height: AppSizes.space20),
 
-            // App Icon
-            Container(
-              padding: const EdgeInsets.all(AppSizes.space16),
-              decoration: BoxDecoration(
-                color: AppColors.lemonLight,
-                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-              ),
-              child: const Icon(
-                Icons.travel_explore,
-                color: AppColors.goldenGlow,
-                size: 48,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space16),
-
-            // Version
-            Text(
-              'Version $appVersion',
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space16),
-
-            // Description
-            Text(
-              'Odyssey is your personal travel companion for planning and documenting your adventures.',
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space24),
-
-            // Developer Section
-            Text(
-              'Developed & Maintained By',
-              style: AppTypography.labelSmall.copyWith(
-                color: theme.hintColor,
+            Center(
+              child: Text(
+                'Odyssey',
+                style: AppTypography.statSection.copyWith(color: t.ink),
               ),
             ),
             const SizedBox(height: AppSizes.space8),
-
-            // Developer Link
-            Material(
-              color: AppColors.oceanTeal.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              child: InkWell(
-                onTap: _openDeveloperLink,
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.space16,
-                    vertical: AppSizes.space12,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Pranta Dutta',
-                        style: AppTypography.titleSmall.copyWith(
-                          color: AppColors.oceanTeal,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.space8),
-                      const Icon(
-                        Icons.open_in_new_rounded,
-                        color: AppColors.oceanTeal,
-                        size: 16,
-                      ),
-                    ],
-                  ),
+            Center(
+              child: Text(
+                'Build $appVersion',
+                style: AppTypography.monoDivider.copyWith(
+                  fontSize: 9.5,
+                  color: t.ink3,
                 ),
               ),
             ),
-            const SizedBox(height: AppSizes.space16),
+            const SizedBox(height: AppSizes.space20),
 
-            // Copyright
             Text(
-              '© ${DateTime.now().year} Pranta Dutta.\nAll rights reserved.',
-              style: AppTypography.caption.copyWith(
-                color: theme.hintColor,
-              ),
+              'Plan the days, pack the bag, split the spend and keep the '
+              'photos — Odyssey holds the whole journey.',
               textAlign: TextAlign.center,
+              style: AppTypography.body.copyWith(color: t.ink2),
             ),
             const SizedBox(height: AppSizes.space24),
 
-            // Close Button
-            SizedBox(
-              width: double.infinity,
-              child: CustomButton(
-                text: 'Close',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            GroupedCard(
+              children: [
+                _MetaRow(label: 'Built by', value: 'Pranta Dutta'),
+                _MetaRow(
+                  label: 'Copyright',
+                  value: '© ${DateTime.now().year}',
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space20),
+
+            PillButton(
+              label: 'Close',
+              style: PillStyle.outline,
+              onPressed: () => Navigator.of(context).pop(),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.rowLabel.copyWith(color: t.ink),
+            ),
+          ),
+          Text(
+            value,
+            style: AppTypography.caption.copyWith(color: t.ink3),
+          ),
+        ],
       ),
     );
   }
