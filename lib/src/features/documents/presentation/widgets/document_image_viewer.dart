@@ -7,7 +7,6 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../core/network/authenticated_media_fetch.dart';
 import '../../../../core/utils/file_url_helper.dart';
-import '../../../../common/widgets/odyssey/odyssey.dart';
 
 
 /// Simple image viewer for document images

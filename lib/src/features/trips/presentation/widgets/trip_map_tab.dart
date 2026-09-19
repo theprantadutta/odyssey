@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../activities/data/models/activity_model.dart';
 import '../../../activities/presentation/providers/activities_provider.dart';
 import '../../../memories/data/models/memory_model.dart';
 import '../../../memories/presentation/providers/memories_provider.dart';
-import '../../../../core/network/authenticated_media_fetch.dart';
-import '../../../../core/utils/file_url_helper.dart';
 
-/// Map tab showing activities and memories for a trip
+/// The trip's own map: its plans and its photos, pinned where they happened.
+///
+/// Built on the same pins and glass controls as the world map (3g), so the two
+/// read as the same surface at different scales.
 class TripMapTab extends ConsumerStatefulWidget {
-  final String tripId;
-  final double? initialLatitude;
-  final double? initialLongitude;
-
   const TripMapTab({
     super.key,
     required this.tripId,
@@ -29,819 +29,43 @@ class TripMapTab extends ConsumerStatefulWidget {
     this.initialLongitude,
   });
 
+  final String tripId;
+  final double? initialLatitude;
+  final double? initialLongitude;
+
   @override
   ConsumerState<TripMapTab> createState() => _TripMapTabState();
 }
 
 class _TripMapTabState extends ConsumerState<TripMapTab> {
   final MapController _mapController = MapController();
+
   bool _showActivities = true;
   bool _showMemories = true;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final activitiesState = ref.watch(tripActivitiesProvider(widget.tripId));
-    final memoriesState = ref.watch(tripMemoriesProvider(widget.tripId));
+  /// What the selected pin card is showing, if anything.
+  ({String title, String meta, String? imageUrl, String seed})? _selected;
 
-    // Calculate bounds for the map
-    final allPoints = <LatLng>[];
-
-    if (_showActivities) {
-      for (final activity in activitiesState.activities) {
-        if (activity.latitude != null && activity.longitude != null) {
-          allPoints.add(LatLng(activity.latitude!, activity.longitude!));
-        }
-      }
-    }
-
-    if (_showMemories) {
-      for (final memory in memoriesState.memories) {
-        if (memory.latitude != null && memory.longitude != null) {
-          allPoints.add(LatLng(memory.latitude!, memory.longitude!));
-        }
-      }
-    }
-
-    // Default center if no points
-    final defaultCenter = LatLng(
-      widget.initialLatitude ?? 23.8103,
-      widget.initialLongitude ?? 90.4125,
-    );
-
-    final center = allPoints.isNotEmpty
-        ? _calculateCenter(allPoints)
-        : defaultCenter;
-
-    return Stack(
-      children: [
-        // Map
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: center,
-            initialZoom: allPoints.isEmpty ? 5.0 : 10.0,
-            minZoom: 2.0,
-            maxZoom: 18.0,
-            onTap: (tapPosition, point) {
-              // Dismiss any bottom sheet
-            },
-          ),
-          children: [
-            // OpenStreetMap tiles
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.odyssey.app',
-            ),
-            // Required by the OpenStreetMap licence: the tile data is ODbL and
-            // must be credited wherever it is shown.
-            RichAttributionWidget(
-              showFlutterMapAttribution: false,
-              attributions: [
-                TextSourceAttribution(
-                  'OpenStreetMap contributors',
-                  onTap: () => launchUrl(
-                    Uri.parse('https://www.openstreetmap.org/copyright'),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                ),
-              ],
-            ),
-            // Marker cluster layer
-            MarkerClusterLayerWidget(
-              options: MarkerClusterLayerOptions(
-                maxClusterRadius: 80,
-                size: const Size(50, 50),
-                markers: _buildMarkers(
-                  activitiesState.activities,
-                  memoriesState.memories,
-                ),
-                builder: (context, markers) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.sunnyYellow,
-                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                      boxShadow: AppSizes.softShadow,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${markers.length}',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-
-        // Filter toggles
-        Positioned(
-          top: AppSizes.space16,
-          right: AppSizes.space16,
-          child: _buildFilterToggles(
-            activitiesState.activities.length,
-            memoriesState.memories.length,
-            theme,
-            colorScheme,
-          ),
-        ),
-
-        // Legend
-        Positioned(
-          bottom: AppSizes.space16,
-          left: AppSizes.space16,
-          child: _buildLegend(colorScheme),
-        ),
-
-        // Zoom controls
-        Positioned(
-          bottom: AppSizes.space16,
-          right: AppSizes.space16,
-          child: _buildZoomControls(colorScheme),
-        ),
-
-        // Empty state overlay
-        if (allPoints.isEmpty &&
-            !activitiesState.isLoading &&
-            !memoriesState.isLoading)
-          _buildEmptyOverlay(colorScheme),
-      ],
-    );
+  void _zoom(double delta) {
+    HapticFeedback.selectionClick();
+    final camera = _mapController.camera;
+    _mapController.move(camera.center, camera.zoom + delta);
   }
 
-  List<Marker> _buildMarkers(
-    List<ActivityModel> activities,
-    List<MemoryModel> memories,
-  ) {
-    final markers = <Marker>[];
-
-    // Activity markers
-    if (_showActivities) {
-      for (final activity in activities) {
-        if (activity.latitude != null && activity.longitude != null) {
-          markers.add(
-            Marker(
-              point: LatLng(activity.latitude!, activity.longitude!),
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _showActivityDetails(activity);
-                },
-                child: _buildActivityMarker(activity),
-              ),
-            ),
-          );
-        }
-      }
-    }
-
-    // Memory markers
-    if (_showMemories) {
-      for (final memory in memories) {
-        if (memory.latitude != null && memory.longitude != null) {
-          markers.add(
-            Marker(
-              point: LatLng(memory.latitude!, memory.longitude!),
-              width: 44,
-              height: 44,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _showMemoryDetails(memory);
-                },
-                child: _buildMemoryMarker(memory),
-              ),
-            ),
-          );
-        }
-      }
-    }
-
-    return markers;
-  }
-
-  Widget _buildActivityMarker(ActivityModel activity) {
-    final color = _getCategoryColor(activity.category);
-    final icon = _getCategoryIcon(activity.category);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 20,
-          color: Colors.white,
-        ),
+  void _fit(List<LatLng> points) {
+    if (points.isEmpty) return;
+    HapticFeedback.selectionClick();
+    _mapController.fitCamera(
+      CameraFit.coordinates(
+        coordinates: points,
+        padding: const EdgeInsets.all(56),
       ),
     );
   }
 
-  Widget _buildMemoryMarker(MemoryModel memory) {
-    final imageUrl = memory.displayUrl;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-        border: Border.all(color: AppColors.sunnyYellow, width: 3),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-        child: imageUrl != null
-            ? CachedNetworkImage(
-                imageUrl: FileUrlHelper.resolve(imageUrl),
-                cacheManager: AuthenticatedMediaCacheManager.instance,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.photo_rounded,
-                    color: theme.hintColor,
-                    size: 20,
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(
-                    Icons.broken_image_rounded,
-                    color: theme.hintColor,
-                    size: 20,
-                  ),
-                ),
-              )
-            : Container(
-                color: AppColors.lemonLight,
-                child: Icon(
-                  memory.hasVideo ? Icons.videocam_rounded : Icons.notes_rounded,
-                  color: AppColors.goldenGlow,
-                  size: 20,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildFilterToggles(int activityCount, int memoryCount, ThemeData theme, ColorScheme colorScheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        children: [
-          _buildFilterChip(
-            label: 'Activities',
-            count: activityCount,
-            isEnabled: _showActivities,
-            color: AppColors.oceanTeal,
-            theme: theme,
-            colorScheme: colorScheme,
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() => _showActivities = !_showActivities);
-            },
-          ),
-          const Divider(height: 1),
-          _buildFilterChip(
-            label: 'Memories',
-            count: memoryCount,
-            isEnabled: _showMemories,
-            color: AppColors.sunnyYellow,
-            theme: theme,
-            colorScheme: colorScheme,
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() => _showMemories = !_showMemories);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip({
-    required String label,
-    required int count,
-    required bool isEnabled,
-    required Color color,
-    required ThemeData theme,
-    required ColorScheme colorScheme,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSizes.space12,
-          vertical: AppSizes.space8,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: isEnabled ? color : colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: isEnabled ? color : theme.hintColor,
-                  width: 2,
-                ),
-              ),
-              child: isEnabled
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 12,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
-            const SizedBox(width: AppSizes.space8),
-            Text(
-              '$label ($count)',
-              style: AppTypography.caption.copyWith(
-                color: isEnabled ? colorScheme.onSurface : theme.hintColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegend(ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildLegendItem(
-            color: AppColors.coralBurst,
-            icon: Icons.restaurant_rounded,
-            label: 'Food',
-            colorScheme: colorScheme,
-          ),
-          const SizedBox(height: AppSizes.space4),
-          _buildLegendItem(
-            color: AppColors.skyBlue,
-            icon: Icons.flight_rounded,
-            label: 'Travel',
-            colorScheme: colorScheme,
-          ),
-          const SizedBox(height: AppSizes.space4),
-          _buildLegendItem(
-            color: AppColors.lavenderDream,
-            icon: Icons.hotel_rounded,
-            label: 'Stay',
-            colorScheme: colorScheme,
-          ),
-          const SizedBox(height: AppSizes.space4),
-          _buildLegendItem(
-            color: AppColors.oceanTeal,
-            icon: Icons.explore_rounded,
-            label: 'Explore',
-            colorScheme: colorScheme,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem({
-    required Color color,
-    required IconData icon,
-    required String label,
-    required ColorScheme colorScheme,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-          ),
-          child: Center(
-            child: Icon(icon, size: 12, color: Colors.white),
-          ),
-        ),
-        const SizedBox(width: AppSizes.space8),
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildZoomControls(ColorScheme colorScheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        boxShadow: AppSizes.softShadow,
-      ),
-      child: Column(
-        children: [
-          IconButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              final currentZoom = _mapController.camera.zoom;
-              _mapController.move(
-                _mapController.camera.center,
-                currentZoom + 1,
-              );
-            },
-            icon: const Icon(Icons.add_rounded),
-            color: colorScheme.onSurface,
-            iconSize: 24,
-          ),
-          const Divider(height: 1),
-          IconButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              final currentZoom = _mapController.camera.zoom;
-              _mapController.move(
-                _mapController.camera.center,
-                currentZoom - 1,
-              );
-            },
-            icon: const Icon(Icons.remove_rounded),
-            color: colorScheme.onSurface,
-            iconSize: 24,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyOverlay(ColorScheme colorScheme) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.3),
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(AppSizes.space32),
-          padding: const EdgeInsets.all(AppSizes.space24),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-            boxShadow: AppSizes.softShadow,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSizes.space16),
-                decoration: BoxDecoration(
-                  color: AppColors.lemonLight,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-                child: Icon(
-                  Icons.map_rounded,
-                  size: 40,
-                  color: AppColors.goldenGlow,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space16),
-              Text(
-                'No Locations Yet',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSizes.space8),
-              Text(
-                'Add activities or memories with location data to see them on the map.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showActivityDetails(ActivityModel activity) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(AppSizes.space16),
-        padding: const EdgeInsets.all(AppSizes.space20),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Category badge and title
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(activity.category),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                  child: Icon(
-                    _getCategoryIcon(activity.category),
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: AppSizes.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        activity.title,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        activity.category.toUpperCase(),
-                        style: AppTypography.caption.copyWith(
-                          color: _getCategoryColor(activity.category),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (activity.description != null &&
-                activity.description!.isNotEmpty) ...[
-              const SizedBox(height: AppSizes.space12),
-              Text(
-                activity.description!,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: AppSizes.space16),
-            // Info row
-            Row(
-              children: [
-                Icon(
-                  Icons.access_time_rounded,
-                  size: 16,
-                  color: theme.hintColor,
-                ),
-                const SizedBox(width: AppSizes.space4),
-                Text(
-                  activity.scheduledTime,
-                  style: AppTypography.caption.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: AppSizes.space16),
-                Icon(
-                  Icons.location_on_rounded,
-                  size: 16,
-                  color: theme.hintColor,
-                ),
-                const SizedBox(width: AppSizes.space4),
-                Expanded(
-                  child: Text(
-                    '${activity.latitude ?? 'N/A'}, ${activity.longitude ?? 'N/A'}',
-                    style: AppTypography.caption.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showMemoryDetails(MemoryModel memory) {
-    final imageUrl = memory.displayUrl;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(AppSizes.space16),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Photo/Video preview
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSizes.radiusXl),
-              ),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: imageUrl != null
-                    ? Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: FileUrlHelper.resolve(imageUrl),
-                            cacheManager: AuthenticatedMediaCacheManager.instance,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: colorScheme.surfaceContainerHighest,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.sunnyYellow,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: colorScheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.broken_image_rounded,
-                                color: theme.hintColor,
-                                size: 40,
-                              ),
-                            ),
-                          ),
-                          // Show video indicator if has video
-                          if (memory.hasVideo)
-                            Center(
-                              child: Container(
-                                padding: const EdgeInsets.all(AppSizes.space12),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
-                              ),
-                            ),
-                          // Show media count badge if multiple
-                          if (memory.mediaItems.length > 1)
-                            Positioned(
-                              top: AppSizes.space8,
-                              right: AppSizes.space8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSizes.space8,
-                                  vertical: AppSizes.space4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                                ),
-                                child: Text(
-                                  '${memory.mediaItems.length}',
-                                  style: AppTypography.caption.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      )
-                    : Container(
-                        color: AppColors.lemonLight,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.notes_rounded,
-                                size: 40,
-                                color: AppColors.goldenGlow,
-                              ),
-                              const SizedBox(height: AppSizes.space8),
-                              Text(
-                                'No media',
-                                style: AppTypography.caption.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            // Details
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.space16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (memory.caption != null && memory.caption!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSizes.space12),
-                      child: Text(
-                        memory.caption!,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      if (memory.hasLocation) ...[
-                        Icon(
-                          Icons.location_on_rounded,
-                          size: 16,
-                          color: theme.hintColor,
-                        ),
-                        const SizedBox(width: AppSizes.space4),
-                        Expanded(
-                          child: Text(
-                            '${memory.latitude}, ${memory.longitude}',
-                            style: AppTypography.caption.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                      if (memory.takenAt != null) ...[
-                        if (memory.hasLocation)
-                          const SizedBox(width: AppSizes.space16),
-                        Icon(
-                          Icons.calendar_today_rounded,
-                          size: 16,
-                          color: theme.hintColor,
-                        ),
-                        const SizedBox(width: AppSizes.space4),
-                        Text(
-                          memory.takenAt!.split('T').first,
-                          style: AppTypography.caption.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  LatLng _calculateCenter(List<LatLng> points) {
-    double lat = 0;
-    double lng = 0;
+  static LatLng _centre(List<LatLng> points) {
+    var lat = 0.0;
+    var lng = 0.0;
     for (final point in points) {
       lat += point.latitude;
       lng += point.longitude;
@@ -849,31 +73,394 @@ class _TripMapTabState extends ConsumerState<TripMapTab> {
     return LatLng(lat / points.length, lng / points.length);
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return AppColors.coralBurst;
-      case 'travel':
-        return AppColors.skyBlue;
-      case 'stay':
-        return AppColors.lavenderDream;
-      case 'explore':
-      default:
-        return AppColors.oceanTeal;
-    }
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final activities = ref.watch(tripActivitiesProvider(widget.tripId));
+    final memories = ref.watch(tripMemoriesProvider(widget.tripId));
+
+    final locatedActivities = activities.activities
+        .where((a) => a.latitude != null && a.longitude != null)
+        .toList();
+    final locatedMemories = memories.memories
+        .where((m) => m.latitude != null && m.longitude != null)
+        .toList();
+
+    final points = <LatLng>[
+      if (_showActivities)
+        for (final a in locatedActivities) LatLng(a.latitude!, a.longitude!),
+      if (_showMemories)
+        for (final m in locatedMemories) LatLng(m.latitude!, m.longitude!),
+    ];
+
+    final centre = points.isNotEmpty
+        ? _centre(points)
+        : LatLng(
+            widget.initialLatitude ?? 23.8103,
+            widget.initialLongitude ?? 90.4125,
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusHero),
+      child: SizedBox(
+        height: AppSizes.mapHeight,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(
+                color: t.mapBase,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: centre,
+                    initialZoom: points.isEmpty ? 5.0 : 10.0,
+                    minZoom: 2.0,
+                    maxZoom: 18.0,
+                    onTap: (_, _) => setState(() => _selected = null),
+                  ),
+                  children: [
+                    _themedTiles(t),
+                    // Required by the OpenStreetMap licence: the tile data is
+                    // ODbL and must be credited wherever it is shown.
+                    RichAttributionWidget(
+                      showFlutterMapAttribution: false,
+                      attributions: [
+                        TextSourceAttribution(
+                          'OpenStreetMap contributors',
+                          onTap: () => launchUrl(
+                            Uri.parse(
+                              'https://www.openstreetmap.org/copyright',
+                            ),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                      ],
+                    ),
+                    MarkerClusterLayerWidget(
+                      options: MarkerClusterLayerOptions(
+                        maxClusterRadius: 80,
+                        size: const Size(44, 44),
+                        markers: _markers(locatedActivities, locatedMemories),
+                        builder: (context, markers) => _ClusterMark(
+                          count: markers.length,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // --- filters ---
+            Positioned(
+              left: AppSizes.space14,
+              top: AppSizes.space14,
+              right: 70,
+              child: Wrap(
+                spacing: AppSizes.space8,
+                children: [
+                  OdysseyChip(
+                    label: 'Plans ${locatedActivities.length}',
+                    selected: _showActivities,
+                    activeStyle: ChipActiveStyle.action,
+                    onTap: () =>
+                        setState(() => _showActivities = !_showActivities),
+                  ),
+                  OdysseyChip(
+                    label: 'Photos ${locatedMemories.length}',
+                    selected: _showMemories,
+                    activeStyle: ChipActiveStyle.action,
+                    onTap: () => setState(() => _showMemories = !_showMemories),
+                  ),
+                ],
+              ),
+            ),
+
+            // --- controls ---
+            Positioned(
+              right: AppSizes.space14,
+              top: AppSizes.space14,
+              child: Column(
+                children: [
+                  SquareButton(
+                    glyph: '+',
+                    size: 36,
+                    onPressed: () => _zoom(1),
+                    semanticLabel: 'Zoom in',
+                  ),
+                  const SizedBox(height: AppSizes.space6),
+                  SquareButton(
+                    glyph: '−',
+                    size: 36,
+                    onPressed: () => _zoom(-1),
+                    semanticLabel: 'Zoom out',
+                  ),
+                  const SizedBox(height: AppSizes.space6),
+                  SquareButton(
+                    icon: Icons.my_location_rounded,
+                    size: 36,
+                    accent: true,
+                    onPressed: () => _fit(points),
+                    semanticLabel: 'Fit to pins',
+                  ),
+                ],
+              ),
+            ),
+
+            if (_selected != null)
+              Positioned(
+                left: AppSizes.space14,
+                right: AppSizes.space14,
+                bottom: AppSizes.space14,
+                child: _PinCard(
+                  title: _selected!.title,
+                  meta: _selected!.meta,
+                  imageUrl: _selected!.imageUrl,
+                  seed: _selected!.seed,
+                  onClose: () => setState(() => _selected = null),
+                ),
+              )
+            else if (points.isEmpty)
+              Positioned(
+                left: AppSizes.space14,
+                right: AppSizes.space14,
+                bottom: AppSizes.space14,
+                child: GlassBar(
+                  radius: AppSizes.radiusCard,
+                  padding: const EdgeInsets.all(AppSizes.space16),
+                  child: Text(
+                    'Nothing pinned yet. Plans and photos with a location '
+                    'show up here.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.rowMeta.copyWith(color: t.ink2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Icons.restaurant_rounded;
-      case 'travel':
-        return Icons.flight_rounded;
-      case 'stay':
-        return Icons.hotel_rounded;
-      case 'explore':
-      default:
-        return Icons.explore_rounded;
+  /// The same tile treatment as the world map: OSM's light raster tiles,
+  /// inverted and desaturated for the dark theme.
+  Widget _themedTiles(OdysseyTokens t) {
+    final tiles = TileLayer(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'com.odyssey.app',
+    );
+
+    if (!t.isDark) return tiles;
+
+    return ColorFiltered(
+      colorFilter: const ColorFilter.matrix(<double>[
+        -0.60, -0.20, -0.05, 0, 225,
+        -0.15, -0.65, -0.05, 0, 225,
+        -0.10, -0.20, -0.55, 0, 225,
+        0, 0, 0, 1, 0,
+      ]),
+      child: tiles,
+    );
+  }
+
+  List<Marker> _markers(
+    List<ActivityModel> activities,
+    List<MemoryModel> memories,
+  ) {
+    final markers = <Marker>[];
+
+    if (_showActivities) {
+      for (final activity in activities) {
+        markers.add(
+          Marker(
+            point: LatLng(activity.latitude!, activity.longitude!),
+            width: 44,
+            height: 44,
+            child: _Pin(
+              selected: _selected?.title == activity.title,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                final when = DateTime.tryParse(activity.scheduledTime);
+                setState(() {
+                  _selected = (
+                    title: activity.title,
+                    meta: [
+                      activity.category,
+                      if (when != null) TripFormat.shortDate(when),
+                    ].join(' · '),
+                    imageUrl: null,
+                    seed: activity.id,
+                  );
+                });
+              },
+            ),
+          ),
+        );
+      }
     }
+
+    if (_showMemories) {
+      for (final memory in memories) {
+        markers.add(
+          Marker(
+            point: LatLng(memory.latitude!, memory.longitude!),
+            width: 44,
+            height: 44,
+            child: _Pin(
+              selected: _selected?.seed == memory.id,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                final url = memory.mediaItems.isNotEmpty
+                    ? (memory.mediaItems.first.thumbnailUrl ??
+                          memory.mediaItems.first.url)
+                    : memory.photoUrl;
+                setState(() {
+                  _selected = (
+                    title: memory.caption?.isNotEmpty == true
+                        ? memory.caption!
+                        : 'Memory',
+                    meta: memory.location ?? 'Photo',
+                    imageUrl: url,
+                    seed: memory.id,
+                  );
+                });
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+}
+
+/// A pin, matching the world map's: 15px idle, 22px lime when selected, with
+/// the only shadow this system has.
+class _Pin extends StatelessWidget {
+  const _Pin({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final ring = t.isDark ? AppColors.obsidian : Colors.white;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Center(
+        child: AnimatedContainer(
+          duration: AppSizes.durationPin,
+          curve: AppSizes.curveState,
+          width: selected ? AppSizes.pinSelected : AppSizes.pinIdle,
+          height: selected ? AppSizes.pinSelected : AppSizes.pinIdle,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.accent
+                : (t.isDark ? const Color(0xE6F2F2EF) : AppColors.obsidian),
+            shape: BoxShape.circle,
+            border: Border.all(color: ring, width: AppSizes.pinRing),
+            boxShadow: selected ? AppColors.activePinGlow : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClusterMark extends StatelessWidget {
+  const _ClusterMark({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: t.action,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: t.isDark ? AppColors.obsidian : Colors.white,
+          width: AppSizes.pinRing,
+        ),
+      ),
+      child: Text(
+        '$count',
+        style: AppTypography.numeral.copyWith(color: t.onAction),
+      ),
+    );
+  }
+}
+
+class _PinCard extends StatelessWidget {
+  const _PinCard({
+    required this.title,
+    required this.meta,
+    required this.imageUrl,
+    required this.seed,
+    required this.onClose,
+  });
+
+  final String title;
+  final String meta;
+  final String? imageUrl;
+  final String seed;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return GlassBar(
+      radius: AppSizes.radiusCard,
+      blur: AppSizes.glassBlurLight,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      child: Row(
+        children: [
+          PhotoSurface(
+            imageUrl: imageUrl,
+            seed: seed,
+            width: 48,
+            height: 48,
+            radius: AppSizes.radiusChip,
+            scrim: false,
+          ),
+          const SizedBox(width: AppSizes.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.rowTitle.copyWith(color: t.ink),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  meta,
+                  style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.space10),
+          CircleButton(
+            glyph: '✕',
+            size: AppSizes.circleSm,
+            onPressed: onClose,
+            semanticLabel: 'Close',
+          ),
+        ],
+      ),
+    );
   }
 }
