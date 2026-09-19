@@ -269,6 +269,7 @@ class _NextTripHero extends StatelessWidget {
     return PhotoSurface(
       imageUrl: trip.coverImageUrl,
       seed: trip.id,
+      heroTag: 'trip-image-${trip.id}',
       radius: AppSizes.radiusHeroLarge,
       height: AppSizes.homeHeroHeight,
       onTap: () => context.push('${AppRoutes.tripDetail}/${trip.id}', extra: trip),
@@ -359,6 +360,7 @@ class _TripThumb extends StatelessWidget {
           PhotoSurface(
             imageUrl: trip.coverImageUrl,
             seed: trip.id,
+            heroTag: 'trip-image-${trip.id}',
             width: AppSizes.tripThumb,
             height: AppSizes.tripThumb,
             radius: AppSizes.radiusTile,

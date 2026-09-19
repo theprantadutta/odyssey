@@ -40,6 +40,9 @@ class TripListCard extends StatelessWidget {
       child: PhotoSurface(
         imageUrl: trip.coverImageUrl,
         seed: trip.id,
+        // Pairs with the cover on the trip detail, so the photograph flies
+        // into place rather than the whole screen sliding over it.
+        heroTag: 'trip-image-${trip.id}',
         height: 210,
         radius: AppSizes.radiusHero,
         child: Stack(

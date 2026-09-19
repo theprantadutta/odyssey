@@ -568,20 +568,41 @@ class OverlapSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.odyssey;
-    return Transform.translate(
-      offset: const Offset(0, AppSizes.sheetOverlap),
-      child: Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(
-          color: t.sheet,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppSizes.radiusSheet),
-          ),
-          border: Border(top: BorderSide(color: t.hairline)),
+
+    // The overlap is the caller's job, not this widget's. Shifting it here with
+    // a Transform only works when nothing clips at the boundary, and in a
+    // CustomScrollView it does not: each sliver is clipped to its own bounds,
+    // so the shifted top - the rounded corners, the padding and the first few
+    // pixels of content - was being cut off. See [overlapAbove].
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: t.sheet,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusSheet),
         ),
-        child: child,
+        border: Border(top: BorderSide(color: t.hairline)),
       ),
+      child: child,
+    );
+  }
+
+  /// Stacks this sheet over [cover], riding [AppSizes.sheetOverlap] up onto it.
+  ///
+  /// Both go in a single box so nothing clips between them, and the stack ends
+  /// exactly where the sheet does.
+  static Widget overlapAbove({required Widget cover, required Widget sheet}) {
+    return Stack(
+      children: [
+        cover,
+        Padding(
+          padding: const EdgeInsets.only(
+            top: AppSizes.coverHeight + AppSizes.sheetOverlap,
+          ),
+          child: sheet,
+        ),
+      ],
     );
   }
 }

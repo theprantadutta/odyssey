@@ -250,8 +250,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              SliverToBoxAdapter(child: _buildCover(trip)),
-              SliverToBoxAdapter(child: _buildSheet(trip)),
+              // One sliver, not two: the sheet rides up onto the cover, and a
+              // sliver clips to its own bounds, so split across two the
+              // overlapping strip was being cut away.
+              SliverToBoxAdapter(
+                child: OverlapSheet.overlapAbove(
+                  cover: _buildCover(trip),
+                  sheet: _buildSheet(trip),
+                ),
+              ),
             ],
           ),
           // Once the cover scrolls away the sheet runs under the status bar,
