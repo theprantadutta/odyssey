@@ -1,5 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/logger_service.dart';
@@ -82,6 +82,20 @@ class AuthChangeNotifier extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// Where the user lands once the sign-in gates are cleared.
+///
+/// The intro offers two ways in, but the legal gate sits between the button and
+/// its destination, and a redirect carries no intent — `go('/register')` is
+/// swallowed by the terms rule, and what comes out the far side is the default,
+/// `/login`. So the choice is parked here on the way in and spent on the way
+/// out. It is deliberately not persisted: it only means anything inside the one
+/// run in which the button was pressed.
+String? _pendingAuthDestination;
+
+/// Records which way in the user chose on the intro. See
+/// [_pendingAuthDestination].
+void setPendingAuthDestination(String route) => _pendingAuthDestination = route;
 
 /// GoRouter provider - creates router once, uses refreshListenable for auth changes
 final routerProvider = Provider<GoRouter>((ref) {
@@ -172,9 +186,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Redirect to login if not authenticated (but has seen intro and accepted terms)
       if (!isAuthenticated && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
-        AppLogger.navigation('Redirecting to login (not authenticated)');
-        return AppRoutes.login;
+        // 'Create account' on the intro means the register screen, even though
+        // the legal gate stood in the way. Absent a choice, sign in.
+        final destination = _pendingAuthDestination ?? AppRoutes.login;
+        AppLogger.navigation('Redirecting to $destination (not authenticated)');
+        return destination;
       }
+
+      // Spent only once the user is actually standing on an auth screen and no
+      // rule above has moved them off it. Clearing on arrival is too early:
+      // `go('/register')` is evaluated once before the terms gate bounces it to
+      // /legal, and that pass would throw the choice away before it is used.
+      if (isOnAuthScreen) _pendingAuthDestination = null;
 
       return null;
     },
@@ -284,9 +307,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       // --- The tab shell -----------------------------------------------
       // Four branches, each with its own navigator, so switching tabs keeps
       // whatever the user had pushed on the one they left.
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
+        // The indexed stack this builds by hand is what
+        // StatefulShellRoute.indexedStack would have built, plus a hero gate.
+        //
+        // Every branch stays alive and mounted, and Flutter collects heroes
+        // from nested navigators whose route is current - which all four
+        // branches' are. Home and Trips list the same trips under the same
+        // hero tags, and two heroes sharing one tag in a subtree is a hard
+        // error. Only the branch on screen may offer them.
+        navigatorContainerBuilder: (context, navigationShell, children) =>
+            IndexedStack(
+              index: navigationShell.currentIndex,
+              children: [
+                for (var i = 0; i < children.length; i++)
+                  HeroMode(
+                    enabled: i == navigationShell.currentIndex,
+                    child: children[i],
+                  ),
+              ],
+            ),
         branches: [
           // Home — the dashboard: next trip, quick filters, recent trips.
           StatefulShellBranch(

@@ -85,6 +85,10 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
 
   Future<void> _finish({required String destination}) async {
     HapticFeedback.mediumImpact();
+    // The legal gate stands between this button and where it points, and a
+    // redirect cannot carry intent, so the choice is recorded for the router to
+    // honour once the gate is cleared.
+    setPendingAuthDestination(destination);
     await ref.read(authProvider.notifier).setIntroSeen();
     if (mounted) context.go(destination);
   }
