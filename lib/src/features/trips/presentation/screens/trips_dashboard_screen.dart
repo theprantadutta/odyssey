@@ -3,32 +3,30 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../common/animations/animation_constants.dart' as anim;
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
-import '../../../../common/theme/app_colors.dart';
-import '../../../../common/widgets/sync_status_indicator.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/custom_button.dart';
-import '../../../../common/widgets/empty_state.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../common/widgets/sync_status_indicator.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
-import '../../../ads/native_ad_slots.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
-import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../notifications/presentation/providers/notification_history_provider.dart';
-import '../../../notifications/presentation/widgets/notification_badge.dart';
 import '../../../notifications/presentation/widgets/notification_permission_prompt.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/dashboard_walkthrough_steps.dart';
 import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
 import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
-import '../widgets/trip_card.dart';
-import '../widgets/trip_search_filter.dart';
+import '../widgets/trip_list_card.dart';
 import 'trip_form_screen.dart';
 
+/// Trips — the full list, and the second tab.
+///
+/// The design does not draw this screen, so it is built from the system the
+/// rest of the redesign establishes: the screen title set large, a search
+/// pill, status chips, and the wide cover cards that are the full-width
+/// sibling of the thumbs on Home.
 class TripsDashboardScreen extends ConsumerStatefulWidget {
   const TripsDashboardScreen({super.key});
 
@@ -39,14 +37,17 @@ class TripsDashboardScreen extends ConsumerStatefulWidget {
 
 class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
 
-  // Walkthrough GlobalKeys
+  // Walkthrough anchors.
   final _headerKey = GlobalKey();
   final _notificationKey = GlobalKey();
   final _moreMenuKey = GlobalKey();
   final _searchBarKey = GlobalKey();
   final _quickFiltersKey = GlobalKey();
   final _fabKey = GlobalKey();
+
+  String _status = TripStatusChips.labels.first;
 
   /// One sheet at a time. Creating a trip while the startup check is still
   /// counting down would otherwise queue a second one behind the first.
@@ -57,22 +58,22 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
 
-    // Trigger walkthrough after screen settles
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          ref.read(walkthroughProvider.notifier).startIfNeeded(
-            'dashboard',
-            DashboardWalkthroughSteps.build(
-              headerKey: _headerKey,
-              notificationKey: _notificationKey,
-              moreMenuKey: _moreMenuKey,
-              searchBarKey: _searchBarKey,
-              quickFiltersKey: _quickFiltersKey,
-              fabKey: _fabKey,
-            ),
-          );
-        }
+        if (!mounted) return;
+        ref
+            .read(walkthroughProvider.notifier)
+            .startIfNeeded(
+              'dashboard',
+              DashboardWalkthroughSteps.build(
+                headerKey: _headerKey,
+                notificationKey: _notificationKey,
+                moreMenuKey: _moreMenuKey,
+                searchBarKey: _searchBarKey,
+                quickFiltersKey: _quickFiltersKey,
+                fabKey: _fabKey,
+              ),
+            );
       });
     });
 
@@ -83,7 +84,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   ///
   /// Deliberately not at launch, and deliberately not on an empty dashboard.
   /// The system permission dialog can be shown once, so the moment it is spent
-  /// decides the answer forever - and "would you like reminders" means nothing
+  /// decides the answer forever — and "would you like reminders" means nothing
   /// to someone who has not yet made the thing that would be reminded about.
   ///
   /// The wait is longer than the walkthrough's so the two cannot overlap; a
@@ -115,6 +116,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -139,16 +141,11 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
   void _handleTripTap(TripModel trip) {
     HapticFeedback.selectionClick();
-    context.push('/trips/${trip.id}', extra: trip);
+    context.push('${AppRoutes.tripDetail}/${trip.id}', extra: trip);
   }
 
-  void _handleEditTrip(String tripId) {
+  void _handleEditTrip(TripModel trip) {
     HapticFeedback.lightImpact();
-    final trip = ref
-        .read(tripsProvider)
-        .trips
-        .firstWhere((t) => t.id == tripId);
-
     Navigator.of(context)
         .push(
           MaterialPageRoute(
@@ -156,664 +153,243 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
             builder: (context) => TripFormScreen(trip: trip),
           ),
         )
-        .then((_) {
-          ref.read(tripsProvider.notifier).refresh();
-        });
+        .then((_) => ref.read(tripsProvider.notifier).refresh());
   }
 
-  void _handleSearch(String? query) {
-    ref.read(tripsProvider.notifier).search(query);
-  }
-
-  void _openFilterSheet() {
-    final state = ref.read(tripsProvider);
-    TripFilterBottomSheet.show(
+  Future<void> _handleTripLongPress(TripModel trip) async {
+    HapticFeedback.mediumImpact();
+    final action = await showOdysseyPicker<String>(
       context: context,
-      currentFilters: state.filters,
-      availableTags: state.availableTags,
-      onApply: (filters) {
-        ref.read(tripsProvider.notifier).updateFilters(filters);
-      },
-      onClear: () {
-        ref.read(tripsProvider.notifier).clearFilters();
-      },
+      title: trip.title,
+      options: const ['Edit trip', 'Delete trip'],
+      labelOf: (value) => value,
     );
+
+    if (!mounted || action == null) return;
+    if (action == 'Edit trip') {
+      _handleEditTrip(trip);
+    } else {
+      await _handleDeleteTrip(trip.id, trip.title);
+    }
   }
 
   Future<void> _handleDeleteTrip(String tripId, String title) async {
-    HapticFeedback.lightImpact();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showOdysseyConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Delete Trip',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "$title"?',
-          style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
-            child: Text(
-              'Delete',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.coralBurst,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: 'Delete trip',
+      body: [
+        'This permanently deletes "$title" and everything in it — activities, '
+            'packing list, expenses, documents and memories.',
+        'This cannot be undone.',
+      ],
+      confirmLabel: 'Delete trip',
     );
 
-    if (confirmed == true && mounted) {
-      try {
-        await ref.read(tripsProvider.notifier).deleteTrip(tripId);
-        if (mounted) {
-          HapticFeedback.mediumImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: AppSizes.space12),
-                  const Text('Trip deleted successfully'),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          HapticFeedback.heavyImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.toString()),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-            ),
-          );
-        }
-      }
+    if (!confirmed || !mounted) return;
+
+    try {
+      await ref.read(tripsProvider.notifier).deleteTrip(tripId);
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      showOdysseyMessage(context, 'Trip deleted.');
+    } catch (e) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      showOdysseyMessage(context, 'Could not delete that trip: $e');
     }
+  }
+
+  /// The status chips filter what is already loaded. Search goes to the
+  /// provider, because it is a server-side query with paging behind it.
+  List<TripModel> _visible(List<TripModel> trips) {
+    if (_status == TripStatusChips.labels.first) return trips;
+    return trips.where((t) => _statusOf(t) == _status).toList();
+  }
+
+  String _statusOf(TripModel trip) {
+    if (TripFormat.isActive(trip)) return 'Ongoing';
+    final days = TripFormat.daysUntil(TripFormat.parse(trip.startDate));
+    if (days != null && days > 0) return 'Planned';
+    return 'Completed';
+  }
+
+  Map<String, int> _counts(List<TripModel> trips) {
+    final counts = {for (final label in TripStatusChips.labels) label: 0};
+    counts[TripStatusChips.labels.first] = trips.length;
+    for (final trip in trips) {
+      final key = _statusOf(trip);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
   }
 
   @override
   Widget build(BuildContext context) {
-    // A trip has just been created - from the form, or pulled down by a sync.
-    //
-    // This is the occasion worth asking on: the person has made the thing that
-    // reminders and shared-trip notifications are about. The form screen pops
-    // itself on success, so asking there would fight the navigation; the
-    // dashboard is where they land either way.
-    //
-    // The policy still decides whether this becomes a sheet. Someone who has
-    // already declined recently is not asked again just because they made
-    // another trip.
-    ref.listen(tripsProvider, (previous, next) {
-      if (previous == null) return;
-      if (next.trips.length <= previous.trips.length) return;
+    final t = context.odyssey;
+    final state = ref.watch(tripsProvider);
+    final visible = _visible(state.trips);
 
-      _maybeAskAboutNotifications(
-        occasion: 'trip-created',
-        delay: const Duration(milliseconds: 1200),
-      );
-    });
-
-    final tripsState = ref.watch(tripsProvider);
-    final authState = ref.watch(authProvider);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final scaffold = LoadingOverlay(
-      isLoading: authState.isLoading,
-      message: 'Signing out...',
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+    final scaffold = OdysseyScaffold(
+        extendBehindNav: true,
         body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: colorScheme.primary,
-        backgroundColor: colorScheme.surface,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // App Bar
-            SliverAppBar(
-              floating: true,
-              backgroundColor: theme.scaffoldBackgroundColor,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              toolbarHeight: 80,
-              centerTitle: false,
-              titleSpacing: AppSizes.space16,
-              title: KeyedSubtree(
-                key: _headerKey,
-                child: _buildHeader(authState),
-              ),
-              actions: [
-                // Sync status.
-                //
-                // The indicator existed and was mounted on no screen at all, so
-                // a stuck queue or a preserved conflict was invisible: the app
-                // knew something had not synced and had nowhere to say it.
-                const SyncStatusIndicator(),
-
-                // Notification bell button
-                Container(
-                  key: _notificationKey,
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final unreadCount = ref.watch(
-                        unreadNotificationCountProvider,
-                      );
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.notifications_outlined,
-                              color: AppColors.skyBlue,
-                            ),
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              context.push(AppRoutes.notifications);
-                            },
-                            tooltip: 'Notifications',
-                          ),
-                          if (unreadCount != null && unreadCount > 0)
-                            Positioned(
-                              right: 4,
-                              top: 4,
-                              child: NotificationBadge(count: unreadCount),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                // World Map button
-                Container(
-                  margin: const EdgeInsets.only(right: AppSizes.space8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.map_outlined,
-                      color: AppColors.coralBurst,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.push(AppRoutes.worldMap);
-                    },
-                    tooltip: 'World Map',
-                  ),
-                ),
-                // More menu
-                Container(
-                  key: _moreMenuKey,
-                  margin: const EdgeInsets.only(right: AppSizes.space16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert_rounded,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    tooltip: 'More options',
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                    onSelected: (value) {
-                      HapticFeedback.lightImpact();
-                      switch (value) {
-                        case 'templates':
-                          context.push(AppRoutes.templates);
-                          break;
-                        case 'shared':
-                          context.push(AppRoutes.sharedTrips);
-                          break;
-                        case 'achievements':
-                          context.push(AppRoutes.achievements);
-                          break;
-                        case 'statistics':
-                          context.push(AppRoutes.statistics);
-                          break;
-                        case 'settings':
-                          context.push(AppRoutes.settings);
-                          break;
-                        case 'logout':
-                          ref.read(authProvider.notifier).logout();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'templates',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.bookmarks_outlined,
-                              color: AppColors.lavenderDream,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Templates'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'shared',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.people_outline_rounded,
-                              color: AppColors.oceanTeal,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Shared Trips'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'achievements',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.emoji_events_outlined,
-                              color: AppColors.sunnyYellow,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Achievements'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'statistics',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.bar_chart_outlined,
-                              color: AppColors.mintGreen,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Statistics'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.settings_outlined,
-                              color: AppColors.slate,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Settings'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'logout',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.logout_rounded,
-                              color: AppColors.error,
-                              size: 20,
-                            ),
-                            const SizedBox(width: AppSizes.space12),
-                            const Text('Logout'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Search Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSizes.space16,
-                  AppSizes.space8,
-                  AppSizes.space16,
-                  AppSizes.space8,
-                ),
-                child: KeyedSubtree(
-                  key: _searchBarKey,
-                  child: TripSearchBar(
-                    initialValue: tripsState.filters.search,
-                    onSearch: _handleSearch,
-                    onFilterTap: _openFilterSheet,
-                    activeFilterCount: tripsState.filters.activeFilterCount,
-                  ),
-                ),
-              ),
-            ),
-
-            // Quick Filters
-            SliverToBoxAdapter(
-              child: KeyedSubtree(
-                key: _quickFiltersKey,
-                child: TripQuickFilters(
-                  filters: tripsState.filters,
-                  onFilterChanged: (filters) {
-                    ref.read(tripsProvider.notifier).updateFilters(filters);
-                  },
-                ),
-              ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space8)),
-
-            // Content
-            if (tripsState.isLoading && tripsState.trips.isEmpty)
-              _buildLoadingState()
-            else if (tripsState.error != null && tripsState.trips.isEmpty)
-              _buildErrorState(tripsState.error!)
-            else if (tripsState.trips.isEmpty)
-              _buildEmptyState()
-            else
-              _buildTripsList(tripsState),
-
-            // Loading indicator for pagination
-            if (tripsState.isLoading && tripsState.trips.isNotEmpty)
-              const SliverToBoxAdapter(
+          color: t.action,
+          backgroundColor: Color.alphaBlend(t.card, t.canvas),
+          onRefresh: _handleRefresh,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.all(AppSizes.space24),
-                  child: Center(child: BouncingDotsLoader()),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSizes.screenPadding,
+                    AppSizes.contentTop,
+                    AppSizes.screenPadding,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        key: _headerKey,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Your\ntrips',
+                              style: AppTypography.heroTitle.copyWith(
+                                color: t.ink,
+                              ),
+                            ),
+                          ),
+                          const SyncStatusIndicator(),
+                          const SizedBox(width: AppSizes.space10),
+                          CircleButton(
+                            key: _fabKey,
+                            glyph: '+',
+                            style: CircleStyle.action,
+                            onPressed: _handleCreateTrip,
+                            semanticLabel: 'New trip',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSizes.space22),
+                      SearchPill(
+                        key: _searchBarKey,
+                        hint: 'Search a city or trip',
+                        controller: _searchController,
+                        onChanged: (value) => ref
+                            .read(tripsProvider.notifier)
+                            .search(value.isEmpty ? null : value),
+                      ),
+                      const SizedBox(height: AppSizes.space18),
+                    ],
+                  ),
                 ),
               ),
 
-            // Bottom spacing
-            const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space80)),
-          ],
+              SliverToBoxAdapter(
+                child: KeyedSubtree(
+                  key: _quickFiltersKey,
+                  child: TripStatusChips(
+                    selected: _status,
+                    counts: _counts(state.trips),
+                    onSelected: (value) => setState(() => _status = value),
+                  ),
+                ),
+              ),
+
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSizes.screenPadding,
+                  AppSizes.space18,
+                  AppSizes.screenPadding,
+                  navScrollSpacer(context),
+                ),
+                sliver: _buildList(state, visible),
+              ),
+            ],
+          ),
         ),
-      ),
-      // Anchored banner ad for free users (collapses to nothing for premium).
-      bottomNavigationBar: const BannerAdWidget(),
-      floatingActionButton: KeyedSubtree(
-        key: _fabKey,
-        child: GoldFAB(
-          icon: Icons.add_rounded,
-          label: 'New Trip',
-          onPressed: _handleCreateTrip,
-        ),
-      ),
-    ),
-  );
+    );
 
-  return Stack(
-    children: [
-      scaffold,
-      Consumer(
-        builder: (context, ref, _) {
-          final wtState = ref.watch(walkthroughProvider);
-          if (!wtState.isActive || wtState.activeSegmentId != 'dashboard') {
-            return const SizedBox.shrink();
-          }
-          return WalkthroughOverlay(
-            steps: wtState.steps,
-            currentIndex: wtState.currentStepIndex,
-            onNext: () => ref.read(walkthroughProvider.notifier).next(),
-            onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
-            onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
-          );
-        },
-      ),
-    ],
-  );
-}
-
-  Widget _buildHeader(AuthState authState) {
-    final displayName = authState.user?.displayName;
-    // Use displayName if available, otherwise fall back to extracting from email
-    final firstName =
-        displayName ?? _getFirstNameFromEmail(authState.user?.email);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+    // The coach marks paint over the whole screen, so they sit beside the
+    // scaffold rather than wrapping it.
+    return Stack(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.lemonLight,
-                borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-              ),
-              child: const Icon(
-                Icons.travel_explore,
-                color: AppColors.goldenGlow,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space12),
-            Text(
-              'Odyssey',
-              style: AppTypography.headlineMedium.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          // firstName != null && firstName.isNotEmpty ? firstName : '',
-          'Welcome, ${firstName != null && firstName.isNotEmpty ? firstName : ''}',
-          style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
-          overflow: TextOverflow.ellipsis,
+        scaffold,
+        Consumer(
+          builder: (context, ref, _) {
+            final wt = ref.watch(walkthroughProvider);
+            if (!wt.isActive || wt.activeSegmentId != 'dashboard') {
+              return const SizedBox.shrink();
+            }
+            return WalkthroughOverlay(
+              steps: wt.steps,
+              currentIndex: wt.currentStepIndex,
+              onNext: () => ref.read(walkthroughProvider.notifier).next(),
+              onPrevious: () =>
+                  ref.read(walkthroughProvider.notifier).previous(),
+              onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
+            );
+          },
         ),
       ],
     );
   }
 
-  String? _getFirstNameFromEmail(String? email) {
-    if (email == null || email.isEmpty) return null;
-    final namePart = email.split('@').first;
-    if (namePart.isEmpty) return null;
-    return namePart[0].toUpperCase() + namePart.substring(1);
-  }
+  Widget _buildList(TripsState state, List<TripModel> visible) {
+    if (state.isLoading && state.trips.isEmpty) {
+      return const SliverToBoxAdapter(child: TripListSkeleton());
+    }
 
-  Widget _buildLoadingState() {
-    return SliverFillRemaining(
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const OrbitalLoader(size: 72),
-            const SizedBox(height: 24),
-            Text(
-              'Loading trips...',
-              style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String error) {
-    return SliverFillRemaining(
-      child: ErrorState(message: error, onRetry: _handleRefresh),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    final hasFilters = ref.read(tripsProvider).filters.hasActiveFilters;
-
-    if (hasFilters) {
-      return SliverFillRemaining(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.space32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.8, end: 1.0),
-                  duration: anim.AppAnimations.medium,
-                  curve: anim.AppAnimations.bounce,
-                  builder: (context, value, child) {
-                    return Transform.scale(scale: value, child: child);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSizes.space24),
-                    decoration: BoxDecoration(
-                      color: AppColors.lavenderDream.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.search_off_rounded,
-                      size: 64,
-                      color: AppColors.lavenderDream,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space24),
-                Text(
-                  'No trips found',
-                  style: AppTypography.headlineSmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-                Text(
-                  'Try adjusting your search or filters',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.space24),
-                TextButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    ref.read(tripsProvider.notifier).clearFilters();
-                  },
-                  icon: const Icon(Icons.clear_all_rounded),
-                  label: const Text('Clear filters'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.lavenderDream,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    if (state.error != null && state.trips.isEmpty) {
+      return SliverToBoxAdapter(
+        child: OdysseyErrorState(
+          message: state.error!,
+          onRetry: () => ref.read(tripsProvider.notifier).refresh(),
         ),
       );
     }
 
-    return SliverFillRemaining(
-      child: NoTripsState(onCreateTrip: _handleCreateTrip),
-    );
-  }
+    if (visible.isEmpty) {
+      final filtered =
+          _status != TripStatusChips.labels.first ||
+          _searchController.text.isNotEmpty;
+      return SliverToBoxAdapter(
+        child: OdysseyEmptyState(
+          message: filtered
+              ? 'Nothing here under that filter.'
+              : 'No trips yet. The next one starts here.',
+          actionLabel: filtered ? 'Show all trips' : 'Plan a trip',
+          onAction: filtered
+              ? () {
+                  setState(() => _status = TripStatusChips.labels.first);
+                  _searchController.clear();
+                  ref.read(tripsProvider.notifier).search(null);
+                }
+              : _handleCreateTrip,
+        ),
+      );
+    }
 
-  Widget _buildTripsList(TripsState state) {
-    // Inject a native ad after every Nth trip (free users only — the ad tile
-    // itself renders nothing for premium users). Disabled for short lists, and
-    // for the whole app when the native format is switched off, in which case no
-    // slots are allocated at all.
-    final slots = NativeAdSlots(state.trips.length);
-
-    return SliverPadding(
-      padding: const EdgeInsets.only(
-        top: AppSizes.space8,
-        bottom: AppSizes.space16,
-      ),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate((context, index) {
-          if (slots.isAdAt(index)) {
-            return NativeAdListTile(
-              key: ValueKey('dashboard_native_ad_$index'),
-              margin: const EdgeInsets.symmetric(
-                horizontal: AppSizes.space16,
-                vertical: AppSizes.space8,
-              ),
-            );
-          }
-          final tripIndex = slots.realIndexAt(index);
-          final trip = state.trips[tripIndex];
-          return TripCard(
-            trip: trip,
-            staggerIndex: tripIndex,
-            onTap: () => _handleTripTap(trip),
-            onEdit: () => _handleEditTrip(trip.id),
-            onDelete: () => _handleDeleteTrip(trip.id, trip.title),
+    return SliverList.separated(
+      itemCount: visible.length + (state.hasMore ? 1 : 0),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSizes.space12),
+      itemBuilder: (context, index) {
+        if (index >= visible.length) {
+          return const Skeleton(
+            width: double.infinity,
+            height: 210,
+            radius: AppSizes.radiusHero,
           );
-        }, childCount: slots.totalCount),
-      ),
+        }
+        final trip = visible[index];
+        return TripListCard(
+          trip: trip,
+          onTap: () => _handleTripTap(trip),
+          onLongPress: () => _handleTripLongPress(trip),
+        );
+      },
     );
   }
 }
