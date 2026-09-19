@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
-import '../../../../common/theme/app_typography.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
@@ -166,35 +165,13 @@ class _WatchAdToUnlockButtonState extends ConsumerState<WatchAdToUnlockButton> {
     // ad is loaded.
     if (_fulfilmentConfigured == false) return const SizedBox.shrink();
 
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _busy ? null : _watch,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.onSurface,
-          side: BorderSide(color: AppColors.sunnyYellow, width: 1.5),
-          padding: const EdgeInsets.symmetric(vertical: AppSizes.space12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-          ),
-        ),
-        icon: _busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.sunnyYellow,
-                ),
-              )
-            : const Icon(Icons.play_circle_outline, size: 20),
-        label: Text(
-          _label,
-          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ),
+    return PillButton(
+      label: _label,
+      style: PillStyle.outline,
+      icon: _busy ? null : Icons.play_circle_outline,
+      isLoading: _busy,
+      onPressed: _busy ? null : _watch,
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
     );
   }
 

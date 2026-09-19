@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../providers/feature_access_provider.dart';
 
@@ -53,27 +54,36 @@ class _TemporaryUnlockBannerState extends ConsumerState<TemporaryUnlockBanner> {
     final remaining = ref.watch(unlockRemainingProvider(widget.feature));
     if (remaining == null) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.space16,
-        vertical: AppSizes.space8,
-      ),
-      color: AppColors.sunnyYellow.withValues(alpha: 0.15),
-      child: Row(
-        children: [
-          const Icon(Icons.timer_outlined, size: 18),
-          const SizedBox(width: AppSizes.space8),
-          Expanded(
-            child: Text(
-              '${widget.feature.displayName} unlocked — '
-              '${_describe(remaining)} left',
-              style: AppTypography.bodySmall.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+    final t = context.odyssey;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSizes.screenPadding,
+          0,
+          AppSizes.screenPadding,
+          AppSizes.space12,
+        ),
+        child: GlassBar(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.space16,
+            vertical: AppSizes.space12,
           ),
-        ],
+          child: Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 16, color: t.ink2),
+              const SizedBox(width: AppSizes.space10),
+              Expanded(
+                child: Text(
+                  '${widget.feature.displayName} unlocked — '
+                  '${_describe(remaining)} left',
+                  style: AppTypography.legend.copyWith(color: t.ink2),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
