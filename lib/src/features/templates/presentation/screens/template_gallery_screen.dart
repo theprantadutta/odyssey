@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../common/theme/app_colors.dart';
+
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../ads/native_ad_slots.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
-import '../widgets/template_card.dart';
 import '../widgets/report_template_sheet.dart';
+import '../widgets/template_detail_sheet.dart';
 import '../widgets/use_template_dialog.dart';
 
+/// Trip templates — the community gallery and your own.
 class TemplateGalleryScreen extends ConsumerStatefulWidget {
   const TemplateGalleryScreen({super.key});
 
@@ -21,1178 +26,330 @@ class TemplateGalleryScreen extends ConsumerStatefulWidget {
       _TemplateGalleryScreenState();
 }
 
-class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final _searchController = TextEditingController();
+class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
+  static const String _discover = 'Discover';
+  static const String _mine = 'Mine';
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
+  final _searchController = TextEditingController();
+  String _tab = _discover;
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: _buildBackButton(context),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Trip Templates',
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              'Discover and save travel plans',
-              style: AppTypography.bodySmall.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            color: colorScheme.surface,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: AppColors.goldenGlow,
-              unselectedLabelColor: colorScheme.onSurfaceVariant,
-              indicatorColor: AppColors.goldenGlow,
-              indicatorWeight: 3,
-              labelStyle: AppTypography.labelLarge.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              tabs: const [
-                Tab(text: 'Discover'),
-                Tab(text: 'My Templates'),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _PublicTemplatesTab(searchController: _searchController),
-          const _MyTemplatesTab(),
-        ],
-      ),
+  Future<void> _use(TripTemplateModel template) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => UseTemplateDialog(template: template),
     );
+
+    if (result == null || !mounted) return;
+    final tripId = result['id'] as String?;
+    if (tripId != null) context.push('${AppRoutes.tripDetail}/$tripId');
   }
 
-  Widget _buildBackButton(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.all(AppSizes.space8),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).pop();
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.arrow_back_rounded,
-            color: colorScheme.onSurface,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PublicTemplatesTab extends ConsumerStatefulWidget {
-  final TextEditingController searchController;
-
-  const _PublicTemplatesTab({required this.searchController});
-
-  @override
-  ConsumerState<_PublicTemplatesTab> createState() =>
-      _PublicTemplatesTabState();
-}
-
-class _PublicTemplatesTabState extends ConsumerState<_PublicTemplatesTab> {
-  TemplateCategory? _selectedCategory;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final galleryState = ref.watch(templateGalleryProvider);
-
-    return Column(
-      children: [
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.all(AppSizes.space16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: widget.searchController,
-              style: AppTypography.bodyLarge.copyWith(color: colorScheme.onSurface),
-              decoration: InputDecoration(
-                hintText: 'Search templates...',
-                hintStyle: AppTypography.bodyMedium.copyWith(
-                  color: theme.hintColor,
-                ),
-                prefixIcon: Icon(Icons.search, color: colorScheme.onSurfaceVariant),
-                suffixIcon: widget.searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: colorScheme.onSurfaceVariant),
-                        onPressed: () {
-                          widget.searchController.clear();
-                          ref.read(templateGalleryProvider.notifier).search(null);
-                          setState(() {});
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: colorScheme.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  borderSide: const BorderSide(
-                    color: AppColors.sunnyYellow,
-                    width: 2,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space16,
-                  vertical: AppSizes.space12,
-                ),
-              ),
-              onChanged: (value) => setState(() {}),
-              onSubmitted: (value) {
-                ref.read(templateGalleryProvider.notifier).search(value);
-              },
-            ),
-          ),
-        ),
-
-        // Category filter
-        SizedBox(
-          height: 44,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
-            children: [
-              _CategoryChip(
-                label: 'All',
-                isSelected: _selectedCategory == null,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedCategory = null);
-                  ref.read(templateGalleryProvider.notifier).filterByCategory(null);
-                },
-              ),
-              const SizedBox(width: AppSizes.space8),
-              ...TemplateCategory.values.map((category) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppSizes.space8),
-                  child: _CategoryChip(
-                    label: '${category.icon} ${category.displayName}',
-                    isSelected: _selectedCategory == category,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedCategory = category);
-                      ref.read(templateGalleryProvider.notifier).filterByCategory(category);
-                    },
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: AppSizes.space16),
-
-        // Templates list
-        Expanded(
-          child: galleryState.isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.sunnyYellow,
-                  ),
-                )
-              : galleryState.error != null
-                  ? _ErrorWidget(
-                      message: galleryState.error!,
-                      onRetry: () =>
-                          ref.read(templateGalleryProvider.notifier).refresh(),
-                    )
-                  : galleryState.templates.isEmpty
-                      ? _EmptyStateWidget(
-                          icon: Icons.explore_outlined,
-                          title: 'No templates found',
-                          subtitle: _selectedCategory != null ||
-                                  widget.searchController.text.isNotEmpty
-                              ? 'Try adjusting your filters'
-                              : 'Be the first to share a template!',
-                        )
-                      : RefreshIndicator(
-                          color: AppColors.sunnyYellow,
-                          backgroundColor: colorScheme.surface,
-                          onRefresh: () => ref
-                              .read(templateGalleryProvider.notifier)
-                              .refresh(),
-                          child: Builder(
-                            builder: (context) {
-                              final slots = NativeAdSlots(
-                                  galleryState.templates.length);
-                              return ListView.builder(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSizes.space16,
-                                ),
-                                itemCount: slots.totalCount,
-                                itemBuilder: (context, index) {
-                                  if (slots.isAdAt(index)) {
-                                    return const NativeAdListTile();
-                                  }
-                                  final template = galleryState
-                                      .templates[slots.realIndexAt(index)];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(
-                                        bottom: AppSizes.space16),
-                                    child: TemplateCard(
-                                      template: template,
-                                      onTap: () => _showTemplateDetails(
-                                          context, template),
-                                      onUse: () =>
-                                          _useTemplate(context, ref, template),
-                                      onFork: () =>
-                                          _forkTemplate(context, ref, template),
-                                      showActions: true,
-                                      showForkButton: true,
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-        ),
+  Future<void> _fork(TripTemplateModel template) async {
+    HapticFeedback.lightImpact();
+    final confirmed = await showOdysseyConfirm(
+      context: context,
+      title: 'Save to your templates',
+      body: [
+        'This copies "${template.name}" into your own templates, where you '
+            'can change it however you like.',
       ],
+      confirmLabel: 'Save a copy',
+    );
+    if (!confirmed || !mounted) return;
+
+    final forked = await ref
+        .read(myTemplatesProvider.notifier)
+        .forkTemplate(template.id);
+
+    if (!mounted) return;
+    showOdysseyMessage(
+      context,
+      forked == null ? 'Could not save that copy.' : 'Saved to your templates.',
     );
   }
 
-  void _showTemplateDetails(BuildContext context, TripTemplateModel template) {
-    final colorScheme = Theme.of(context).colorScheme;
-    showModalBottomSheet(
+  Future<void> _delete(TripTemplateModel template) async {
+    final confirmed = await showOdysseyConfirm(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSizes.radiusXl),
-        ),
-      ),
-      builder: (context) => _TemplateDetailsSheet(template: template),
+      title: 'Delete template',
+      body: [
+        'This removes "${template.name}". Trips already built from it are '
+            'not affected.',
+      ],
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed || !mounted) return;
+
+    await ref.read(myTemplatesProvider.notifier).deleteTemplate(template.id);
+  }
+
+  void _openDetail(TripTemplateModel template, {required bool owned}) {
+    HapticFeedback.selectionClick();
+    showTemplateDetail(
+      context: context,
+      template: template,
+      onUse: () => _use(template),
+      onSecondary: owned ? () => _delete(template) : () => _fork(template),
+      secondaryLabel: owned ? 'Delete template' : 'Save a copy',
+      // App Store Guideline 1.2 wants reporting and blocking reachable from
+      // the content itself, not buried in settings — so they hang off the
+      // detail sheet for anything someone else published.
+      onReport: owned ? null : () => _moderate(template),
     );
   }
 
-  Future<void> _useTemplate(
-    BuildContext context,
-    WidgetRef ref,
-    TripTemplateModel template,
-  ) async {
-    final result = await showDialog<Map<String, dynamic>>(
+  Future<void> _moderate(TripTemplateModel template) async {
+    final action = await showOdysseyPicker<String>(
       context: context,
-      builder: (context) => UseTemplateDialog(template: template),
+      title: template.name,
+      options: const ['Report this template', 'Block the author'],
+      labelOf: (value) => value,
     );
+    if (!mounted || action == null) return;
 
-    if (result != null && context.mounted) {
-      final tripId = result['id'] as String?;
-      if (tripId != null) {
-        context.push('/trips/$tripId');
-      }
+    if (action == 'Block the author') {
+      await showBlockAuthorDialog(context, ref, template);
+    } else {
+      await showReportTemplateSheet(context: context, template: template);
     }
   }
-
-  Future<void> _forkTemplate(
-    BuildContext context,
-    WidgetRef ref,
-    TripTemplateModel template,
-  ) async {
-    final colorScheme = Theme.of(context).colorScheme;
-    HapticFeedback.lightImpact();
-
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Save to My Templates',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'This will create a copy of "${template.name}" in your templates. You can customize it later.',
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.oceanTeal,
-            ),
-            child: Text(
-              'Save',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.oceanTeal,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      final forked =
-          await ref.read(myTemplatesProvider.notifier).forkTemplate(template.id);
-      if (forked != null && context.mounted) {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Expanded(child: Text('Saved "${forked.name}" to your templates')),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      } else if (context.mounted) {
-        final myTemplatesState = ref.read(myTemplatesProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Expanded(
-                  child: Text(
-                    myTemplatesState.error ?? 'Failed to save template',
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
-    }
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final t = context.odyssey;
+    final discovering = _tab == _discover;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSizes.space16,
-          vertical: AppSizes.space8,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.sunnyYellow : colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? AppColors.sunnyYellow.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: AppTypography.labelMedium.copyWith(
-            color: isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    final gallery = ref.watch(templateGalleryProvider);
+    final mine = ref.watch(myTemplatesProvider);
+
+    final templates = discovering ? gallery.templates : mine.templates;
+    final isLoading = discovering ? gallery.isLoading : mine.isLoading;
+    final error = discovering ? gallery.error : mine.error;
+    final category = discovering
+        ? gallery.selectedCategory
+        : mine.selectedCategory;
+
+    final slots = NativeAdSlots(templates.length);
+
+    return OdysseyScaffold(
+      body: RefreshIndicator(
+        color: t.action,
+        backgroundColor: Color.alphaBlend(t.card, t.canvas),
+        onRefresh: () => discovering
+            ? ref.read(templateGalleryProvider.notifier).refresh()
+            : ref.read(myTemplatesProvider.notifier).refresh(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSizes.screenPadding,
+            AppSizes.contentTop,
+            AppSizes.screenPadding,
+            AppSizes.scrollBottom,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MyTemplatesTab extends ConsumerWidget {
-  const _MyTemplatesTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final myTemplatesState = ref.watch(myTemplatesProvider);
-
-    if (myTemplatesState.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.sunnyYellow),
-      );
-    }
-
-    if (myTemplatesState.error != null) {
-      return _ErrorWidget(
-        message: myTemplatesState.error!,
-        onRetry: () => ref.read(myTemplatesProvider.notifier).refresh(),
-      );
-    }
-
-    if (myTemplatesState.templates.isEmpty) {
-      return const _EmptyStateWidget(
-        icon: Icons.bookmark_add_outlined,
-        title: 'No templates yet',
-        subtitle: 'Save a trip as a template to reuse it later',
-      );
-    }
-
-    return RefreshIndicator(
-      color: AppColors.sunnyYellow,
-      backgroundColor: colorScheme.surface,
-      onRefresh: () => ref.read(myTemplatesProvider.notifier).refresh(),
-      child: Builder(
-        builder: (context) {
-          final slots = NativeAdSlots(myTemplatesState.templates.length);
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSizes.space16),
-            itemCount: slots.totalCount,
-            itemBuilder: (context, index) {
-              if (slots.isAdAt(index)) return const NativeAdListTile();
-              final template =
-                  myTemplatesState.templates[slots.realIndexAt(index)];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSizes.space16),
-                child: TemplateCard(
-                  template: template,
-                  onTap: () => _showTemplateDetails(context, template),
-                  onUse: () => _useTemplate(context, ref, template),
-                  onDelete: () => _deleteTemplate(context, ref, template),
-                  showActions: true,
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  void _showTemplateDetails(BuildContext context, TripTemplateModel template) {
-    final colorScheme = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSizes.radiusXl),
-        ),
-      ),
-      builder: (context) => _TemplateDetailsSheet(template: template),
-    );
-  }
-
-  Future<void> _useTemplate(
-    BuildContext context,
-    WidgetRef ref,
-    TripTemplateModel template,
-  ) async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => UseTemplateDialog(template: template),
-    );
-
-    if (result != null && context.mounted) {
-      final tripId = result['id'] as String?;
-      if (tripId != null) {
-        context.push('/trips/$tripId');
-      }
-    }
-  }
-
-  Future<void> _deleteTemplate(
-    BuildContext context,
-    WidgetRef ref,
-    TripTemplateModel template,
-  ) async {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    HapticFeedback.lightImpact();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Delete Template',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${template.name}"?',
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
-            child: Text(
-              'Delete',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final success =
-          await ref.read(myTemplatesProvider.notifier).deleteTemplate(template.id);
-      if (success && context.mounted) {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: AppSizes.space12),
-                Text('Template "${template.name}" deleted'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
-    }
-  }
-}
-
-class _TemplateDetailsSheet extends ConsumerWidget {
-  final TripTemplateModel template;
-
-  const _TemplateDetailsSheet({required this.template});
-
-  /// Report the content, or block whoever published it. Both are required by App
-  /// Store Guideline 1.2 for an app that carries user-generated content.
-  static void _showModerationOptions(
-    BuildContext context,
-    WidgetRef ref,
-    TripTemplateModel template,
-  ) {
-    HapticFeedback.lightImpact();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXl)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.flag_outlined, color: AppColors.coralBurst),
-              title: Text('Report this template', style: AppTypography.bodyMedium),
-              subtitle: Text(
-                'Tell us it breaks the rules',
-                style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: colorScheme.surface,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXl)),
-                  ),
-                  builder: (_) => ReportTemplateSheet(template: template),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.block, color: AppColors.coralBurst),
-              title: Text('Block this author', style: AppTypography.bodyMedium),
-              subtitle: Text(
-                'Hide everything they publish',
-                style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                showBlockAuthorDialog(context, ref, template);
-              },
-            ),
-            const SizedBox(height: AppSizes.space8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final structure = template.structure;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(AppSizes.space24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.hintColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSizes.space24),
-
-              // Report / block. Required on user-generated content by App Store
-              // Guideline 1.2, and required to be on the content rather than buried
-              // in settings.
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => _showModerationOptions(context, ref, template),
-                  icon: Icon(Icons.flag_outlined, size: 16, color: colorScheme.onSurfaceVariant),
-                  label: Text(
-                    'Report',
-                    style: AppTypography.labelMedium.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ),
-
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.space16),
-                    decoration: BoxDecoration(
-                      color: AppColors.lemonLight,
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                    child: Text(
-                      template.category?.icon ?? '',
-                      style: const TextStyle(fontSize: 32),
-                    ),
-                  ),
-                  const SizedBox(width: AppSizes.space16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          template.name,
-                          style: AppTypography.headlineSmall.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (template.category != null)
-                          Text(
-                            template.category!.displayName,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              if (template.description != null) ...[
-                const SizedBox(height: AppSizes.space16),
-                Text(
-                  template.description!,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: AppSizes.space24),
-              Container(
-                height: 1,
-                color: colorScheme.surfaceContainerHighest,
-              ),
-              const SizedBox(height: AppSizes.space24),
-
-              // Stats
-              Text(
-                'Template Contents',
-                style: AppTypography.titleMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              Wrap(
-                spacing: AppSizes.space12,
-                runSpacing: AppSizes.space12,
-                children: [
-                  if (structure.durationDays != null)
-                    _InfoChip(
-                      icon: Icons.calendar_today_outlined,
-                      label: '${structure.durationDays} days',
-                      color: AppColors.oceanTeal,
-                    ),
-                  if (structure.activities.isNotEmpty)
-                    _InfoChip(
-                      icon: Icons.checklist_outlined,
-                      label: '${structure.activities.length} activities',
-                      color: AppColors.coralBurst,
-                    ),
-                  if (structure.packingItems.isNotEmpty)
-                    _InfoChip(
-                      icon: Icons.luggage_outlined,
-                      label: '${structure.packingItems.length} packing items',
-                      color: AppColors.lavenderDream,
-                    ),
-                  _InfoChip(
-                    icon: Icons.trending_up_outlined,
-                    label: '${template.useCount} uses',
-                    color: AppColors.sunnyYellow,
-                  ),
-                ],
-              ),
-
-              // Activities list
-              if (structure.activities.isNotEmpty) ...[
-                const SizedBox(height: AppSizes.space24),
-                Text(
-                  'Included Activities',
-                  style: AppTypography.titleSmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space12),
-                ...structure.activities.take(5).map((activity) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: AppSizes.space8),
-                    padding: const EdgeInsets.all(AppSizes.space12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            _getCategoryIcon(activity.category),
-                            size: 20,
-                            color: AppColors.oceanTeal,
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.space12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                activity.title,
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              if (activity.location != null)
-                                Text(
-                                  activity.location!,
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                if (structure.activities.length > 5)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSizes.space8),
-                    child: Text(
-                      '+${structure.activities.length - 5} more activities',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-              ],
-
-              // Tips
-              if (structure.tips.isNotEmpty) ...[
-                const SizedBox(height: AppSizes.space24),
-                Text(
-                  'Tips',
-                  style: AppTypography.titleSmall.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space12),
-                ...structure.tips.map((tip) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSizes.space8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.lemonLight,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(
-                            Icons.lightbulb_outline,
-                            size: 16,
-                            color: AppColors.goldenGlow,
-                          ),
-                        ),
-                        const SizedBox(width: AppSizes.space12),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-
-              const SizedBox(height: AppSizes.space32),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'food':
-        return Icons.restaurant_outlined;
-      case 'travel':
-        return Icons.flight_outlined;
-      case 'stay':
-        return Icons.hotel_outlined;
-      case 'explore':
-        return Icons.explore_outlined;
-      default:
-        return Icons.event_outlined;
-    }
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.space12,
-        vertical: AppSizes.space8,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyStateWidget extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _EmptyStateWidget({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSizes.space24),
-              decoration: BoxDecoration(
-                color: AppColors.lemonLight,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 56,
-                color: AppColors.sunnyYellow,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space24),
-            Text(
-              title,
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space8),
-            Text(
-              subtitle,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorWidget extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _ErrorWidget({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSizes.space20),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.error,
-              ),
-            ),
+            ScreenHeader(onBack: () => context.pop()),
             const SizedBox(height: AppSizes.space20),
             Text(
-              'Something went wrong',
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
+              'Start from\nsomeone else',
+              style: AppTypography.screenTitle.copyWith(color: t.ink),
             ),
-            const SizedBox(height: AppSizes.space8),
-            Text(
-              message,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
+            const SizedBox(height: AppSizes.space20),
+
+            SegmentedControl(
+              labels: const [_discover, _mine],
+              selected: _tab,
+              onSelected: (value) {
+                HapticFeedback.selectionClick();
+                setState(() => _tab = value);
+              },
             ),
-            const SizedBox(height: AppSizes.space24),
-            TextButton.icon(
-              onPressed: onRetry,
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.sunnyYellow,
-                foregroundColor: colorScheme.onSurface,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space24,
-                  vertical: AppSizes.space12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
+            const SizedBox(height: AppSizes.space16),
+
+            if (discovering) ...[
+              SearchPill(
+                hint: 'Search templates',
+                controller: _searchController,
+                onChanged: (value) => ref
+                    .read(templateGalleryProvider.notifier)
+                    .search(value.isEmpty ? null : value),
               ),
-              icon: const Icon(Icons.refresh),
-              label: Text(
-                'Retry',
-                style: AppTypography.labelLarge.copyWith(
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: AppSizes.space14),
+            ],
+
+            _CategoryChips(
+              selected: category,
+              onSelected: (value) => discovering
+                  ? ref
+                        .read(templateGalleryProvider.notifier)
+                        .filterByCategory(value)
+                  : ref
+                        .read(myTemplatesProvider.notifier)
+                        .filterByCategory(value),
+            ),
+            const SizedBox(height: AppSizes.space18),
+
+            if (isLoading && templates.isEmpty)
+              const Column(
+                children: [
+                  Skeleton.row(),
+                  SizedBox(height: AppSizes.space10),
+                  Skeleton.row(),
+                ],
+              )
+            else if (error != null && templates.isEmpty)
+              OdysseyErrorState(
+                message: error,
+                onRetry: () => discovering
+                    ? ref.read(templateGalleryProvider.notifier).refresh()
+                    : ref.read(myTemplatesProvider.notifier).refresh(),
+              )
+            else if (templates.isEmpty)
+              OdysseyEmptyState(
+                message: discovering
+                    ? 'Nothing here under that filter.'
+                    : 'You have no templates yet. Save a trip as one from its '
+                          'options menu.',
+              )
+            else
+              for (var i = 0; i < templates.length; i++) ...[
+                if (slots.isAdAt(i)) ...[
+                  const NativeAdListTile(),
+                  const SizedBox(height: AppSizes.space10),
+                ],
+                _TemplateRow(
+                  template: templates[i],
+                  onTap: () =>
+                      _openDetail(templates[i], owned: !discovering),
+                  onUse: () => _use(templates[i]),
                 ),
+                const SizedBox(height: AppSizes.space10),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChips extends StatelessWidget {
+  const _CategoryChips({required this.selected, required this.onSelected});
+
+  final TemplateCategory? selected;
+  final ValueChanged<TemplateCategory?> onSelected;
+
+  static const String _all = 'All';
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = [_all, ...TemplateCategory.values.map((c) => c.displayName)];
+
+    return ChipRow(
+      labels: labels,
+      selected: selected?.displayName ?? _all,
+      activeStyle: ChipActiveStyle.action,
+      padding: EdgeInsets.zero,
+      onSelected: (label) => onSelected(
+        label == _all
+            ? null
+            : TemplateCategory.values.firstWhere(
+                (c) => c.displayName == label,
               ),
+      ),
+    );
+  }
+}
+
+class _TemplateRow extends StatelessWidget {
+  const _TemplateRow({
+    required this.template,
+    required this.onTap,
+    required this.onUse,
+  });
+
+  final TripTemplateModel template;
+  final VoidCallback onTap;
+  final VoidCallback onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final structure = template.structure;
+
+    final meta = [
+      if (structure.durationDays != null) '${structure.durationDays} days',
+      if (structure.activities.isNotEmpty)
+        '${structure.activities.length} plans',
+      if (structure.packingItems.isNotEmpty)
+        '${structure.packingItems.length} to pack',
+      if (template.useCount > 0) 'used ${template.useCount}×',
+    ].join(' · ');
+
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.space16),
+        decoration: BoxDecoration(
+          color: t.card,
+          borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+          border: Border.all(color: t.hairline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        template.name,
+                        style: AppTypography.cardTitleXl.copyWith(
+                          color: t.ink,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (meta.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          meta,
+                          style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (template.category != null) ...[
+                  const SizedBox(width: AppSizes.space10),
+                  MonoTag(template.category!.displayName),
+                ],
+              ],
+            ),
+            if (template.description != null &&
+                template.description!.isNotEmpty) ...[
+              const SizedBox(height: AppSizes.space10),
+              Text(
+                template.description!,
+                style: AppTypography.rowMeta.copyWith(color: t.ink2),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: AppSizes.space14),
+            PillButton(
+              label: 'Build a trip from this',
+              onPressed: onUse,
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
             ),
           ],
         ),

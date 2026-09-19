@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
-import 'package:odyssey/src/common/theme/app_sizes.dart';
-import 'package:odyssey/src/features/templates/data/models/template_model.dart';
-import 'package:odyssey/src/features/templates/presentation/providers/templates_provider.dart';
 
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../data/models/template_model.dart';
+import '../providers/templates_provider.dart';
+
+/// Turns a template into a real trip: a name and the dates it will run.
 class UseTemplateDialog extends ConsumerStatefulWidget {
-  final TripTemplateModel template;
+  const UseTemplateDialog({super.key, required this.template});
 
-  const UseTemplateDialog({
-    super.key,
-    required this.template,
-  });
+  final TripTemplateModel template;
 
   @override
   ConsumerState<UseTemplateDialog> createState() => _UseTemplateDialogState();
@@ -19,8 +23,9 @@ class UseTemplateDialog extends ConsumerStatefulWidget {
 
 class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleController;
-  late TextEditingController _descriptionController;
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   bool _isCreating = false;
@@ -30,13 +35,13 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
     super.initState();
     final structure = widget.template.structure;
     _titleController = TextEditingController(
-      text: structure.defaultTitle ?? '',
+      text: structure.defaultTitle ?? widget.template.name,
     );
     _descriptionController = TextEditingController(
       text: structure.defaultDescription ?? '',
     );
 
-    // Set default end date based on template duration
+    // The template knows how long it runs, so the end date arrives filled in.
     if (structure.durationDays != null) {
       _endDate = _startDate.add(Duration(days: structure.durationDays!));
     }
@@ -49,356 +54,168 @@ class _UseTemplateDialogState extends ConsumerState<UseTemplateDialog> {
     super.dispose();
   }
 
-  Future<void> _selectStartDate() async {
+  Future<void> _pickStart() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _startDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
     );
+    if (picked == null) return;
 
-    if (picked != null) {
-      setState(() {
-        _startDate = picked;
-        // Adjust end date if needed
-        if (_endDate != null && _endDate!.isBefore(_startDate)) {
-          _endDate = _startDate.add(const Duration(days: 1));
-        }
-        // Auto-set end date based on template duration
-        if (_endDate == null && widget.template.structure.durationDays != null) {
-          _endDate = _startDate.add(
-            Duration(days: widget.template.structure.durationDays!),
-          );
-        }
-      });
-    }
+    setState(() {
+      _startDate = picked;
+      // Keep the template's own length rather than letting the range invert.
+      final duration = widget.template.structure.durationDays;
+      if (duration != null) {
+        _endDate = picked.add(Duration(days: duration));
+      } else if (_endDate != null && _endDate!.isBefore(picked)) {
+        _endDate = picked.add(const Duration(days: 1));
+      }
+    });
   }
 
-  Future<void> _selectEndDate() async {
+  Future<void> _pickEnd() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _endDate ?? _startDate.add(const Duration(days: 1)),
       firstDate: _startDate,
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      lastDate: DateTime(2100),
     );
-
-    if (picked != null) {
-      setState(() {
-        _endDate = picked;
-      });
-    }
+    if (picked != null) setState(() => _endDate = picked);
   }
 
-  Future<void> _createTrip() async {
+  Future<void> _create() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isCreating = true);
 
-    final request = TripFromTemplateRequest(
-      templateId: widget.template.id,
-      title: _titleController.text.trim(),
-      startDate: _startDate.toIso8601String().split('T').first,
-      endDate: _endDate?.toIso8601String().split('T').first,
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-    );
+    final description = _descriptionController.text.trim();
+    final result = await ref
+        .read(templateGalleryProvider.notifier)
+        .useTemplate(
+          TripFromTemplateRequest(
+            templateId: widget.template.id,
+            title: _titleController.text.trim(),
+            startDate: _startDate.toIso8601String().split('T').first,
+            endDate: _endDate?.toIso8601String().split('T').first,
+            description: description.isEmpty ? null : description,
+          ),
+        );
 
-    final result =
-        await ref.read(templateGalleryProvider.notifier).useTemplate(request);
-
+    if (!mounted) return;
     setState(() => _isCreating = false);
 
-    if (result != null && mounted) {
+    if (result != null) {
       Navigator.of(context).pop(result);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Trip created from "${widget.template.name}"!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to create trip from template'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      showOdysseyMessage(context, 'Trip created from the template.');
+      return;
     }
+
+    showOdysseyMessage(context, 'Could not build a trip from that template.');
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final structure = widget.template.structure;
+    final t = context.odyssey;
+    final nights = TripFormat.nights(_startDate, _endDate);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-      ),
+      insetPadding: const EdgeInsets.all(AppSizes.space20),
+      backgroundColor: Colors.transparent,
       child: Container(
-        width: 400,
         padding: const EdgeInsets.all(AppSizes.space20),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(t.sheet, t.canvas),
+          borderRadius: BorderRadius.circular(AppSizes.radiusPanel),
+          border: Border.all(color: t.hairline),
+        ),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSizes.space12),
-                      decoration: BoxDecoration(
-                        color: AppColors.oceanTeal.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                      child: Text(
-                        widget.template.category?.icon ?? '',
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.space12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Use Template',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            widget.template.name,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.space20),
-
-                // Template info
-                if (structure.activities.isNotEmpty ||
-                    structure.packingItems.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.space12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          size: 18,
-                          color: AppColors.oceanTeal,
-                        ),
-                        const SizedBox(width: AppSizes.space8),
-                        Expanded(
-                          child: Text(
-                            'This will create a trip with ${structure.activities.length} activities and ${structure.packingItems.length} packing items',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+          onChanged: () => setState(() {}),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(child: EyebrowLabel('Build from')),
+                  CircleButton(
+                    glyph: '✕',
+                    size: AppSizes.circleSm,
+                    onPressed: () => Navigator.of(context).pop(),
+                    semanticLabel: 'Close',
                   ),
-                  const SizedBox(height: AppSizes.space16),
                 ],
+              ),
+              const SizedBox(height: AppSizes.space10),
+              Text(
+                widget.template.name,
+                style: AppTypography.statSmall.copyWith(color: t.ink),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: AppSizes.space20),
 
-                // Title field
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Trip title',
-                    hintText: 'Enter a name for your trip',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              FieldCard(
+                label: 'Trip name',
+                controller: _titleController,
+                hint: 'What will you call it?',
+                textCapitalization: TextCapitalization.words,
+                validator: (value) =>
+                    Validators.required(value, fieldName: 'Trip name'),
+              ),
+              const SizedBox(height: AppSizes.space12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ValueCard(
+                      label: 'From',
+                      value: TripFormat.shortDate(_startDate),
+                      onTap: _pickStart,
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a title';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSizes.space16),
-
-                // Description field
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: 'Description (optional)',
-                    hintText: 'Add a description for your trip',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space16),
-
-                // Date selectors
-                Text(
-                  'Trip Dates',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.space8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DateButton(
-                        label: 'Start',
-                        date: _startDate,
-                        onTap: _selectStartDate,
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.space12),
-                    Expanded(
-                      child: _DateButton(
-                        label: 'End',
-                        date: _endDate,
-                        hint: 'Optional',
-                        onTap: _selectEndDate,
-                      ),
-                    ),
-                  ],
-                ),
-
-                if (structure.durationDays != null) ...[
-                  const SizedBox(height: AppSizes.space8),
-                  Text(
-                    'Suggested duration: ${structure.durationDays} days',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                  const SizedBox(width: AppSizes.space10),
+                  Expanded(
+                    child: ValueCard(
+                      label: 'To',
+                      value: _endDate == null
+                          ? null
+                          : TripFormat.shortDate(_endDate),
+                      onTap: _pickEnd,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSizes.space12),
 
-                const SizedBox(height: AppSizes.space24),
+              FieldCard(
+                label: 'Notes',
+                controller: _descriptionController,
+                hint: 'Optional',
+                maxLines: 3,
+                minLines: 1,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: AppSizes.space20),
 
-                // Create button
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _isCreating ? null : _createTrip,
-                    icon: _isCreating
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.add),
-                    label: Text(_isCreating ? 'Creating...' : 'Create Trip'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.oceanTeal,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSizes.space12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              PillButton(
+                label: _titleController.text.trim().isEmpty
+                    ? 'Name the trip'
+                    : (_endDate == null
+                          ? 'Create the trip'
+                          : 'Create · $nights '
+                                '${nights == 1 ? 'night' : 'nights'}'),
+                isLoading: _isCreating,
+                onPressed:
+                    _titleController.text.trim().isEmpty || _isCreating
+                    ? null
+                    : _create,
+              ),
+            ],
           ),
         ),
       ),
     );
-  }
-}
-
-class _DateButton extends StatelessWidget {
-  final String label;
-  final DateTime? date;
-  final String? hint;
-  final VoidCallback onTap;
-
-  const _DateButton({
-    required this.label,
-    required this.date,
-    this.hint,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.space12),
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.hintColor),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 16,
-                  color: date != null
-                      ? colorScheme.onSurface
-                      : colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    date != null ? _formatDate(date!) : (hint ?? 'Select'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: date != null
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }
