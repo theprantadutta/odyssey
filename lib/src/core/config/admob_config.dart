@@ -28,8 +28,6 @@ class AdMobConfig {
 
   // ─── Google's official sample/test ad units ──────────────────────────────
   // https://developers.google.com/admob/flutter/test-ads
-  static const _testBannerAndroid = 'ca-app-pub-3940256099942544/6300978111';
-  static const _testBannerIos = 'ca-app-pub-3940256099942544/2934735716';
   static const _testInterstitialAndroid =
       'ca-app-pub-3940256099942544/1033173712';
   static const _testInterstitialIos = 'ca-app-pub-3940256099942544/4411468910';
@@ -41,8 +39,9 @@ class AdMobConfig {
   static const _testNativeIos = 'ca-app-pub-3940256099942544/3986624511';
 
   // ─── Real Odyssey ad units (used in release builds only) ─────────────────
-  static const _bannerAndroid = 'ca-app-pub-9242904787767394/9610269465';
-  static const _bannerIos = 'ca-app-pub-9242904787767394/1923351138';
+  // The banner units are deliberately absent. Odyssey 2.0 floats a glass nav
+  // in the space the anchored banner occupied, so nothing requests one. The
+  // units still exist in the AdMob console if the format is ever brought back.
   static const _interstitialAndroid = 'ca-app-pub-9242904787767394/6984106128';
   static const _interstitialIos = 'ca-app-pub-9242904787767394/3603264319';
   static const _rewardedAndroid = 'ca-app-pub-9242904787767394/6521071698';
@@ -63,13 +62,6 @@ class AdMobConfig {
     if (!kReleaseMode) return _isAndroid ? testAndroid : testIos;
     return _isAndroid ? releaseAndroid : releaseIos;
   }
-
-  static String get bannerAdUnitId => _resolve(
-        releaseAndroid: _bannerAndroid,
-        releaseIos: _bannerIos,
-        testAndroid: _testBannerAndroid,
-        testIos: _testBannerIos,
-      );
 
   static String get interstitialAdUnitId => _resolve(
         releaseAndroid: _interstitialAndroid,

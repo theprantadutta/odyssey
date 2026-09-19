@@ -8,7 +8,6 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../ads/native_ad_slots.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/trip_share_model.dart';
 import '../providers/sharing_provider.dart';
@@ -26,7 +25,6 @@ class SharedTripsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,

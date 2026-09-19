@@ -6,7 +6,6 @@ import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../ads/native_ad_slots.dart';
-import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
@@ -47,7 +46,6 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,

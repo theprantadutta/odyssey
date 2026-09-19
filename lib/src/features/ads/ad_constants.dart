@@ -16,7 +16,8 @@
 ///
 ///   * Full-screen formats (interstitial, app-open) are **off**. Both interrupt
 ///     mid-task, which in a planning app is most of the time.
-///   * Banners run on browse screens only, never on the trip workspace.
+///   * The anchored banner is **gone**. Odyssey 2.0 floats a glass nav in that
+///     exact space, and the design system has no slot for a bar beneath it.
 ///   * Native tiles are compact and sparse.
 ///   * Rewarded stays on — it's opt-in, and it doubles as a free trial of the
 ///     premium features, so it drives subscriptions instead of fighting them.
@@ -35,9 +36,9 @@ class AdConstants {
   /// Turning a format back on needs no other change; the cadence values below
   /// are already set to sane values for when that happens.
 
-  /// Anchored bottom banner. On — it's the least intrusive format and it sits
-  /// on browse screens where the user isn't mid-task.
-  static const bool bannerEnabled = true;
+  // The anchored bottom banner was removed in the Odyssey 2.0 redesign: the
+  // floating nav occupies that space on every screen that had one. Nothing
+  // requests a banner any more, so there is no switch to leave off.
 
   /// Inline native tiles in long lists. On, but sparse and compact.
   static const bool nativeEnabled = true;
