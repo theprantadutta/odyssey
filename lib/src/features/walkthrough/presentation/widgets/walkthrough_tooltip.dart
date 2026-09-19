@@ -1,175 +1,106 @@
 import 'package:flutter/material.dart';
-import '../../../../common/theme/app_colors.dart';
+
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../data/models/walkthrough_step_model.dart';
 
-/// Styled tooltip card that matches the Odyssey app design.
-/// Shows icon, title, description, step indicators, and navigation buttons.
+/// The coach mark that sits beside a highlighted control.
+///
+/// [WalkthroughStep.accentColor] is ignored. The steps each carried their own
+/// colour under the old palette; this system has one accent, and six different
+/// tints on six consecutive tooltips is exactly what it exists to stop.
 class WalkthroughTooltip extends StatelessWidget {
-  final WalkthroughStep step;
-  final int currentIndex;
-  final int totalSteps;
-  final bool isAbove;
-  final VoidCallback onNext;
-  final VoidCallback onPrevious;
-  final VoidCallback onSkip;
-
   const WalkthroughTooltip({
     super.key,
     required this.step,
     required this.currentIndex,
     required this.totalSteps,
-    required this.isAbove,
     required this.onNext,
     required this.onPrevious,
     required this.onSkip,
+    required this.isAbove,
   });
+
+  final WalkthroughStep step;
+  final int currentIndex;
+  final int totalSteps;
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
+  final VoidCallback onSkip;
+
+  /// True when the tooltip sits above its target, so the arrow points down.
+  final bool isAbove;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isLastStep = currentIndex == totalSteps - 1;
-    final isFirstStep = currentIndex == 0;
+    final t = context.odyssey;
+    final isLast = currentIndex == totalSteps - 1;
+    final isFirst = currentIndex == 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
       constraints: const BoxConstraints(maxWidth: 360),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: AppSizes.strongShadow,
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Arrow pointing toward target (if tooltip is above)
-          if (isAbove) _buildArrow(colorScheme, pointing: _ArrowDirection.down),
+          if (isAbove) _Arrow(pointingDown: true, color: t.sheet),
 
-          Padding(
+          Container(
             padding: const EdgeInsets.all(AppSizes.space20),
+            decoration: BoxDecoration(
+              color: Color.alphaBlend(t.sheet, t.canvas),
+              borderRadius: BorderRadius.circular(AppSizes.radiusTile),
+              border: Border.all(color: t.hairlineStrong),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon + Title row
                 Row(
                   children: [
-                    // Colored icon circle
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: step.accentColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                      ),
-                      child: Icon(
-                        step.icon,
-                        color: step.accentColor,
-                        size: 24,
-                      ),
+                    IconChip(
+                      icon: step.icon,
+                      size: 44,
+                      radius: AppSizes.radiusChip,
+                      iconSize: AppSizes.iconLg,
                     ),
                     const SizedBox(width: AppSizes.space12),
-                    // Title
                     Expanded(
                       child: Text(
                         step.title,
-                        style: AppTypography.headlineSmall.copyWith(
-                          color: colorScheme.onSurface,
+                        style: AppTypography.cardTitleLarge.copyWith(
+                          color: t.ink,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSizes.space12),
-
-                // Description
                 Text(
                   step.description,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTypography.subtitle.copyWith(color: t.ink2),
                 ),
                 const SizedBox(height: AppSizes.space20),
 
-                // Bottom row: dots + buttons
                 Row(
                   children: [
-                    // Step indicator dots
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(totalSteps, (index) {
-                        final isActive = index == currentIndex;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: isActive ? 20 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? step.accentColor
-                                : colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        );
-                      }),
-                    ),
+                    StepDots(count: totalSteps, index: currentIndex),
                     const Spacer(),
-                    // Skip button
-                    TextButton(
-                      onPressed: onSkip,
-                      style: TextButton.styleFrom(
-                        foregroundColor: colorScheme.onSurfaceVariant,
-                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.space8),
-                        minimumSize: const Size(0, 36),
-                      ),
-                      child: Text(
-                        'Skip',
-                        style: AppTypography.labelMedium.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    // Back button (if not first step)
-                    if (!isFirstStep) ...[
-                      const SizedBox(width: AppSizes.space4),
-                      TextButton(
-                        onPressed: onPrevious,
-                        style: TextButton.styleFrom(
-                          foregroundColor: colorScheme.onSurfaceVariant,
-                          padding: const EdgeInsets.symmetric(horizontal: AppSizes.space8),
-                          minimumSize: const Size(0, 36),
-                        ),
-                        child: Text(
-                          'Back',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
+                    _TextAction(label: 'Skip', onTap: onSkip),
+                    if (!isFirst) ...[
+                      const SizedBox(width: AppSizes.space10),
+                      _TextAction(label: 'Back', onTap: onPrevious),
                     ],
-                    const SizedBox(width: AppSizes.space4),
-                    // Next / Got it! button
-                    FilledButton(
+                    const SizedBox(width: AppSizes.space10),
+                    PillButton(
+                      label: isLast ? 'Got it' : 'Next',
+                      expand: false,
                       onPressed: onNext,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.sunnyYellow,
-                        foregroundColor: AppColors.charcoal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.space16,
-                          vertical: AppSizes.space8,
-                        ),
-                        minimumSize: const Size(0, 36),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                        ),
-                      ),
-                      child: Text(
-                        isLastStep ? 'Got it!' : 'Next',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.charcoal,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.space18,
+                        vertical: AppSizes.space10,
                       ),
                     ),
                   ],
@@ -178,56 +109,98 @@ class WalkthroughTooltip extends StatelessWidget {
             ),
           ),
 
-          // Arrow pointing toward target (if tooltip is below)
-          if (!isAbove) _buildArrow(colorScheme, pointing: _ArrowDirection.up),
+          if (!isAbove) _Arrow(pointingDown: false, color: t.sheet),
         ],
       ),
     );
   }
+}
 
-  Widget _buildArrow(ColorScheme colorScheme, {required _ArrowDirection pointing}) {
-    return Align(
-      alignment: Alignment.center,
-      child: CustomPaint(
-        size: const Size(20, 10),
-        painter: _ArrowPainter(
-          color: colorScheme.surface,
-          pointing: pointing,
+class _TextAction extends StatelessWidget {
+  const _TextAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space6,
+          vertical: AppSizes.space6,
+        ),
+        child: Text(
+          label,
+          style: AppTypography.caption.copyWith(color: t.ink3),
         ),
       ),
     );
   }
 }
 
-enum _ArrowDirection { up, down }
+/// The little triangle that ties the tooltip to whatever it is pointing at.
+class _Arrow extends StatelessWidget {
+  const _Arrow({required this.pointingDown, required this.color});
+
+  final bool pointingDown;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return CustomPaint(
+      size: const Size(20, 10),
+      painter: _ArrowPainter(
+        pointingDown: pointingDown,
+        color: Color.alphaBlend(t.sheet, t.canvas),
+        border: t.hairlineStrong,
+      ),
+    );
+  }
+}
 
 class _ArrowPainter extends CustomPainter {
-  final Color color;
-  final _ArrowDirection pointing;
+  _ArrowPainter({
+    required this.pointingDown,
+    required this.color,
+    required this.border,
+  });
 
-  _ArrowPainter({required this.color, required this.pointing});
+  final bool pointingDown;
+  final Color color;
+  final Color border;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
     final path = Path();
-    if (pointing == _ArrowDirection.up) {
-      path.moveTo(0, size.height);
-      path.lineTo(size.width / 2, 0);
-      path.lineTo(size.width, size.height);
+    if (pointingDown) {
+      path
+        ..moveTo(0, 0)
+        ..lineTo(size.width / 2, size.height)
+        ..lineTo(size.width, 0);
     } else {
-      path.moveTo(0, 0);
-      path.lineTo(size.width / 2, size.height);
-      path.lineTo(size.width, 0);
+      path
+        ..moveTo(0, size.height)
+        ..lineTo(size.width / 2, 0)
+        ..lineTo(size.width, size.height);
     }
     path.close();
-    canvas.drawPath(path, paint);
+
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = border
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = AppSizes.hairlineWidth,
+    );
   }
 
   @override
-  bool shouldRepaint(_ArrowPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.pointing != pointing;
+  bool shouldRepaint(covariant _ArrowPainter old) =>
+      old.pointingDown != pointingDown || old.color != color;
 }

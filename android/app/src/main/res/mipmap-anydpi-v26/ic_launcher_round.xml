@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Round launchers get the same adaptive icon as ic_launcher.xml: the same ink
+  background, the same foreground drawable, and the same 16% inset. The mark is
+  a rotated square with air around it, so it survives a circular mask without
+  needing its own artwork.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <foreground>
+        <inset
+            android:drawable="@drawable/ic_launcher_foreground"
+            android:inset="16%" />
+    </foreground>
+    <monochrome>
+        <inset
+            android:drawable="@drawable/ic_launcher_monochrome"
+            android:inset="16%" />
+    </monochrome>
 </adaptive-icon>

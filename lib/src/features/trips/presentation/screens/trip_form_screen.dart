@@ -2,42 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
 import '../../../../common/constants/currencies.dart';
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/app_text_field.dart';
-import '../../../../common/widgets/custom_button.dart';
-import '../../../../common/widgets/cover_image_picker.dart';
-import '../../../../common/widgets/form_section_card.dart';
-import '../../../../common/animations/animated_widgets/animated_button.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
 import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/cover_image_picker.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../common/widgets/odyssey/range_calendar.dart';
 import '../../../../core/services/file_upload_service.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
-import '../../data/models/trip_model.dart';
-import '../providers/trips_provider.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/trip_creation_walkthrough_steps.dart';
 import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
+import '../../data/models/trip_model.dart';
+import '../providers/trips_provider.dart';
 
+/// Create or edit a trip — screen 3d.
+///
+/// Header, title, the two field cards, the range calendar with its From / To
+/// summary, the style chips, and a sticky footer whose label reflects the
+/// state of the range.
+///
+/// The design shows a three-step flow. Odyssey's form is one screen with more
+/// fields than the mock draws (cover image, description, budget, currency,
+/// tags), so the step counter reports genuine progress through the required
+/// fields rather than a wizard that does not exist.
 class TripFormScreen extends ConsumerStatefulWidget {
-  final TripModel? trip;
+  const TripFormScreen({super.key, this.trip});
 
-  const TripFormScreen({
-    super.key,
-    this.trip,
-  });
+  final TripModel? trip;
 
   @override
   ConsumerState<TripFormScreen> createState() => _TripFormScreenState();
 }
 
 class _TripFormScreenState extends ConsumerState<TripFormScreen> {
+  /// The trip-style chips. Stored as ordinary tags, which is what the API
+  /// already understands.
+  static const List<String> _styles = [
+    'Slow',
+    'Packed',
+    'Nature',
+    'Food',
+    'Culture',
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _tagController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _tagController = TextEditingController();
   final _fileUploadService = FileUploadService();
 
   DateTime? _startDate;
@@ -50,34 +68,35 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   bool _isUploading = false;
   String _displayCurrency = 'USD';
 
-  // Walkthrough GlobalKeys
+  // Walkthrough anchors.
   final _basicInfoKey = GlobalKey();
   final _coverImageKey = GlobalKey();
   final _datesKey = GlobalKey();
   final _budgetKey = GlobalKey();
 
+  bool get _isEditing => widget.trip != null;
+
   @override
   void initState() {
     super.initState();
-    if (widget.trip != null) {
-      _initializeWithTrip(widget.trip!);
-    }
+    if (widget.trip != null) _initializeWithTrip(widget.trip!);
 
-    // Only trigger walkthrough for trip creation, not editing
+    // Only for trip creation; editing is not a first-run experience.
     if (widget.trip == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(milliseconds: 800), () {
-          if (mounted) {
-            ref.read(walkthroughProvider.notifier).startIfNeeded(
-              'trip_creation',
-              TripCreationWalkthroughSteps.build(
-                basicInfoKey: _basicInfoKey,
-                coverImageKey: _coverImageKey,
-                datesKey: _datesKey,
-                budgetKey: _budgetKey,
-              ),
-            );
-          }
+          if (!mounted) return;
+          ref
+              .read(walkthroughProvider.notifier)
+              .startIfNeeded(
+                'trip_creation',
+                TripCreationWalkthroughSteps.build(
+                  basicInfoKey: _basicInfoKey,
+                  coverImageKey: _coverImageKey,
+                  datesKey: _datesKey,
+                  budgetKey: _budgetKey,
+                ),
+              );
         });
       });
     }
@@ -95,7 +114,7 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
       (s) => s.name == trip.status,
       orElse: () => TripStatus.planned,
     );
-    _tags = trip.tags ?? [];
+    _tags = List.of(trip.tags ?? const []);
     if (trip.budget != null) {
       _budgetController.text = trip.budget!.toStringAsFixed(2);
     }
@@ -106,112 +125,122 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _tagController.dispose();
     _budgetController.dispose();
+    _tagController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    HapticFeedback.selectionClick();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isStartDate
-          ? (_startDate ?? DateTime.now())
-          : (_endDate ?? _startDate ?? DateTime.now()),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.sunnyYellow,
-              onPrimary: AppColors.charcoal,
-              onSurface: AppColors.charcoal,
-              surface: AppColors.snowWhite,
-            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.snowWhite),
-          ),
-          child: child!,
-        );
-      },
-    );
+  // ------------------------------------------------------------------
+  // Derived state
+  // ------------------------------------------------------------------
 
-    if (picked != null) {
-      HapticFeedback.lightImpact();
-      setState(() {
-        if (isStartDate) {
-          _startDate = picked;
-          if (_endDate != null && _endDate!.isBefore(picked)) {
-            _endDate = picked.add(const Duration(days: 1));
-          }
-        } else {
-          _endDate = picked;
-        }
-      });
+  int get _nights => TripFormat.nights(_startDate, _endDate);
+
+  bool get _hasRange => _startDate != null && _endDate != null;
+
+  bool get _canSubmit =>
+      _titleController.text.trim().isNotEmpty && _hasRange && !_isLoading;
+
+  /// What the sticky footer says. The label is the state of the form, so it
+  /// tells the user what is missing rather than sitting there greyed out
+  /// without explanation.
+  String get _ctaLabel {
+    if (_isUploading) {
+      return 'Uploading cover · ${(_uploadProgress * 100).round()}%';
     }
+    if (_titleController.text.trim().isEmpty) return 'Name the trip';
+    if (_startDate == null) return 'Pick a start date';
+    if (_endDate == null) return 'Pick an end date';
+    if (_isEditing) return 'Save changes';
+    return 'Create · $_nights ${_nights == 1 ? 'night' : 'nights'}';
+  }
+
+  /// Which of the three gates the user is working on: a name, a start, an end.
+  ///
+  /// One-based, because "Step 0 of 3" reads as though nothing counts yet. Once
+  /// all three are filled it stays at 3 rather than rolling over.
+  int get _currentStep {
+    var done = 0;
+    if (_titleController.text.trim().isNotEmpty) done++;
+    if (_startDate != null) done++;
+    if (_endDate != null) done++;
+    return (done + 1).clamp(1, 3);
+  }
+
+  /// The selected style chip, if exactly one of the known styles is tagged.
+  String? get _selectedStyle {
+    for (final style in _styles) {
+      if (_tags.contains(style.toLowerCase())) return style;
+    }
+    return null;
+  }
+
+  void _selectStyle(String style) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      // Styles are single-select, so clear the others before adding this one.
+      _tags.removeWhere((t) => _styles.any((s) => s.toLowerCase() == t));
+      if (_selectedStyle != style) _tags.add(style.toLowerCase());
+    });
   }
 
   void _addTag() {
     final tag = _tagController.text.trim().toLowerCase();
-    if (tag.isNotEmpty && !_tags.contains(tag)) {
-      HapticFeedback.lightImpact();
-      setState(() {
-        _tags.add(tag);
-        _tagController.clear();
-      });
-    }
+    if (tag.isEmpty || _tags.contains(tag)) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _tags.add(tag);
+      _tagController.clear();
+    });
   }
 
   void _removeTag(String tag) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _tags.remove(tag);
-    });
+    setState(() => _tags.remove(tag));
   }
 
+  Future<void> _pickCurrency() async {
+    final picked =
+        await showOdysseyPicker<({String code, String name, String symbol})>(
+      context: context,
+      title: 'Display currency',
+      options: commonCurrencies,
+      labelOf: (c) => '${c.symbol} ${c.code}',
+      selected: commonCurrencies.firstWhere(
+        (c) => c.code == _displayCurrency,
+        orElse: () => commonCurrencies.first,
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _displayCurrency = picked.code);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Submit
+  // ------------------------------------------------------------------
+
   Future<void> _handleSubmit() async {
-    // Proactive limit check for new trips only
     if (widget.trip == null) {
       final canCreate = await LimitChecker.canCreateTrip(context, ref);
       if (!canCreate) return;
-
-      // The limit check shows its own dialog and awaits the answer, so this
-      // widget can be gone by the time it returns. Everything below touches
-      // `context`.
-      if (!mounted) return;
     }
 
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) {
-      HapticFeedback.heavyImpact();
+      HapticFeedback.lightImpact();
       return;
     }
 
-    if (_startDate == null || _endDate == null) {
-      HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.warning_rounded, color: Colors.white),
-              SizedBox(width: AppSizes.space12),
-              Text('Please select start and end dates'),
-            ],
-          ),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-        ),
-      );
+    if (!_hasRange) {
+      HapticFeedback.lightImpact();
+      showOdysseyMessage(context, 'Pick a start and an end date.');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Handle cover image upload if needed
       String? coverImageUrl = _coverImageResult.url;
 
       if (_coverImageResult.needsUpload) {
@@ -224,26 +253,16 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
           final uploadResult = await _fileUploadService.uploadCoverImage(
             file: _coverImageResult.localFile!,
             onProgress: (sent, total) {
-              if (mounted) {
-                setState(() {
-                  _uploadProgress = sent / total;
-                });
-              }
+              if (mounted) setState(() => _uploadProgress = sent / total);
             },
           );
           coverImageUrl = uploadResult.url;
         } finally {
-          if (mounted) {
-            setState(() {
-              _isUploading = false;
-            });
-          }
+          if (mounted) setState(() => _isUploading = false);
         }
       }
 
       final budgetText = _budgetController.text.trim();
-      final budget = budgetText.isEmpty ? null : double.tryParse(budgetText);
-
       final request = TripRequest(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
@@ -254,558 +273,280 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
         endDate: DateFormat('yyyy-MM-dd').format(_endDate!),
         status: _status.name,
         tags: _tags.isEmpty ? null : _tags,
-        budget: budget,
+        budget: budgetText.isEmpty ? null : double.tryParse(budgetText),
         displayCurrency: _displayCurrency,
       );
 
       if (widget.trip == null) {
         await ref.read(tripsProvider.notifier).createTrip(request);
-        if (mounted) {
-          HapticFeedback.mediumImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: const [
-                  Icon(Icons.check_circle_rounded, color: Colors.white),
-                  SizedBox(width: AppSizes.space12),
-                  Text('Trip created successfully!'),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-            ),
-          );
-          Navigator.of(context).pop();
-        }
       } else {
-        await ref.read(tripsProvider.notifier).updateTrip(
-              widget.trip!.id,
-              request.toJson(),
-            );
-        if (mounted) {
-          HapticFeedback.mediumImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: const [
-                  Icon(Icons.check_circle_rounded, color: Colors.white),
-                  SizedBox(width: AppSizes.space12),
-                  Text('Trip updated successfully!'),
-                ],
-              ),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
-            ),
-          );
-          Navigator.of(context).pop();
-        }
+        await ref
+            .read(tripsProvider.notifier)
+            .updateTrip(widget.trip!.id, request.toJson());
       }
+
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      showOdysseyMessage(
+        context,
+        widget.trip == null ? 'Trip created.' : 'Trip updated.',
+      );
+      Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
-          ),
-        );
-      }
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      showOdysseyMessage(context, 'That did not save: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ------------------------------------------------------------------
+  // Build
+  // ------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
-    final scaffold = Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: colorScheme.onSurface),
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          widget.trip == null ? 'Create Trip' : 'Edit Trip',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSizes.space24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Basic Info Card
-              FormSectionCard(
-                key: _basicInfoKey,
-                title: 'Basic Info',
-                icon: Icons.info_outline_rounded,
+    final form = Scaffold(
+      backgroundColor: t.canvas,
+      body: Form(
+        key: _formKey,
+        onChanged: () => setState(() {}),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.screenPadding,
+                  AppSizes.contentTop,
+                  AppSizes.screenPadding,
+                  AppSizes.scrollBottom,
+                ),
                 children: [
-                  AppTextField(
-                    controller: _titleController,
-                    label: 'Trip Title',
-                    hint: 'e.g., Paris Adventure',
-                    prefixIcon: Icons.title_rounded,
-                    enabled: !_isLoading,
-                    validator: (value) =>
-                        Validators.required(value, fieldName: 'Title'),
+                  ScreenHeader(
+                    title: _isEditing ? 'Editing' : 'Step $_currentStep of 3',
+                    leadingGlyph: '✕',
+                    onBack: () => Navigator.of(context).maybePop(),
                   ),
-                  const SizedBox(height: AppSizes.space16),
-                  AppTextField(
-                    controller: _descriptionController,
-                    label: 'Description (Optional)',
-                    hint: 'Tell us about your trip...',
-                    prefixIcon: Icons.description_rounded,
-                    enabled: !_isLoading,
-                    maxLines: 3,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Cover Image Card
-              FormSectionCard(
-                key: _coverImageKey,
-                title: 'Cover Image',
-                icon: Icons.image_rounded,
-                children: [
-                  CoverImagePicker(
-                    initialUrl: widget.trip?.coverImageUrl,
-                    enabled: !_isLoading,
-                    onChanged: (result) {
-                      setState(() {
-                        _coverImageResult = result;
-                      });
-                    },
-                  ),
-                  if (_isUploading) ...[
-                    const SizedBox(height: AppSizes.space12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                      child: LinearProgressIndicator(
-                        value: _uploadProgress,
-                        backgroundColor: colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            colorScheme.primary),
-                        minHeight: 6,
-                      ),
+                  const SizedBox(height: AppSizes.space20),
+                  Text(
+                    _isEditing ? 'Edit trip' : 'New trip',
+                    style: AppTypography.screenTitle.copyWith(
+                      height: 1.02,
+                      color: t.ink,
                     ),
-                    const SizedBox(height: AppSizes.space8),
-                    Text(
-                      'Uploading... ${(_uploadProgress * 100).toInt()}%',
-                      style: AppTypography.caption.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Dates Card
-              FormSectionCard(
-                key: _datesKey,
-                title: 'Trip Dates',
-                icon: Icons.calendar_today_rounded,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDateButton(
-                          label: 'Start Date',
-                          date: _startDate,
-                          onTap: () => _selectDate(context, true),
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.space16),
-                      Expanded(
-                        child: _buildDateButton(
-                          label: 'End Date',
-                          date: _endDate,
-                          onTap: () => _selectDate(context, false),
-                        ),
-                      ),
-                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.space16),
+                  const SizedBox(height: AppSizes.space20),
 
-              // Status Card
-              FormSectionCard(
-                title: 'Trip Status',
-                icon: Icons.flag_rounded,
-                children: [
-                  _buildStatusSelector(),
-                ],
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Tags Card
-              FormSectionCard(
-                title: 'Tags',
-                icon: Icons.label_rounded,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          controller: _tagController,
-                          label: 'Add a tag',
-                          hint: 'adventure, family, beach...',
-                          prefixIcon: Icons.tag_rounded,
-                          enabled: !_isLoading,
-                          onSubmitted: (_) => _addTag(),
+                  // --- name and description ---
+                  KeyedSubtree(
+                    key: _basicInfoKey,
+                    child: Column(
+                      children: [
+                        FieldCard(
+                          label: 'Trip name',
+                          controller: _titleController,
+                          hint: 'Kyoto in autumn',
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) =>
+                              Validators.required(value, fieldName: 'Trip name'),
                         ),
-                      ),
-                      const SizedBox(width: AppSizes.space8),
-                      GestureDetector(
-                        onTap: _isLoading ? null : _addTag,
-                        child: Container(
-                          padding: const EdgeInsets.all(AppSizes.space12),
-                          decoration: BoxDecoration(
-                            color: AppColors.sunnyYellow,
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.radiusMd),
-                          ),
-                          child: const Icon(
-                            Icons.add_rounded,
-                            color: AppColors.charcoal,
+                        const SizedBox(height: AppSizes.space12),
+                        FieldCard(
+                          label: 'Notes',
+                          controller: _descriptionController,
+                          hint: 'What is this trip about?',
+                          maxLines: 3,
+                          minLines: 1,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space12),
+
+                  // --- cover ---
+                  KeyedSubtree(
+                    key: _coverImageKey,
+                    child: CoverImagePicker(
+                      initialUrl: widget.trip?.coverImageUrl,
+                      enabled: !_isLoading,
+                      onChanged: (result) =>
+                          setState(() => _coverImageResult = result),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space12),
+
+                  // --- dates ---
+                  KeyedSubtree(
+                    key: _datesKey,
+                    child: Column(
+                      children: [
+                        RangeCalendar(
+                          start: _startDate,
+                          end: _endDate,
+                          onChanged: (start, end) => setState(() {
+                            _startDate = start;
+                            _endDate = end;
+                          }),
+                        ),
+                        const SizedBox(height: AppSizes.space10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ValueCard(
+                                label: 'From',
+                                value: _startDate == null
+                                    ? null
+                                    : TripFormat.shortDate(_startDate),
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.space10),
+                            Expanded(
+                              child: ValueCard(
+                                label: 'To',
+                                value: _endDate == null
+                                    ? null
+                                    : TripFormat.shortDate(_endDate),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space20),
+
+                  // --- style ---
+                  const EyebrowLabel('Trip style'),
+                  const SizedBox(height: AppSizes.space12),
+                  ChipWrap(
+                    labels: _styles,
+                    selected: _selectedStyle,
+                    onSelected: _selectStyle,
+                  ),
+                  const SizedBox(height: AppSizes.space20),
+
+                  // --- budget ---
+                  KeyedSubtree(
+                    key: _budgetKey,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: FieldCard(
+                            label: 'Budget',
+                            controller: _budgetController,
+                            hint: 'Optional',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: AppSizes.space10),
+                        Expanded(
+                          child: ValueCard(
+                            label: 'Currency',
+                            value: _displayCurrency,
+                            onTap: _isLoading ? null : _pickCurrency,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space20),
+
+                  // --- status ---
+                  const EyebrowLabel('Status'),
+                  const SizedBox(height: AppSizes.space12),
+                  SegmentedControl(
+                    labels: TripStatus.values
+                        .map((s) => s.displayName)
+                        .toList(),
+                    selected: _status.displayName,
+                    onSelected: (label) => setState(() {
+                      _status = TripStatus.values.firstWhere(
+                        (s) => s.displayName == label,
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: AppSizes.space20),
+
+                  // --- tags ---
+                  const EyebrowLabel('Tags'),
+                  const SizedBox(height: AppSizes.space12),
+                  FieldCard(
+                    label: 'Add a tag',
+                    controller: _tagController,
+                    hint: 'maple season',
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _addTag(),
+                    trailing: Pressable(
+                      onTap: _addTag,
+                      borderRadius: BorderRadius.circular(
+                        AppSizes.radiusChipXs,
                       ),
-                    ],
+                      child: Text(
+                        'Add',
+                        style: AppTypography.legend.copyWith(color: t.ink2),
+                      ),
+                    ),
                   ),
                   if (_tags.isNotEmpty) ...[
                     const SizedBox(height: AppSizes.space12),
                     Wrap(
                       spacing: AppSizes.space8,
                       runSpacing: AppSizes.space8,
-                      children: _tags.map((tag) {
-                        return CustomChip(
-                          label: tag,
-                          onDelete: _isLoading ? null : () => _removeTag(tag),
-                          color: AppColors.oceanTeal,
-                        );
-                      }).toList(),
+                      children: [
+                        for (final tag in _tags)
+                          OdysseyChip(
+                            label: tag,
+                            selected: false,
+                            onTap: () => _removeTag(tag),
+                          ),
+                      ],
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: AppSizes.space16),
+            ),
 
-              // Budget Card
-              FormSectionCard(
-                key: _budgetKey,
-                title: 'Budget (Optional)',
-                icon: Icons.account_balance_wallet_rounded,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Currency Dropdown
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.surface,
-                          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                          border: Border.all(
-                            color: theme.hintColor.withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _displayCurrency,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.space12,
-                            ),
-                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                            items: commonCurrencies.map((c) {
-                              return DropdownMenuItem(
-                                value: c.code,
-                                child: Text(
-                                  '${c.symbol} ${c.code}',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: _isLoading
-                                ? null
-                                : (value) {
-                                    if (value != null) {
-                                      setState(() => _displayCurrency = value);
-                                    }
-                                  },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.space12),
-                      // Budget Amount
-                      Expanded(
-                        child: TextFormField(
-                          controller: _budgetController,
-                          enabled: !_isLoading,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '0.00',
-                            hintStyle: AppTypography.bodyLarge.copyWith(
-                              color: theme.hintColor,
-                            ),
-                            filled: true,
-                            fillColor: colorScheme.surface,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                              borderSide: BorderSide(
-                                color: theme.hintColor.withValues(alpha: 0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                              borderSide: BorderSide(
-                                color: theme.hintColor.withValues(alpha: 0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.space8),
-                  Text(
-                    'Set a budget to track your expenses. All expenses will be converted to this currency.',
-                    style: AppTypography.caption.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.space32),
-
-              // Submit Button
-              AnimatedButton(
-                text: _isUploading
-                    ? 'Uploading Image...'
-                    : (widget.trip == null ? 'Create Trip' : 'Update Trip'),
-                onPressed: _isLoading ? null : _handleSubmit,
+            StickyFooter(
+              child: PillButton(
+                label: _ctaLabel,
                 isLoading: _isLoading,
-                icon: _isUploading
-                    ? Icons.cloud_upload_rounded
-                    : (widget.trip == null
-                        ? Icons.add_rounded
-                        : Icons.save_rounded),
-                height: AppSizes.buttonHeightLg,
+                onPressed: _canSubmit ? _handleSubmit : null,
               ),
-              const SizedBox(height: AppSizes.space24),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
 
     return Stack(
       children: [
-        scaffold,
-        if (widget.trip == null)
-          Consumer(
-            builder: (context, ref, _) {
-              final wtState = ref.watch(walkthroughProvider);
-              if (!wtState.isActive || wtState.activeSegmentId != 'trip_creation') {
-                return const SizedBox.shrink();
-              }
-              return WalkthroughOverlay(
-                steps: wtState.steps,
-                currentIndex: wtState.currentStepIndex,
-                onNext: () => ref.read(walkthroughProvider.notifier).next(),
-                onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
-                onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
-              );
-            },
-          ),
+        form,
+        Consumer(
+          builder: (context, ref, _) {
+            final wt = ref.watch(walkthroughProvider);
+            if (!wt.isActive || wt.activeSegmentId != 'trip_creation') {
+              return const SizedBox.shrink();
+            }
+            return WalkthroughOverlay(
+              steps: wt.steps,
+              currentIndex: wt.currentStepIndex,
+              onNext: () => ref.read(walkthroughProvider.notifier).next(),
+              onPrevious: () =>
+                  ref.read(walkthroughProvider.notifier).previous(),
+              onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
+            );
+          },
+        ),
       ],
-    );
-  }
-
-  Widget _buildDateButton({
-    required String label,
-    required DateTime? date,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return GestureDetector(
-      onTap: _isLoading ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.space16),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          border: Border.all(
-            color: date != null
-                ? colorScheme.primary
-                : theme.hintColor.withValues(alpha: 0.3),
-            width: date != null ? 2 : 1.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: AppTypography.caption.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space4),
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_rounded,
-                  size: 18,
-                  color: date != null ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSizes.space8),
-                Flexible(
-                  child: Text(
-                    date == null
-                        ? 'Select'
-                        : DateFormat('MMM dd, yyyy').format(date),
-                    style: AppTypography.bodyMedium.copyWith(
-                      color:
-                          date != null ? colorScheme.onSurface : theme.hintColor,
-                      fontWeight: date != null ? FontWeight.w500 : FontWeight.w400,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusSelector() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Row(
-      children: TripStatus.values.map((status) {
-        final isSelected = _status == status;
-        Color bgColor;
-        Color textColor;
-        IconData icon;
-
-        switch (status) {
-          case TripStatus.planned:
-            bgColor = AppColors.statusPlannedBg;
-            textColor = AppColors.goldenGlow;
-            icon = Icons.schedule_rounded;
-            break;
-          case TripStatus.ongoing:
-            bgColor = AppColors.statusOngoingBg;
-            textColor = AppColors.oceanTeal;
-            icon = Icons.flight_takeoff_rounded;
-            break;
-          case TripStatus.completed:
-            bgColor = AppColors.statusCompletedBg;
-            textColor = AppColors.success;
-            icon = Icons.check_circle_rounded;
-            break;
-        }
-
-        return Expanded(
-          child: GestureDetector(
-            onTap: _isLoading
-                ? null
-                : () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _status = status);
-                  },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(
-                right: status != TripStatus.completed ? AppSizes.space8 : 0,
-              ),
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSizes.space12,
-                horizontal: AppSizes.space8,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected ? bgColor : colorScheme.surface,
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                border: Border.all(
-                  color: isSelected
-                      ? textColor
-                      : theme.hintColor.withValues(alpha: 0.3),
-                  width: isSelected ? 2 : 1.5,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    icon,
-                    color: isSelected ? textColor : colorScheme.onSurfaceVariant,
-                    size: 24,
-                  ),
-                  const SizedBox(height: AppSizes.space4),
-                  Text(
-                    status.displayName,
-                    style: AppTypography.caption.copyWith(
-                      color: isSelected ? textColor : colorScheme.onSurfaceVariant,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }

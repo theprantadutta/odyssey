@@ -1,0 +1,53 @@
+# Generates the platform icon ladders from the masters in brand/.
+#
+#   dart run flutter_launcher_icons
+#
+# The masters come from the Waypoint brand kit. Never hand-edit anything under
+# android/, ios/ or web/ — change the master and re-run this.
+flutter_launcher_icons:
+  # --- Android ------------------------------------------------------------
+  # Adaptive icons are two layers so the launcher can shape-mask and parallax
+  # them, which is why the foreground is a transparent glyph rather than the
+  # finished tile. The background is flat ink; the mark was drawn for it.
+  android: true
+  image_path_android: brand/app-icon-1024.png
+  adaptive_icon_foreground: brand/adaptive-foreground.png
+  adaptive_icon_background: "#0A0B0D"
+  # Only the centre 72dp of the 108dp layer is guaranteed visible, so the
+  # fraction that matters is the glyph against 72dp rather than against the
+  # whole canvas. The package default puts it at about two thirds of the
+  # visible area, which is where launcher icons normally sit.
+  adaptive_icon_foreground_inset: 16
+  # Android 13+ themed icons. Alpha alone defines the shape and the launcher
+  # supplies the colour from the wallpaper. The mark survives this better than
+  # most: the knocked-out centre hole is a real gap, so the silhouette still
+  # reads as a waypoint in one flat tone.
+  adaptive_icon_monochrome: brand/monochrome.png
+  min_sdk_android: 24
+
+  # --- iOS ----------------------------------------------------------------
+  # The App Store rejects icons with an alpha channel, so the master is opaque
+  # and remove_alpha_ios is belt-and-braces on top of that.
+  #
+  # iOS 18 asks for three appearances. Light is the master. Dark is a
+  # transparent glyph that iOS composites onto its own dark gradient — passing
+  # the opaque master there would draw our tile inside Apple's, giving a
+  # square-in-a-square. Tinted is derived from the dark artwork by
+  # desaturating, which is what Apple's own tool does.
+  ios: true
+  image_path_ios: brand/app-icon-1024.png
+  remove_alpha_ios: true
+  image_path_ios_dark_transparent: brand/ios-dark-1024.png
+  # Tinted reuses the dark artwork; the flag below is what actually
+  # desaturates it. The flag alone does nothing — the package only grayscales
+  # an image it was given a path to, so omitting this line silently ships no
+  # tinted icon at all.
+  image_path_ios_tinted_grayscale: brand/ios-dark-1024.png
+  desaturate_tinted_to_grayscale_ios: true
+
+  # --- Web ----------------------------------------------------------------
+  web:
+    generate: true
+    image_path: brand/app-icon-1024.png
+    background_color: "#0A0B0D"
+    theme_color: "#D6FF3D"

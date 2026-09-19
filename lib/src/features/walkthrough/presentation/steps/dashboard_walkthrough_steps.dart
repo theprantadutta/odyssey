@@ -3,6 +3,9 @@ import '../../../../common/theme/app_colors.dart';
 import '../../data/models/walkthrough_step_model.dart';
 
 /// Builds the 6-step walkthrough for the Dashboard screen.
+// Every step carries AppColors.accent: this system has one accent, and the
+// tooltip ignores the field anyway. It stays on the model so the step
+// definitions do not all need rewriting.
 class DashboardWalkthroughSteps {
   DashboardWalkthroughSteps._();
 
@@ -22,7 +25,7 @@ class DashboardWalkthroughSteps {
         description:
             'This is your home base. All your trips live here, and you can always return here.',
         icon: Icons.travel_explore,
-        accentColor: AppColors.sunnyYellow,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
       ),
       WalkthroughStep(
@@ -32,7 +35,7 @@ class DashboardWalkthroughSteps {
         description:
             'Tap the bell for trip invites, collaboration updates, and reminders.',
         icon: Icons.notifications_outlined,
-        accentColor: AppColors.skyBlue,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
       ),
       WalkthroughStep(
@@ -42,7 +45,7 @@ class DashboardWalkthroughSteps {
         description:
             'Find Templates, Shared Trips, Achievements, Statistics, and Settings here.',
         icon: Icons.more_vert_rounded,
-        accentColor: AppColors.lavenderDream,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
       ),
       WalkthroughStep(
@@ -52,7 +55,7 @@ class DashboardWalkthroughSteps {
         description:
             'Search by name or tap the filter icon to sort by status, date, or tags.',
         icon: Icons.search_rounded,
-        accentColor: AppColors.oceanTeal,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
       ),
       WalkthroughStep(
@@ -62,7 +65,7 @@ class DashboardWalkthroughSteps {
         description:
             'Quickly switch between Planned, Ongoing, and Completed trips.',
         icon: Icons.filter_list_rounded,
-        accentColor: AppColors.coralBurst,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
       ),
       WalkthroughStep(
@@ -72,7 +75,7 @@ class DashboardWalkthroughSteps {
         description:
             'Ready to plan? Tap here to create a new trip with activities, packing lists, budgets, and more!',
         icon: Icons.add_rounded,
-        accentColor: AppColors.sunnyYellow,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.above,
       ),
     ];

@@ -1,269 +1,190 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../../../common/theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../common/constants/currencies.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/widgets/glass_container.dart';
-import '../../../../common/widgets/custom_button.dart';
-import '../../../../common/widgets/section_divider.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../activities/presentation/providers/activities_provider.dart';
+import '../../../documents/presentation/providers/documents_provider.dart';
+import '../../../expenses/presentation/providers/expenses_provider.dart';
+import '../../../memories/presentation/providers/memories_provider.dart';
+import '../../../packing/presentation/providers/packing_provider.dart';
 import '../../data/models/trip_model.dart';
 
-class TripOverviewTab extends StatelessWidget {
-  final TripModel trip;
-  final int duration;
-
+/// The overview panel of trip detail.
+///
+/// Not a screen in the handoff, so it is built from the system: the From / To
+/// pair, the notes, and a grouped card summarising what the other panels hold.
+class TripOverviewTab extends ConsumerWidget {
   const TripOverviewTab({
     super.key,
     required this.trip,
     required this.duration,
   });
 
+  final TripModel trip;
+  final int duration;
+
+  static String _symbolFor(String code) {
+    for (final currency in commonCurrencies) {
+      if (currency.code == code) return currency.symbol;
+    }
+    return code;
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.odyssey;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSizes.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Swipe hint
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSizes.space12,
-                vertical: AppSizes.space8,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.oceanTeal.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.swipe,
-                    size: 16,
-                    color: AppColors.oceanTeal,
-                  ),
-                  const SizedBox(width: AppSizes.space8),
-                  Text(
-                    'Swipe left or right to explore more sections',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.oceanTeal,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+    final start = TripFormat.parse(trip.startDate);
+    final end = TripFormat.parse(trip.endDate);
+    final countdown = TripFormat.countdown(start, end);
+
+    final activities = ref.watch(tripActivitiesProvider(trip.id));
+    final packing = ref.watch(tripPackingProvider(trip.id));
+    final expenses = ref.watch(tripExpensesProvider(trip.id));
+    final documents = ref.watch(tripDocumentsProvider(trip.id));
+    final memories = ref.watch(tripMemoriesProvider(trip.id));
+
+    final symbol = _symbolFor(trip.displayCurrency);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ValueCard(
+                label: 'From',
+                value: start == null ? null : TripFormat.longDate(start),
               ),
             ),
-          ),
-          const SizedBox(height: AppSizes.space16),
-
-          // Trip Stats
-          _buildStatsRow(context),
-
-          // Divider after stats
-          const SectionDivider(
-            padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
-          ),
-
-          // Description Section
-          if (trip.description != null && trip.description!.isNotEmpty) ...[
-            Text(
-              'About This Trip',
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
+            const SizedBox(width: AppSizes.space10),
+            Expanded(
+              child: ValueCard(
+                label: 'To',
+                value: end == null ? null : TripFormat.longDate(end),
               ),
-            ),
-            const SizedBox(height: AppSizes.space12),
-            GlassContainer(
-              child: Text(
-                trip.description!,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.5,
-                ),
-              ),
-            ),
-            const SectionDivider(
-              padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
             ),
           ],
+        ),
 
-          // Tags Section
-          if (trip.tags != null && trip.tags!.isNotEmpty) ...[
-            Text(
-              'Tags',
-              style: AppTypography.headlineSmall.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space12),
-            Wrap(
-              spacing: AppSizes.space8,
-              runSpacing: AppSizes.space8,
-              children: trip.tags!.map((tag) {
-                return CustomChip(
-                  label: tag,
-                  icon: Icons.label,
-                );
-              }).toList(),
-            ),
-            const SectionDivider(
-              padding: EdgeInsets.symmetric(vertical: AppSizes.space20),
-            ),
-          ],
-
-          // Dates Section
-          Text(
-            'Trip Timeline',
-            style: AppTypography.headlineSmall.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
+        if (countdown != null) ...[
           const SizedBox(height: AppSizes.space12),
-          GlassContainer(
-            child: Column(
+          OdysseyCard(
+            radius: AppSizes.radiusRow,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
               children: [
-                _buildDateRow(
-                  context: context,
-                  icon: Icons.flight_takeoff,
-                  label: 'Departure',
-                  date: DateTime.parse(trip.startDate),
-                ),
-                const Divider(height: AppSizes.space24),
-                _buildDateRow(
-                  context: context,
-                  icon: Icons.flight_land,
-                  label: 'Return',
-                  date: DateTime.parse(trip.endDate),
+                const Expanded(child: EyebrowLabel('Status')),
+                Text(
+                  countdown,
+                  style: AppTypography.caption.copyWith(color: t.ink),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
 
-  Widget _buildStatsRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            context: context,
-            icon: Icons.calendar_month,
-            value: '$duration',
-            label: duration == 1 ? 'Day' : 'Days',
-            color: AppColors.sunsetGold,
-          ),
-        ),
-        const SizedBox(width: AppSizes.space12),
-        Expanded(
-          child: _buildStatCard(
-            context: context,
-            icon: Icons.location_on,
-            value: '0',
-            label: 'Activities',
-            color: AppColors.coralPink,
-          ),
-        ),
-        const SizedBox(width: AppSizes.space12),
-        Expanded(
-          child: _buildStatCard(
-            context: context,
-            icon: Icons.photo_camera,
-            value: '0',
-            label: 'Memories',
-            color: AppColors.mintGreen,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required BuildContext context,
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return GlassContainer(
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: AppSizes.iconLg,
-          ),
-          const SizedBox(height: AppSizes.space8),
-          Text(
-            value,
-            style: AppTypography.headlineMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: colorScheme.onSurfaceVariant,
+        if (trip.description != null && trip.description!.isNotEmpty) ...[
+          const SizedBox(height: AppSizes.space12),
+          OdysseyCard(
+            radius: AppSizes.radiusTile,
+            padding: const EdgeInsets.all(AppSizes.space18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const EyebrowLabel('Notes'),
+                const SizedBox(height: AppSizes.space10),
+                Text(
+                  trip.description!,
+                  style: AppTypography.body.copyWith(color: t.ink2),
+                ),
+              ],
             ),
           ),
         ],
-      ),
-    );
-  }
 
-  Widget _buildDateRow({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required DateTime date,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSizes.space12),
-          decoration: BoxDecoration(
-            color: AppColors.lemonLight,
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          ),
-          child: Icon(
-            icon,
-            color: AppColors.goldenGlow,
-            size: AppSizes.iconMd,
-          ),
-        ),
-        const SizedBox(width: AppSizes.space16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        if (trip.tags != null && trip.tags!.isNotEmpty) ...[
+          const SizedBox(height: AppSizes.space12),
+          Wrap(
+            spacing: AppSizes.space8,
+            runSpacing: AppSizes.space8,
             children: [
-              Text(
-                label,
-                style: AppTypography.labelMedium.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSizes.space4),
-              Text(
-                DateFormat('EEEE, MMMM d, yyyy').format(date),
-                style: AppTypography.bodyLarge.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              for (final tag in trip.tags!)
+                OdysseyChip(label: tag, selected: false),
             ],
           ),
+        ],
+
+        const SizedBox(height: AppSizes.space18),
+        const EyebrowLabel('In this trip'),
+        const SizedBox(height: AppSizes.space12),
+
+        // A count per panel, so the overview says what is actually in the trip
+        // rather than repeating the stat row above it.
+        GroupedCard(
+          children: [
+            _SummaryRow(
+              label: 'Plans',
+              value: '${activities.total}',
+            ),
+            _SummaryRow(
+              label: 'Packing',
+              value: packing.total == 0
+                  ? 'No list'
+                  : '${packing.packedCount} of ${packing.total} packed',
+            ),
+            _SummaryRow(
+              label: 'Spend',
+              value: expenses.expenses.isEmpty
+                  ? 'Nothing yet'
+                  : TripFormat.compactMoney(expenses.totalAmount, symbol),
+            ),
+            _SummaryRow(
+              label: 'Documents',
+              value: '${documents.documents.length}',
+            ),
+            _SummaryRow(
+              label: 'Memories',
+              value: '${memories.memories.length}',
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.rowLabel.copyWith(color: t.ink),
+            ),
+          ),
+          Text(
+            value,
+            style: AppTypography.caption.copyWith(color: t.ink3),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
+import 'package:odyssey/src/common/theme/odyssey_tokens.dart';
 import 'package:odyssey/src/features/currency/data/models/currency_model.dart';
 import 'package:odyssey/src/features/currency/presentation/providers/currency_provider.dart';
 
@@ -77,7 +77,7 @@ class _CurrencyConverterWidgetState
           // Header
           Row(
             children: [
-              const Icon(Icons.currency_exchange, color: AppColors.oceanTeal),
+              Icon(Icons.currency_exchange, color: context.odyssey.ink2),
               const SizedBox(width: AppSizes.space8),
               Text(
                 'Currency Converter',
@@ -123,11 +123,11 @@ class _CurrencyConverterWidgetState
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.swap_horiz),
+                icon: Icon(Icons.swap_horiz),
                 onPressed: () {
                   ref.read(currencyConverterProvider.notifier).swapCurrencies();
                 },
-                color: AppColors.oceanTeal,
+                color: context.odyssey.ink2,
               ),
               Expanded(
                 child: _CurrencyDropdown(
@@ -154,7 +154,7 @@ class _CurrencyConverterWidgetState
                       ref.read(currencyConverterProvider.notifier).convert();
                     },
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.oceanTeal,
+                backgroundColor: context.odyssey.ink2,
               ),
               child: state.isLoading
                   ? const SizedBox(
@@ -176,7 +176,7 @@ class _CurrencyConverterWidgetState
               width: double.infinity,
               padding: const EdgeInsets.all(AppSizes.space16),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
+                color: context.odyssey.ink2.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Column(
@@ -186,7 +186,7 @@ class _CurrencyConverterWidgetState
                         state.result!.convertedAmount, state.toCurrency),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.success,
+                      color: context.odyssey.ink2,
                     ),
                   ),
                   const SizedBox(height: AppSizes.space4),
@@ -207,19 +207,19 @@ class _CurrencyConverterWidgetState
             Container(
               padding: const EdgeInsets.all(AppSizes.space12),
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
+                color: context.odyssey.ink2.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppSizes.radiusMd),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline,
-                      color: AppColors.error, size: 20),
+                  Icon(Icons.error_outline,
+                      color: context.odyssey.ink2, size: 20),
                   const SizedBox(width: AppSizes.space8),
                   Expanded(
                     child: Text(
                       'Conversion failed. Please try again.',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.error,
+                        color: context.odyssey.ink2,
                       ),
                     ),
                   ),
@@ -315,7 +315,7 @@ class CurrencyConversionChip extends StatelessWidget {
         vertical: AppSizes.space4,
       ),
       decoration: BoxDecoration(
-        color: AppColors.oceanTeal.withValues(alpha: 0.1),
+        color: context.odyssey.ink2.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSizes.radiusFull),
       ),
       child: Row(
@@ -323,9 +323,9 @@ class CurrencyConversionChip extends StatelessWidget {
         children: [
           Text(
             '≈ ${formatCurrency(convertedAmount, toCurrency)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.oceanTeal,
+              color: context.odyssey.ink2,
               fontWeight: FontWeight.w500,
             ),
           ),

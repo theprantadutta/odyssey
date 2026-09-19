@@ -1,0 +1,32 @@
+# The splash is the icon's own plate colour filling the screen, with the
+# waypoint mark on it and nothing else — no plate under the mark, no wordmark.
+#
+# Ink in both appearances rather than paper in light. The primary app icon is
+# lime-on-ink, and the brand kit is explicit that the lime mark must never sit
+# on a light background, so a paper splash would have to swap the mark's colour
+# and stop matching the icon the user just tapped. Launching should read as
+# that icon expanding into the screen.
+#
+# After changing anything here: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#0A0B0D"
+  color_dark: "#0A0B0D"
+
+  # Treated as the 4x asset: the 476px glyph on this 640 canvas lands at 119dp.
+  image: brand/splash-glyph.png
+  image_dark: brand/splash-glyph.png
+
+  # Android 12+ masks to a 768px circle inside a 1152 canvas and draws that at
+  # 160dp. The 571px glyph sits well inside the mask rather than filling it,
+  # which gives the same 119dp the other paths render.
+  android_12:
+    image: brand/android12-glyph.png
+    image_dark: brand/android12-glyph.png
+    color: "#0A0B0D"
+    color_dark: "#0A0B0D"
+
+  android: true
+  ios: true
+  # index.html carries the generated splash markup and references
+  # web/splash/img/*, so this has to stay on or those files go stale.
+  web: true

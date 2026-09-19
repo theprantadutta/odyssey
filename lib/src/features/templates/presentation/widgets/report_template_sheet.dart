@@ -2,27 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
 
 /// Reporting and blocking for templates other people published.
 ///
-/// App Store Guideline 1.2 requires both on any app carrying user-generated content,
-/// and requires them to be reachable from the content itself rather than buried in
-/// settings - a reviewer looks for exactly this.
-class ReportTemplateSheet extends ConsumerStatefulWidget {
-  final TripTemplateModel template;
-
-  const ReportTemplateSheet({super.key, required this.template});
-
-  @override
-  ConsumerState<ReportTemplateSheet> createState() => _ReportTemplateSheetState();
+/// App Store Guideline 1.2 requires both on any app carrying user-generated
+/// content, and requires them to be reachable from the content itself rather
+/// than buried in settings — a reviewer looks for exactly this.
+Future<void> showReportTemplateSheet({
+  required BuildContext context,
+  required TripTemplateModel template,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => _ReportTemplateSheet(template: template),
+  );
 }
 
-class _ReportTemplateSheetState extends ConsumerState<ReportTemplateSheet> {
+class _ReportTemplateSheet extends ConsumerStatefulWidget {
+  const _ReportTemplateSheet({required this.template});
+
+  final TripTemplateModel template;
+
+  @override
+  ConsumerState<_ReportTemplateSheet> createState() =>
+      _ReportTemplateSheetState();
+}
+
+class _ReportTemplateSheetState extends ConsumerState<_ReportTemplateSheet> {
   static const List<String> _reasons = [
     'Offensive or abusive language',
     'Sexual or adult content',
@@ -44,10 +59,12 @@ class _ReportTemplateSheetState extends ConsumerState<ReportTemplateSheet> {
 
   Future<void> _submit() async {
     if (_reason == null) return;
-
     setState(() => _submitting = true);
+
     try {
-      await ref.read(templateGalleryProvider.notifier).reportTemplate(
+      await ref
+          .read(templateGalleryProvider.notifier)
+          .reportTemplate(
             templateId: widget.template.id,
             reason: _reason!,
             details: _detailsController.text.trim(),
@@ -55,193 +72,136 @@ class _ReportTemplateSheetState extends ConsumerState<ReportTemplateSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thanks — we\'ll review this template.'),
-          backgroundColor: AppColors.oceanTeal,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showOdysseyMessage(context, 'Thanks — we will review this template.');
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
       HapticFeedback.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not report: $e'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showOdysseyMessage(context, 'That report did not send: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSizes.space24,
-        right: AppSizes.space24,
-        top: AppSizes.space24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.space24,
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSizes.screenPadding,
+        AppSizes.space24,
+        AppSizes.screenPadding,
+        AppSizes.space24 + MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Report template',
-            style: AppTypography.headlineSmall.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(t.sheet, t.canvas),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusSheet),
+        ),
+        border: Border(top: BorderSide(color: t.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const EyebrowLabel('Report'),
+            const SizedBox(height: AppSizes.space12),
+            Text(
+              'What is wrong with this?',
+              style: AppTypography.statSmall.copyWith(color: t.ink),
             ),
-          ),
-          const SizedBox(height: AppSizes.space4),
-          Text(
-            'Tell us what\'s wrong with "${widget.template.name}". Reported templates are reviewed, and removed if they break the rules.',
-            style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: AppSizes.space16),
-
-          RadioGroup<String>(
-            groupValue: _reason,
-            // RadioGroup wants a non-nullable callback, so the disabled case is
-            // handled here rather than by passing null.
-            onChanged: (v) {
-              if (_submitting) return;
-              setState(() => _reason = v);
-            },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: _reasons
-                  .map(
-                    (reason) => RadioListTile<String>(
-                      value: reason,
-                      title: Text(reason, style: AppTypography.bodyMedium),
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: AppColors.coralBurst,
-                    ),
-                  )
-                  .toList(),
+            const SizedBox(height: AppSizes.space10),
+            Text(
+              'Reported templates are reviewed, and removed if they break the '
+              'rules.',
+              style: AppTypography.subtitle.copyWith(color: t.ink2),
             ),
-          ),
+            const SizedBox(height: AppSizes.space18),
 
-          const SizedBox(height: AppSizes.space8),
-          TextField(
-            controller: _detailsController,
-            enabled: !_submitting,
-            maxLines: 2,
-            maxLength: 300,
-            decoration: InputDecoration(
-              hintText: 'Anything else we should know? (optional)',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
+            // Chips rather than radio rows: this system has no radio, and the
+            // reasons are short enough to wrap.
+            Wrap(
+              spacing: AppSizes.space8,
+              runSpacing: AppSizes.space8,
+              children: [
+                for (final reason in _reasons)
+                  OdysseyChip(
+                    label: reason,
+                    selected: reason == _reason,
+                    activeStyle: ChipActiveStyle.action,
+                    onTap: _submitting
+                        ? null
+                        : () => setState(() => _reason = reason),
+                  ),
+              ],
             ),
-          ),
+            const SizedBox(height: AppSizes.space16),
 
-          const SizedBox(height: AppSizes.space8),
-          Row(
-            children: [
-              TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                child: Text(
-                  'Cancel',
-                  style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: (_reason == null || _submitting) ? null : _submit,
-                style: FilledButton.styleFrom(backgroundColor: AppColors.coralBurst),
-                child: _submitting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Report'),
-              ),
-            ],
-          ),
-        ],
+            FieldCard(
+              label: 'Anything else',
+              controller: _detailsController,
+              hint: 'Optional',
+              maxLines: 3,
+              minLines: 1,
+              enabled: !_submitting,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: AppSizes.space20),
+
+            PillButton(
+              label: _reason == null ? 'Pick a reason' : 'Send the report',
+              isLoading: _submitting,
+              onPressed: _reason == null || _submitting ? null : _submit,
+            ),
+            const SizedBox(height: AppSizes.space10),
+            PillButton(
+              label: 'Cancel',
+              style: PillStyle.outline,
+              onPressed: _submitting
+                  ? null
+                  : () => Navigator.of(context).pop(),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Confirms blocking, then blocks. Separate from reporting: reporting is about the
-/// content, blocking is about never seeing that author again.
+/// Confirms blocking, then blocks.
+///
+/// Separate from reporting: reporting is about the content, blocking is about
+/// never seeing that author again.
 Future<void> showBlockAuthorDialog(
   BuildContext context,
   WidgetRef ref,
   TripTemplateModel template,
 ) async {
-  final colorScheme = Theme.of(context).colorScheme;
-
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showOdysseyConfirm(
     context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusXl)),
-      title: Text(
-        'Block this author?',
-        style: AppTypography.headlineSmall.copyWith(color: colorScheme.onSurface),
-      ),
-      content: Text(
-        'You won\'t see any templates from whoever published "${template.name}" again. '
-        'They aren\'t told, and you can undo this later.',
-        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurfaceVariant),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(
-            'Cancel',
-            style: AppTypography.labelLarge.copyWith(color: colorScheme.onSurfaceVariant),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: TextButton.styleFrom(foregroundColor: AppColors.coralBurst),
-          child: Text(
-            'Block',
-            style: AppTypography.labelLarge.copyWith(
-              color: AppColors.coralBurst,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    ),
+    title: 'Block this author?',
+    body: [
+      'You will not see any templates from whoever published '
+          '"${template.name}" again. They are not told, and you can undo this '
+          'later.',
+    ],
+    confirmLabel: 'Block',
   );
-
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
 
   try {
     await ref.read(templateGalleryProvider.notifier).blockUser(template.userId);
     if (!context.mounted) return;
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Blocked. Their templates are hidden from your gallery.'),
-        backgroundColor: AppColors.oceanTeal,
-        behavior: SnackBarBehavior.floating,
-      ),
+    showOdysseyMessage(
+      context,
+      'Blocked. Their templates are hidden from your gallery.',
     );
   } catch (e) {
     if (!context.mounted) return;
     HapticFeedback.heavyImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Could not block: $e'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    showOdysseyMessage(context, 'Could not block that author: $e');
   }
 }

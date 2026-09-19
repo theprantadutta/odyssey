@@ -1,170 +1,490 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// Odyssey Typography System - Vibrant & Playful
-/// Headlines: Nunito (Rounded, friendly, approachable)
-/// Body: Inter (Clean, modern, highly readable)
+/// Odyssey 2.0 type system.
+///
+/// Two families and a mono:
+///
+/// * **Space Grotesk** — display and *all* numerals. Always weight 700, always
+///   tight. The tracking gets tighter as the size grows, which is why every
+///   display role below carries its own [TextStyle.letterSpacing] rather than
+///   inheriting one.
+/// * **Manrope** — all UI text and body copy. Weights 500 / 600 / 700 / 800.
+/// * **JetBrains Mono** — eyebrow labels only. Uppercase, widely tracked.
+///
+/// All three are bundled in `assets/fonts` and declared in `pubspec.yaml`, so
+/// there is no runtime font fetch — this app has to look right offline on a
+/// cold first launch.
+///
+/// Tracking in the design is specified in `em`; Flutter wants logical pixels.
+/// Every value here is already converted (`em × fontSize`), so the numbers
+/// look arbitrary but are exact.
+///
+/// **The floor for body text is 11px.** Eyebrow labels sit at 9–9.5px and are
+/// uppercase mono only.
 class AppTypography {
-  AppTypography._(); // Private constructor
+  AppTypography._();
+
+  static const String display = 'SpaceGrotesk';
+  static const String ui = 'Manrope';
+  static const String mono = 'JetBrainsMono';
 
   // ============================================================
-  // DISPLAY STYLES (Hero text, splash screens)
-  // Using Nunito ExtraBold for maximum impact
+  // DISPLAY — Space Grotesk 700
   // ============================================================
-  static TextStyle displayLarge = GoogleFonts.nunito(
-    fontSize: 48,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.5,
-    height: 1.1,
+
+  /// Screen hero title. 40px, −0.04em. Usually two lines.
+  ///
+  /// "Where to / next, Pranta?" · "Your / travel year"
+  static const TextStyle heroTitle = TextStyle(
+    fontFamily: display,
+    fontSize: 40,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.6,
+    height: 1.0,
   );
 
-  static TextStyle displayMedium = GoogleFonts.nunito(
+  /// The smaller hero used where a screen has a header row above it. 34px.
+  ///
+  /// "New trip" · "Travel wallet" · "You"
+  static const TextStyle screenTitle = TextStyle(
+    fontFamily: display,
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.36,
+    height: 1.0,
+  );
+
+  /// Day-plan title. 36px, −0.04em.
+  static const TextStyle dayTitle = TextStyle(
+    fontFamily: display,
     fontSize: 36,
     fontWeight: FontWeight.w700,
-    letterSpacing: 0,
-    height: 1.15,
+    letterSpacing: -1.44,
+    height: 1.0,
   );
 
-  static TextStyle displaySmall = GoogleFonts.nunito(
-    fontSize: 28,
+  /// Place name on a full-bleed cover. 52px, −0.045em, very tight leading.
+  static const TextStyle placeName = TextStyle(
+    fontFamily: display,
+    fontSize: 52,
     fontWeight: FontWeight.w700,
-    letterSpacing: 0,
+    letterSpacing: -2.34,
+    height: 0.94,
+  );
+
+  /// Destination on the home hero card. 32px, −0.035em.
+  static const TextStyle heroPlace = TextStyle(
+    fontFamily: display,
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.12,
+    height: 1.02,
+  );
+
+  /// The giant number on a lime hero tile. 68px, −0.05em, leading 0.85.
+  ///
+  /// "days on the road"
+  static const TextStyle statGiant = TextStyle(
+    fontFamily: display,
+    fontSize: 68,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -3.4,
+    height: 0.85,
+  );
+
+  /// Achievements points / packing percentage. 58–60px.
+  static const TextStyle statHuge = TextStyle(
+    fontFamily: display,
+    fontSize: 58,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -2.9,
+    height: 0.85,
+  );
+
+  /// Budget total. 52px, −0.05em.
+  static const TextStyle statTotal = TextStyle(
+    fontFamily: display,
+    fontSize: 52,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -2.6,
+    height: 0.9,
+  );
+
+  /// Spend panel amount, statistics bento halves. 40px, −0.045em.
+  static const TextStyle statLarge = TextStyle(
+    fontFamily: display,
+    fontSize: 40,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.8,
+    height: 1.0,
+  );
+
+  /// Statistics half-tile value. 36px, −0.045em.
+  static const TextStyle statMedium = TextStyle(
+    fontFamily: display,
+    fontSize: 36,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.62,
+    height: 1.0,
+  );
+
+  /// Section value / distance flown. 34px, −0.04em.
+  static const TextStyle statSection = TextStyle(
+    fontFamily: display,
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.36,
+    height: 1.0,
+  );
+
+  /// Boarding-pass route. 30px, −0.04em.
+  static const TextStyle route = TextStyle(
+    fontFamily: display,
+    fontSize: 30,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.2,
+    height: 1.0,
+  );
+
+  /// "Memories" wall heading, budget tile values. 26px, −0.04em.
+  static const TextStyle statCard = TextStyle(
+    fontFamily: display,
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.04,
+    height: 1.0,
+  );
+
+  /// Trip-detail stat row. 24px, −0.04em.
+  static const TextStyle statSmall = TextStyle(
+    fontFamily: display,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.96,
+    height: 1.0,
+  );
+
+  /// Day-rail date. 18px, −0.03em.
+  static const TextStyle railDate = TextStyle(
+    fontFamily: display,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.54,
+    height: 1.0,
+  );
+
+  /// Numerals at list scale — expense amounts, leaderboard points, timeline
+  /// times. 13–14px, −0.02em.
+  static const TextStyle numeral = TextStyle(
+    fontFamily: display,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.26,
+    height: 1.0,
+  );
+
+  /// Glyph arrows and marks: `←` `→` `›` `✕` `+` `−` `✓`.
+  ///
+  /// Size and colour are set per use; this just pins the family and weight.
+  static const TextStyle glyph = TextStyle(
+    fontFamily: display,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    height: 1.0,
+  );
+
+  // ============================================================
+  // UI — Manrope
+  // ============================================================
+
+  /// Section heading. 17px / 700, −0.01em.
+  static const TextStyle sectionHeading = TextStyle(
+    fontFamily: ui,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.17,
     height: 1.2,
   );
 
-  // ============================================================
-  // HEADLINE STYLES (Section headers, screen titles)
-  // Using Nunito Bold for friendly emphasis
-  // ============================================================
-  static TextStyle headlineLarge = GoogleFonts.nunito(
-    fontSize: 24,
+  /// Card title at the larger end — stay names, profile name. 17px / 700.
+  static const TextStyle cardTitleLarge = TextStyle(
+    fontFamily: ui,
+    fontSize: 17,
     fontWeight: FontWeight.w700,
-    letterSpacing: 0,
     height: 1.25,
   );
 
-  static TextStyle headlineMedium = GoogleFonts.nunito(
-    fontSize: 20,
+  /// Activity card title. 16px / 700.
+  static const TextStyle cardTitleXl = TextStyle(
+    fontFamily: ui,
+    fontSize: 16,
     fontWeight: FontWeight.w700,
-    letterSpacing: 0,
+    height: 1.25,
+  );
+
+  /// Field value inside an input card. 15px / 600.
+  static const TextStyle fieldValue = TextStyle(
+    fontFamily: ui,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
     height: 1.3,
   );
 
-  static TextStyle headlineSmall = GoogleFonts.nunito(
-    fontSize: 18,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0,
-    height: 1.35,
+  /// From/To summary value. 15px / 700.
+  static const TextStyle fieldValueStrong = TextStyle(
+    fontFamily: ui,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
   );
 
-  // ============================================================
-  // TITLE STYLES (Card titles, list items, subtitles)
-  // Using Inter SemiBold for clean readability
-  // ============================================================
-  static TextStyle titleLarge = GoogleFonts.inter(
-    fontSize: 20,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0,
-    height: 1.4,
+  /// Trip card title on the home rail. 14.5px / 700.
+  static const TextStyle cardTitle = TextStyle(
+    fontFamily: ui,
+    fontSize: 14.5,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
   );
 
-  static TextStyle titleMedium = GoogleFonts.inter(
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.15,
-    height: 1.5,
-  );
-
-  static TextStyle titleSmall = GoogleFonts.inter(
+  /// List row title — packing items, expenses, documents. 14px / 700.
+  static const TextStyle rowTitle = TextStyle(
+    fontFamily: ui,
     fontSize: 14,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.1,
-    height: 1.45,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
   );
 
-  // ============================================================
-  // BODY STYLES (Main content, descriptions, paragraphs)
-  // Using Inter Regular for optimal readability
-  // ============================================================
-  static TextStyle bodyLarge = GoogleFonts.inter(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.15,
+  /// Settings row label. 13.5px / 700.
+  static const TextStyle rowLabel = TextStyle(
+    fontFamily: ui,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+  );
+
+  /// Body copy. 14.5px / 500, generous leading.
+  static const TextStyle body = TextStyle(
+    fontFamily: ui,
+    fontSize: 14.5,
+    fontWeight: FontWeight.w500,
     height: 1.6,
   );
 
-  static TextStyle bodyMedium = GoogleFonts.inter(
+  /// Sub-line under a screen title. 14px / 500.
+  static const TextStyle subtitle = TextStyle(
+    fontFamily: ui,
     fontSize: 14,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.25,
-    height: 1.5,
-  );
-
-  static TextStyle bodySmall = GoogleFonts.inter(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.4,
+    fontWeight: FontWeight.w500,
     height: 1.45,
   );
 
-  // ============================================================
-  // LABEL STYLES (Buttons, tabs, chips, badges)
-  // Using Inter SemiBold for UI elements
-  // ============================================================
-  static TextStyle labelLarge = GoogleFonts.inter(
+  /// Search placeholder. 14px / 500.
+  static const TextStyle placeholder = TextStyle(
+    fontFamily: ui,
     fontSize: 14,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
-    height: 1.4,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
   );
 
-  static TextStyle labelMedium = GoogleFonts.inter(
+  /// Primary button label. 14px / 700.
+  static const TextStyle button = TextStyle(
+    fontFamily: ui,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  /// Secondary / outline button label. 13px / 700.
+  static const TextStyle buttonSmall = TextStyle(
+    fontFamily: ui,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  /// Meta line under a hero, cover date range. 13px / 500.
+  static const TextStyle meta = TextStyle(
+    fontFamily: ui,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+  );
+
+  /// Hero card meta on a photo. 12.5px / 500.
+  static const TextStyle metaLarge = TextStyle(
+    fontFamily: ui,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+  );
+
+  /// Chip and segmented-tab label. 12.5px / 600.
+  static const TextStyle chip = TextStyle(
+    fontFamily: ui,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+  );
+
+  /// Selected segmented-tab label — same size, heavier. 12.5px / 700.
+  static const TextStyle tab = TextStyle(
+    fontFamily: ui,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  /// Header caption, "See all", right-aligned settings value. 12px / 700.
+  static const TextStyle caption = TextStyle(
+    fontFamily: ui,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  /// Location pill, footer link. 12px / 600.
+  static const TextStyle pill = TextStyle(
+    fontFamily: ui,
     fontSize: 12,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
+    height: 1.2,
+  );
+
+  /// Nav item label. 11.5px / 700.
+  static const TextStyle navLabel = TextStyle(
+    fontFamily: ui,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+  );
+
+  /// Row meta — "24 memories", "format · size · note". 11.5px / 500.
+  ///
+  /// This is the floor for readable meta text.
+  static const TextStyle rowMeta = TextStyle(
+    fontFamily: ui,
+    fontSize: 11.5,
+    fontWeight: FontWeight.w500,
     height: 1.35,
   );
 
-  static TextStyle labelSmall = GoogleFonts.inter(
-    fontSize: 11,
+  /// Legend label, "Show" affordance. 11.5px / 600.
+  static const TextStyle legend = TextStyle(
+    fontFamily: ui,
+    fontSize: 11.5,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
-    height: 1.3,
-  );
-
-  // ============================================================
-  // SPECIAL STYLES
-  // ============================================================
-
-  /// App logo/brand text - extra bold and playful
-  static TextStyle brandLarge = GoogleFonts.nunito(
-    fontSize: 32,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.5,
     height: 1.2,
   );
 
-  /// Button text - slightly bolder for emphasis
-  static TextStyle button = GoogleFonts.inter(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.3,
+  /// Badge description. 11px / 500, 1.45 leading.
+  static const TextStyle badgeDesc = TextStyle(
+    fontFamily: ui,
+    fontSize: 11,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+  );
+
+  /// Countdown pill on a photo. 11px / 700.
+  static const TextStyle countdown = TextStyle(
+    fontFamily: ui,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
     height: 1.2,
   );
 
-  /// Caption text - for timestamps, metadata
-  static TextStyle caption = GoogleFonts.inter(
-    fontSize: 11,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.4,
-    height: 1.3,
-  );
-
-  /// Overline text - for category labels
-  static TextStyle overline = GoogleFonts.inter(
+  /// Lime badge — `DAY 3 / 6`, `CONFIRMED`, `PRO`. 10px / 700, 0.06em.
+  static const TextStyle badge = TextStyle(
+    fontFamily: ui,
     fontSize: 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.6,
+    height: 1.2,
+  );
+
+  /// Trip-detail stat label. 10.5px / 600.
+  static const TextStyle statLabel = TextStyle(
+    fontFamily: ui,
+    fontSize: 10.5,
     fontWeight: FontWeight.w600,
-    letterSpacing: 1.5,
-    height: 1.5,
+    height: 1.2,
+  );
+
+  /// Day-rail weekday, chart bar label. 9.5–10px / 600–700, lightly tracked.
+  static const TextStyle microLabel = TextStyle(
+    fontFamily: ui,
+    fontSize: 9.5,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.57,
+    height: 1.2,
+  );
+
+  /// Avatar initial. 14px / 800.
+  static const TextStyle avatarInitial = TextStyle(
+    fontFamily: ui,
+    fontSize: 14,
+    fontWeight: FontWeight.w800,
+    height: 1.0,
+  );
+
+  // ============================================================
+  // MONO — eyebrow labels only
+  // ============================================================
+
+  /// Eyebrow label. 9.5px / 700, 0.16em, ALL CAPS.
+  ///
+  /// `NEXT TRIP` · `ODYSSEY POINTS` · `DAYS ON THE ROAD` · `REMAINING`
+  ///
+  /// Always pass already-uppercased copy — `EyebrowLabel` handles that for you.
+  static const TextStyle eyebrow = TextStyle(
+    fontFamily: mono,
+    fontSize: 9.5,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.52,
+    height: 1.2,
+  );
+
+  /// Eyebrow at the tighter tracking used inside dense cards. 9px / 700, 0.14em.
+  static const TextStyle eyebrowTight = TextStyle(
+    fontFamily: mono,
+    fontSize: 9,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.26,
+    height: 1.2,
+  );
+
+  /// Mono row tag — `DOCS` / `TECH` / `WEAR`. 9px / 700, 0.12em.
+  static const TextStyle monoTag = TextStyle(
+    fontFamily: mono,
+    fontSize: 9,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.08,
+    height: 1.2,
+  );
+
+  /// The `photo · …` tag on a placeholder image. 9px / 400, lowercase.
+  static const TextStyle photoTag = TextStyle(
+    fontFamily: mono,
+    fontSize: 9,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.72,
+    height: 1.2,
+  );
+
+  /// File-extension label on a document thumb. 8.5px / 400, 0.06em.
+  static const TextStyle fileExt = TextStyle(
+    fontFamily: mono,
+    fontSize: 8.5,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.51,
+    height: 1.2,
+  );
+
+  /// Divider word (`OR`) and the build stamp. 11px / 700, 0.1em.
+  static const TextStyle monoDivider = TextStyle(
+    fontFamily: mono,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.1,
+    height: 1.2,
   );
 }

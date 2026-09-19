@@ -3,14 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../common/animations/animation_constants.dart';
-import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/markdown_style.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../providers/auth_provider.dart';
 
-/// Legal agreement screen shown before authentication.
-/// Users must accept the Privacy Policy and Terms & Conditions to proceed.
+/// The terms gate, shown once before the first sign-in.
 class LegalAgreementScreen extends ConsumerStatefulWidget {
   const LegalAgreementScreen({super.key});
 
@@ -19,40 +19,21 @@ class LegalAgreementScreen extends ConsumerStatefulWidget {
       _LegalAgreementScreenState();
 }
 
-class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen>
-    with SingleTickerProviderStateMixin {
-  bool _agreed = false;
+class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
+  static const String _terms = 'Terms';
+  static const String _privacy = 'Privacy';
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  String _tab = _terms;
+  bool _agreed = false;
 
   String _privacyContent = '';
   String _termsContent = '';
-  bool _isLoadingContent = true;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: AppAnimations.slow,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.05),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: AppAnimations.slideUp,
-    ));
-
     _loadContent();
-    _animationController.forward();
   }
 
   Future<void> _loadContent() async {
@@ -60,273 +41,151 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen>
       rootBundle.loadString('assets/legal/privacy.md'),
       rootBundle.loadString('assets/legal/terms.md'),
     ]);
-    if (mounted) {
-      setState(() {
-        _privacyContent = results[0];
-        _termsContent = results[1];
-        _isLoadingContent = false;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _privacyContent = results[0];
+      _termsContent = results[1];
+      _isLoading = false;
+    });
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onContinue() async {
+  Future<void> _continue() async {
     HapticFeedback.mediumImpact();
     await ref.read(authProvider.notifier).setTermsAccepted();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.snowWhite,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: SafeArea(
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  const SizedBox(height: AppSizes.space24),
+    final t = context.odyssey;
+    final body = _tab == _terms ? _termsContent : _privacyContent;
 
-                  // Header icon
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.lemonLight,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.sunnyYellow.withValues(alpha: 0.3),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.shield_outlined,
-                      size: 40,
-                      color: AppColors.sunnyYellow,
-                    ),
+    return OdysseyScaffold(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.authPadding,
+              AppSizes.contentTop,
+              AppSizes.authPadding,
+              0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Before we\nbegin.',
+                  style: AppTypography.screenTitle.copyWith(
+                    fontSize: 38,
+                    letterSpacing: -1.71,
+                    color: t.ink,
                   ),
-                  const SizedBox(height: AppSizes.space16),
+                ),
+                const SizedBox(height: AppSizes.space12),
+                Text(
+                  'The short version: your trips are yours, and we keep them '
+                  'that way.',
+                  style: AppTypography.subtitle.copyWith(color: t.ink2),
+                ),
+                const SizedBox(height: AppSizes.space20),
+                SegmentedControl(
+                  labels: const [_terms, _privacy],
+                  selected: _tab,
+                  onSelected: (value) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _tab = value);
+                  },
+                ),
+                const SizedBox(height: AppSizes.space16),
+              ],
+            ),
+          ),
 
-                  // Title
-                  Text(
-                    'Legal Agreements',
-                    style: AppTypography.headlineLarge.copyWith(
-                      color: AppColors.charcoal,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space8),
-
-                  // Subtitle
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSizes.space24,
-                    ),
-                    child: Text(
-                      'Please review our Privacy Policy and Terms & Conditions before continuing.',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.slate,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space20),
-
-                  // Tab bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSizes.space24,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.warmGray,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                      ),
-                      child: TabBar(
-                        indicator: BoxDecoration(
-                          color: AppColors.snowWhite,
-                          borderRadius:
-                              BorderRadius.circular(AppSizes.radiusSm),
-                          boxShadow: AppSizes.softShadow,
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: AppColors.charcoal,
-                        unselectedLabelColor: AppColors.slate,
-                        labelStyle: AppTypography.labelLarge,
-                        unselectedLabelStyle: AppTypography.labelLarge,
-                        padding: const EdgeInsets.all(4),
-                        tabs: const [
-                          Tab(text: 'Privacy Policy'),
-                          Tab(text: 'Terms & Conditions'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space16),
-
-                  // Tab content
-                  Expanded(
-                    child: _isLoadingContent
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.sunnyYellow,
-                            ),
-                          )
-                        : TabBarView(
-                            children: [
-                              _buildMarkdownTab(_privacyContent),
-                              _buildMarkdownTab(_termsContent),
-                            ],
-                          ),
-                  ),
-
-                  // Bottom section: checkbox + button
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      AppSizes.space24,
-                      AppSizes.space16,
-                      AppSizes.space24,
-                      MediaQuery.of(context).padding.bottom + AppSizes.space16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.snowWhite,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
+          Expanded(
+            child: _isLoading
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSizes.authPadding,
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Checkbox
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _agreed = !_agreed);
-                          },
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: Checkbox(
-                                  value: _agreed,
-                                  onChanged: (value) {
-                                    HapticFeedback.selectionClick();
-                                    setState(() => _agreed = value ?? false);
-                                  },
-                                  activeColor: AppColors.sunnyYellow,
-                                  checkColor: AppColors.charcoal,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: AppSizes.space12),
-                              Expanded(
-                                child: Text(
-                                  'I agree to the Privacy Policy and Terms & Conditions',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    color: AppColors.charcoal,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.space16),
+                        Skeleton(width: double.infinity, height: 14),
+                        SizedBox(height: AppSizes.space10),
+                        Skeleton(width: double.infinity, height: 14),
+                        SizedBox(height: AppSizes.space10),
+                        Skeleton(width: double.infinity, height: 14),
+                      ],
+                    ),
+                  )
+                : Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.authPadding,
+                    ),
+                    decoration: BoxDecoration(
+                      color: t.card,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusTile),
+                      border: Border.all(color: t.hairline),
+                    ),
+                    // The documents ship as Markdown, so they render as
+                    // Markdown — plain text puts '#' and '**' on screen. The
+                    // stylesheet maps every slot onto this design's own type
+                    // roles so the renderer brings no scale of its own.
+                    child: Markdown(
+                      data: body,
+                      padding: const EdgeInsets.all(AppSizes.space18),
+                      styleSheet: odysseyMarkdownStyle(context),
+                    ),
+                  ),
+          ),
 
-                        // Continue button
-                        SizedBox(
-                          width: double.infinity,
-                          height: AppSizes.buttonHeightLg,
-                          child: FilledButton(
-                            onPressed: _agreed ? _onContinue : null,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.sunnyYellow,
-                              foregroundColor: AppColors.charcoal,
-                              disabledBackgroundColor:
-                                  AppColors.warmGray,
-                              disabledForegroundColor:
-                                  AppColors.mutedGray,
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppSizes.radiusMd),
-                              ),
+          StickyFooter(
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.authPadding,
+              AppSizes.space16,
+              AppSizes.authPadding,
+              30,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Pressable(
+                  onTap: () => setState(() => _agreed = !_agreed),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.space8,
+                    ),
+                    child: Row(
+                      children: [
+                        CircleCheckbox(
+                          checked: _agreed,
+                          size: AppSizes.checkboxSmall,
+                          onChanged: (value) => setState(() => _agreed = value),
+                          semanticLabel: 'Agree to the terms',
+                        ),
+                        const SizedBox(width: AppSizes.space12),
+                        Expanded(
+                          child: Text(
+                            'I have read and agree to the Terms and the '
+                            'Privacy Policy.',
+                            style: AppTypography.rowMeta.copyWith(
+                              color: t.ink2,
                             ),
-                            child: Text('Continue', style: AppTypography.button),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: AppSizes.space12),
+                PillButton(
+                  label: _agreed ? 'Continue' : 'Agree to continue',
+                  style: PillStyle.brand,
+                  onPressed: _agreed ? _continue : null,
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMarkdownTab(String content) {
-    return Markdown(
-      data: content,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.space24,
-        vertical: AppSizes.space8,
-      ),
-      styleSheet: MarkdownStyleSheet(
-        h1: AppTypography.headlineLarge.copyWith(
-          color: AppColors.charcoal,
-          fontWeight: FontWeight.bold,
-        ),
-        h2: AppTypography.headlineSmall.copyWith(
-          color: AppColors.charcoal,
-          fontWeight: FontWeight.w600,
-        ),
-        h3: AppTypography.titleMedium.copyWith(
-          color: AppColors.charcoal,
-        ),
-        p: AppTypography.bodyMedium.copyWith(
-          color: AppColors.charcoal,
-          height: 1.6,
-        ),
-        listBullet: AppTypography.bodyMedium.copyWith(
-          color: AppColors.charcoal,
-        ),
-        strong: AppTypography.bodyMedium.copyWith(
-          color: AppColors.charcoal,
-          fontWeight: FontWeight.w600,
-        ),
-        em: AppTypography.bodyMedium.copyWith(
-          color: AppColors.slate,
-          fontStyle: FontStyle.italic,
-        ),
-        horizontalRuleDecoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppColors.warmGray,
-              width: 1,
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }

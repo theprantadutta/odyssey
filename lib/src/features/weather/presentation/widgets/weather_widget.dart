@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
 import 'package:odyssey/src/common/theme/app_sizes.dart';
+import 'package:odyssey/src/common/theme/odyssey_tokens.dart';
+import 'package:odyssey/src/common/widgets/odyssey/odyssey.dart';
 import 'package:odyssey/src/features/weather/data/models/weather_model.dart';
 
 class WeatherWidget extends StatelessWidget {
@@ -23,50 +24,50 @@ class WeatherWidget extends StatelessWidget {
     final theme = Theme.of(context);
 
     if (isLoading) {
-      return _buildLoadingState();
+      return _buildLoadingState(context);
     }
 
     if (error != null) {
-      return _buildErrorState(theme);
+      return _buildErrorState(context, theme);
     }
 
     if (weatherData == null || weatherData!.forecast.isEmpty) {
-      return _buildEmptyState(theme);
+      return _buildEmptyState(context, theme);
     }
 
-    return _buildWeatherContent(theme);
+    return _buildWeatherContent(context, theme);
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.skyBlue.withValues(alpha: 0.1),
+        color: context.odyssey.ink2.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
       ),
       child: const Column(
         children: [
-          CircularProgressIndicator(color: AppColors.skyBlue),
+          Skeleton(width: double.infinity, height: 14),
           SizedBox(height: AppSizes.space12),
-          Text('Loading weather forecast...'),
+          Skeleton(width: double.infinity, height: 14),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState(ThemeData theme) {
+  Widget _buildErrorState(BuildContext context, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.1),
+        color: context.odyssey.ink3.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         border: Border.all(
-          color: AppColors.warning.withValues(alpha: 0.3),
+          color: context.odyssey.ink3.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off, color: AppColors.warning),
+          Icon(Icons.cloud_off, color: context.odyssey.ink3),
           const SizedBox(width: AppSizes.space12),
           Expanded(
             child: Text(
@@ -76,7 +77,7 @@ class WeatherWidget extends StatelessWidget {
           ),
           if (onRefresh != null)
             IconButton(
-              icon: const Icon(Icons.refresh, color: AppColors.warning),
+              icon: Icon(Icons.refresh, color: context.odyssey.ink3),
               onPressed: onRefresh,
             ),
         ],
@@ -84,21 +85,21 @@ class WeatherWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
+  Widget _buildEmptyState(BuildContext context, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.space16),
       decoration: BoxDecoration(
-        color: AppColors.warmGray,
+        color: context.odyssey.cardAlt,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
       ),
       child: Row(
         children: [
-          const Icon(Icons.wb_sunny_outlined, color: AppColors.textSecondary),
+          Icon(Icons.wb_sunny_outlined, color: context.odyssey.ink2),
           const SizedBox(width: AppSizes.space12),
           Text(
             'No weather data available',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
+              color: context.odyssey.ink2,
             ),
           ),
         ],
@@ -106,15 +107,15 @@ class WeatherWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildWeatherContent(ThemeData theme) {
+  Widget _buildWeatherContent(BuildContext context, ThemeData theme) {
     final forecast = weatherData!.forecast;
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.skyBlue.withValues(alpha: 0.15),
-            AppColors.oceanTeal.withValues(alpha: 0.1),
+            context.odyssey.ink2.withValues(alpha: 0.15),
+            context.odyssey.ink2.withValues(alpha: 0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -135,9 +136,9 @@ class WeatherWidget extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.wb_sunny,
-                    color: AppColors.goldenGlow,
+                    color: context.odyssey.limeText,
                   ),
                 ),
                 const SizedBox(width: AppSizes.space12),
@@ -154,7 +155,7 @@ class WeatherWidget extends StatelessWidget {
                       Text(
                         weatherData!.locationName,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.odyssey.ink2,
                         ),
                       ),
                     ],
@@ -162,9 +163,9 @@ class WeatherWidget extends StatelessWidget {
                 ),
                 if (onRefresh != null)
                   IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: Icon(Icons.refresh, size: 20),
                     onPressed: onRefresh,
-                    color: AppColors.oceanTeal,
+                    color: context.odyssey.ink2,
                   ),
               ],
             ),
@@ -194,10 +195,10 @@ class WeatherWidget extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.lightbulb_outline,
                         size: 18,
-                        color: AppColors.goldenGlow,
+                        color: context.odyssey.limeText,
                       ),
                       const SizedBox(width: AppSizes.space8),
                       Text(
@@ -271,14 +272,14 @@ class _ForecastDayCard extends StatelessWidget {
           Text(
             dateStr,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
+              color: context.odyssey.ink2,
               fontSize: 10,
             ),
           ),
           const SizedBox(height: AppSizes.space8),
           Text(
             condition?.emoji ?? '🌤️',
-            style: const TextStyle(fontSize: 28),
+            style: TextStyle(fontSize: 28),
           ),
           const SizedBox(height: AppSizes.space8),
           Row(
@@ -293,7 +294,7 @@ class _ForecastDayCard extends StatelessWidget {
               Text(
                 '/${forecast.tempMin.round()}°',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.odyssey.ink2,
                 ),
               ),
             ],
@@ -302,12 +303,12 @@ class _ForecastDayCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.water_drop, size: 10, color: AppColors.skyBlue),
+                Icon(Icons.water_drop, size: 10, color: context.odyssey.ink2),
                 Text(
                   ' ${forecast.rainProbability!.round()}%',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 10,
-                    color: AppColors.skyBlue,
+                    color: context.odyssey.ink2,
                   ),
                 ),
               ],

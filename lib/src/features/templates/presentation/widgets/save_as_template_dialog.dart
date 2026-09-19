@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:odyssey/src/common/theme/app_colors.dart';
-import 'package:odyssey/src/common/theme/app_sizes.dart';
-import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
-import 'package:odyssey/src/features/subscription/presentation/screens/paywall_screen.dart';
-import 'package:odyssey/src/features/subscription/presentation/utils/limit_checker.dart';
-import 'package:odyssey/src/features/templates/data/models/template_model.dart';
-import 'package:odyssey/src/features/templates/presentation/providers/templates_provider.dart';
 
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/validators.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../settings/presentation/widgets/settings_rows.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/screens/paywall_screen.dart';
+import '../../../subscription/presentation/utils/limit_checker.dart';
+import '../../data/models/template_model.dart';
+import '../providers/templates_provider.dart';
+
+/// Turns a finished trip into a template someone can start from.
 class SaveAsTemplateDialog extends ConsumerStatefulWidget {
-  final String tripId;
-  final String tripTitle;
-
   const SaveAsTemplateDialog({
     super.key,
     required this.tripId,
     required this.tripTitle,
   });
+
+  final String tripId;
+  final String tripTitle;
 
   @override
   ConsumerState<SaveAsTemplateDialog> createState() =>
@@ -25,20 +32,16 @@ class SaveAsTemplateDialog extends ConsumerStatefulWidget {
 
 class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _descriptionController;
-  TemplateCategory? _selectedCategory;
+  late final TextEditingController _nameController = TextEditingController(
+    text: '${widget.tripTitle} template',
+  );
+  final _descriptionController = TextEditingController();
+
+  TemplateCategory? _category;
   bool _isPublic = false;
   bool _includeActivities = true;
   bool _includePackingItems = true;
   bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: '${widget.tripTitle} Template');
-    _descriptionController = TextEditingController();
-  }
 
   @override
   void dispose() {
@@ -47,274 +50,175 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
     super.dispose();
   }
 
-  void _onPublicToggled(bool isPublic) {
-    if (isPublic) {
-      final isPremium = ref.read(isPremiumProvider);
-      if (!isPremium) {
-        PaywallUtils.showPaywall(
-          context,
-          featureName: 'Public Templates',
-          customDescription: 'Share your templates with the community with Premium',
-          featureIcon: Icons.public,
-        );
-        return;
-      }
+  void _setPublic(bool isPublic) {
+    if (isPublic && !ref.read(isPremiumProvider)) {
+      PaywallUtils.showPaywall(
+        context,
+        featureName: 'Public Templates',
+        customDescription:
+            'Put your trips in the gallery for other people to build from.',
+        featureIcon: Icons.public,
+      );
+      return;
     }
     setState(() => _isPublic = isPublic);
   }
 
-  Future<void> _saveTemplate() async {
-    // Proactive limit check for new templates
-    final currentCount =
-        ref.read(myTemplatesProvider).templates.length;
+  Future<void> _save() async {
+    final currentCount = ref.read(myTemplatesProvider).templates.length;
     final canCreate = await LimitChecker.canCreateTemplate(
       context,
       ref,
       currentCount: currentCount,
     );
-    if (!canCreate) return;
+    if (!canCreate || !mounted) return;
 
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isSaving = true);
 
-    final request = TemplateFromTripRequest(
-      tripId: widget.tripId,
-      name: _nameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      isPublic: _isPublic,
-      category: _selectedCategory,
-      includeActivities: _includeActivities,
-      includePackingItems: _includePackingItems,
-    );
-
+    final description = _descriptionController.text.trim();
     final template = await ref
         .read(myTemplatesProvider.notifier)
-        .createFromTrip(request);
+        .createFromTrip(
+          TemplateFromTripRequest(
+            tripId: widget.tripId,
+            name: _nameController.text.trim(),
+            description: description.isEmpty ? null : description,
+            isPublic: _isPublic,
+            category: _category,
+            includeActivities: _includeActivities,
+            includePackingItems: _includePackingItems,
+          ),
+        );
 
+    if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (template != null && mounted) {
+    if (template != null) {
       Navigator.of(context).pop(template);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Template "${template.name}" created!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      showOdysseyMessage(context, 'Saved as a template.');
+      return;
     }
+
+    showOdysseyMessage(context, 'Could not save that template.');
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-      ),
+      insetPadding: const EdgeInsets.all(AppSizes.space20),
+      backgroundColor: Colors.transparent,
       child: Container(
-        width: 400,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
         padding: const EdgeInsets.all(AppSizes.space20),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(t.sheet, t.canvas),
+          borderRadius: BorderRadius.circular(AppSizes.radiusPanel),
+          border: Border.all(color: t.hairline),
+        ),
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.space12),
-                    decoration: BoxDecoration(
-                      color: AppColors.lavenderDream.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          onChanged: () => setState(() {}),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(child: EyebrowLabel('Save as template')),
+                    CircleButton(
+                      glyph: '✕',
+                      size: AppSizes.circleSm,
+                      onPressed: () => Navigator.of(context).pop(),
+                      semanticLabel: 'Close',
                     ),
-                    child: const Icon(
-                      Icons.bookmark_add_outlined,
-                      color: AppColors.lavenderDream,
-                    ),
-                  ),
-                  const SizedBox(width: AppSizes.space12),
-                  Expanded(
-                    child: Text(
-                      'Save as Template',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.space20),
-
-              // Scrollable content
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Name field
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Template name',
-                          hintText: 'Enter a name for this template',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-
-                      // Description field
-                      TextFormField(
-                        controller: _descriptionController,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          labelText: 'Description (optional)',
-                          hintText: 'Describe what this template is for',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-
-                      // Category selector
-                      Text(
-                        'Category',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.space8),
-                      Wrap(
-                        spacing: AppSizes.space8,
-                        runSpacing: AppSizes.space8,
-                        children: TemplateCategory.values.take(6).map((category) {
-                          final isSelected = _selectedCategory == category;
-                          return FilterChip(
-                            label: Text('${category.icon} ${category.displayName}'),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                _selectedCategory = selected ? category : null;
-                              });
-                            },
-                            selectedColor: AppColors.oceanTeal.withValues(alpha: 0.2),
-                            checkmarkColor: AppColors.oceanTeal,
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-
-                      // Include options
-                      Text(
-                        'Include in template',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.space8),
-                      CheckboxListTile(
-                        value: _includeActivities,
-                        onChanged: (value) =>
-                            setState(() => _includeActivities = value ?? true),
-                        title: Text(
-                          'Activities',
-                          style: TextStyle(color: colorScheme.onSurface),
-                        ),
-                        subtitle: Text(
-                          'Include planned activities',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      CheckboxListTile(
-                        value: _includePackingItems,
-                        onChanged: (value) =>
-                            setState(() => _includePackingItems = value ?? true),
-                        title: Text(
-                          'Packing list',
-                          style: TextStyle(color: colorScheme.onSurface),
-                        ),
-                        subtitle: Text(
-                          'Include packing items',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-
-                      // Public toggle
-                      SwitchListTile(
-                        value: _isPublic,
-                        onChanged: _onPublicToggled,
-                        title: Text(
-                          'Share publicly',
-                          style: TextStyle(color: colorScheme.onSurface),
-                        ),
-                        subtitle: Text(
-                          'Allow others to use this template',
-                          style: TextStyle(color: colorScheme.onSurfaceVariant),
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-              ),
-
-              const SizedBox(height: AppSizes.space20),
-
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _isSaving ? null : _saveTemplate,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(_isSaving ? 'Saving...' : 'Save Template'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.lavenderDream,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSizes.space12,
-                    ),
-                  ),
+                const SizedBox(height: AppSizes.space10),
+                Text(
+                  widget.tripTitle,
+                  style: AppTypography.statSmall.copyWith(color: t.ink),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSizes.space20),
+
+                FieldCard(
+                  label: 'Template name',
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.sentences,
+                  validator: (value) =>
+                      Validators.required(value, fieldName: 'Name'),
+                ),
+                const SizedBox(height: AppSizes.space12),
+                FieldCard(
+                  label: 'Description',
+                  controller: _descriptionController,
+                  hint: 'What is this good for?',
+                  maxLines: 3,
+                  minLines: 1,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: AppSizes.space18),
+
+                const EyebrowLabel('Category'),
+                const SizedBox(height: AppSizes.space12),
+                ChipWrap(
+                  labels: TemplateCategory.values
+                      .map((c) => c.displayName)
+                      .toList(),
+                  selected: _category?.displayName,
+                  onSelected: (label) => setState(() {
+                    final picked = TemplateCategory.values.firstWhere(
+                      (c) => c.displayName == label,
+                    );
+                    _category = _category == picked ? null : picked;
+                  }),
+                ),
+                const SizedBox(height: AppSizes.space18),
+
+                GroupedCard(
+                  children: [
+                    SettingsToggleRow(
+                      icon: Icons.event_outlined,
+                      label: 'Include the plans',
+                      value: _includeActivities,
+                      onChanged: (v) =>
+                          setState(() => _includeActivities = v),
+                    ),
+                    SettingsToggleRow(
+                      icon: Icons.luggage_outlined,
+                      label: 'Include the packing list',
+                      circleChip: true,
+                      value: _includePackingItems,
+                      onChanged: (v) =>
+                          setState(() => _includePackingItems = v),
+                    ),
+                    SettingsToggleRow(
+                      icon: Icons.public_outlined,
+                      label: 'Share publicly',
+                      meta: 'Anyone can find and build from it',
+                      value: _isPublic,
+                      onChanged: _setPublic,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSizes.space20),
+
+                PillButton(
+                  label: _nameController.text.trim().isEmpty
+                      ? 'Name the template'
+                      : 'Save the template',
+                  isLoading: _isSaving,
+                  onPressed:
+                      _nameController.text.trim().isEmpty || _isSaving
+                      ? null
+                      : _save,
+                ),
+              ],
+            ),
           ),
         ),
       ),

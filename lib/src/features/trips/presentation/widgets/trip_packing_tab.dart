@@ -1,553 +1,244 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../packing/data/models/packing_model.dart';
 import '../../../packing/presentation/providers/packing_provider.dart';
 import '../../../packing/presentation/screens/packing_item_form_screen.dart';
-import '../../../packing/presentation/widgets/packing_list_widget.dart';
-import '../../../packing/presentation/widgets/packing_progress_indicator.dart';
 
-class TripPackingTab extends ConsumerWidget {
+/// The packing list — screen 3h.
+///
+/// A lime progress hero that recomputes live, group chips, and item rows whose
+/// packed state is the same lime tint and strike-through the day plan uses.
+class TripPackingTab extends ConsumerStatefulWidget {
+  const TripPackingTab({super.key, required this.tripId});
+
   final String tripId;
 
-  const TripPackingTab({
-    super.key,
-    required this.tripId,
-  });
+  @override
+  ConsumerState<TripPackingTab> createState() => _TripPackingTabState();
+}
+
+class _TripPackingTabState extends ConsumerState<TripPackingTab> {
+  static const String _allGroups = 'All';
+  String _group = _allGroups;
+
+  void _addItem() {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
+        builder: (context) => PackingItemFormScreen(tripId: widget.tripId),
+      ),
+    );
+  }
+
+  void _editItem(PackingItemModel item) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
+        builder: (context) =>
+            PackingItemFormScreen(tripId: widget.tripId, item: item),
+      ),
+    );
+  }
+
+  Future<void> _deleteItem(PackingItemModel item) async {
+    final confirmed = await showOdysseyConfirm(
+      context: context,
+      title: 'Remove item',
+      body: ['This takes "${item.name}" off the packing list.'],
+      confirmLabel: 'Remove',
+    );
+    if (!confirmed || !mounted) return;
+
+    await ref
+        .read(tripPackingProvider(widget.tripId).notifier)
+        .deletePackingItem(item.id);
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final packingState = ref.watch(tripPackingProvider(tripId));
+  Widget build(BuildContext context) {
+    final state = ref.watch(tripPackingProvider(widget.tripId));
 
-    return Stack(
+    if (state.isLoading && state.items.isEmpty) {
+      return const Column(
+        children: [
+          Skeleton(width: double.infinity, height: 190, radius: AppSizes.radiusHero),
+          SizedBox(height: AppSizes.space12),
+          Skeleton.row(),
+          SizedBox(height: AppSizes.space12),
+          Skeleton.row(),
+        ],
+      );
+    }
+
+    if (state.error != null && state.items.isEmpty) {
+      return OdysseyErrorState(
+        message: state.error!,
+        onRetry: () =>
+            ref.read(tripPackingProvider(widget.tripId).notifier).refresh(),
+      );
+    }
+
+    if (state.items.isEmpty) {
+      return OdysseyEmptyState(
+        message: 'Nothing on the list yet. Start with what you would miss.',
+        actionLabel: 'Add an item',
+        onAction: _addItem,
+      );
+    }
+
+    // The hero always reports the whole list, not the filtered view — the
+    // question it answers is "am I packed", which a group filter should not
+    // change the answer to.
+    final total = state.items.length;
+    final packed = state.items.where((i) => i.isPacked).length;
+    final percent = total == 0 ? 0 : (packed / total * 100).round();
+
+    final groups = <String>{
+      _allGroups,
+      ...state.items.map((i) => _groupLabel(i.category)),
+    }.toList();
+
+    final visible = _group == _allGroups
+        ? state.items
+        : state.items
+              .where((i) => _groupLabel(i.category) == _group)
+              .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Main content
-        _buildContent(context, ref, packingState, theme, colorScheme),
-        // FAB
-        Positioned(
-          right: AppSizes.space16,
-          bottom: AppSizes.space16,
-          child: _buildFAB(context),
+        _ProgressHero(
+          percent: percent,
+          packed: packed,
+          total: total,
+        ),
+        const SizedBox(height: AppSizes.space18),
+
+        if (groups.length > 2) ...[
+          ChipRow(
+            labels: groups,
+            selected: _group,
+            activeStyle: ChipActiveStyle.action,
+            onSelected: (value) => setState(() => _group = value),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: AppSizes.space16),
+        ],
+
+        for (var i = 0; i < visible.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSizes.space10),
+          _PackingRow(
+            item: visible[i],
+            onToggle: () {
+              HapticFeedback.selectionClick();
+              ref
+                  .read(tripPackingProvider(widget.tripId).notifier)
+                  .togglePackedStatus(visible[i].id);
+            },
+            onEdit: () => _editItem(visible[i]),
+            onDelete: () => _deleteItem(visible[i]),
+          ),
+        ],
+
+        const SizedBox(height: AppSizes.space14),
+        PillButton(
+          label: 'Add an item',
+          style: PillStyle.dashed,
+          onPressed: _addItem,
+          padding: const EdgeInsets.symmetric(vertical: 15),
         ),
       ],
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    WidgetRef ref,
-    PackingState state,
-    ThemeData theme,
-    ColorScheme colorScheme,
-  ) {
-    // Loading state
-    if (state.isLoading && state.items.isEmpty) {
-      return _buildLoadingState(colorScheme);
-    }
-
-    // Error state
-    if (state.error != null && state.items.isEmpty) {
-      return _buildErrorState(context, ref, state.error!, colorScheme);
-    }
-
-    // Empty state
-    if (state.items.isEmpty) {
-      return NoPackingItemsState(
-        onAddItem: () => _navigateToAddItem(context),
-      );
-    }
-
-    // Packing list
-    return RefreshIndicator(
-      color: AppColors.oceanTeal,
-      onRefresh: () async {
-        await ref.read(tripPackingProvider(tripId).notifier).refresh();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: AppSizes.space80),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress indicator
-            PackingProgressIndicator(
-              total: state.total,
-              packed: state.packedCount,
-              progress: state.progress,
-            ),
-
-            // Section header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.space16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Items',
-                    style: AppTypography.titleSmall.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (state.items.isNotEmpty)
-                    GestureDetector(
-                      onTap: () => _showQuickAddSheet(context, ref),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.space12,
-                          vertical: AppSizes.space8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.oceanTeal.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.bolt_rounded,
-                              size: 16,
-                              color: AppColors.oceanTeal,
-                            ),
-                            const SizedBox(width: AppSizes.space4),
-                            Text(
-                              'Quick Add',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.oceanTeal,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSizes.space12),
-
-            // Packing list grouped by category
-            PackingListWidget(
-              items: state.items,
-              onToggle: (item) {
-                ref
-                    .read(tripPackingProvider(tripId).notifier)
-                    .togglePackedStatus(item.id);
-              },
-              onItemTap: (item) => _navigateToEditItem(context, item),
-              onDelete: (item) => _showDeleteDialog(context, ref, item),
-              onBulkToggle: (category, isPacked) {
-                ref
-                    .read(tripPackingProvider(tripId).notifier)
-                    .bulkToggleCategory(category, isPacked);
-              },
-            ),
-          ],
-        ),
-      ),
+  /// The mono row tags are short by design, so a long category name is cut to
+  /// its first word rather than wrapped.
+  static String _groupLabel(String category) {
+    final parsed = PackingCategory.values.firstWhere(
+      (c) => c.name == category,
+      orElse: () => PackingCategory.other,
     );
-  }
-
-  Widget _buildLoadingState(ColorScheme colorScheme) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const OrbitalLoader(size: 64),
-          const SizedBox(height: 20),
-          Text(
-            'Loading packing list...',
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, WidgetRef ref, String error, ColorScheme colorScheme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-              ),
-              child: const Icon(
-                Icons.error_outline_rounded,
-                size: 40,
-                color: AppColors.error,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space24),
-            Text(
-              'Failed to load packing list',
-              style: AppTypography.headlineMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space8),
-            Text(
-              error,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSizes.space24),
-            TextButton.icon(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                ref.read(tripPackingProvider(tripId).notifier).refresh();
-              },
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.oceanTeal,
-                backgroundColor: AppColors.oceanTeal.withValues(alpha: 0.1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.space20,
-                  vertical: AppSizes.space12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFAB(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        _navigateToAddItem(context);
-      },
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.oceanTeal,
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.oceanTeal.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add_rounded,
-          color: Colors.white,
-          size: 28,
-        ),
-      ),
-    );
-  }
-
-  void _navigateToAddItem(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
-        builder: (context) => PackingItemFormScreen(tripId: tripId),
-      ),
-    );
-  }
-
-  void _navigateToEditItem(BuildContext context, PackingItemModel item) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: TaskRoutes.settings(TaskRoutes.packingItemForm),
-        builder: (context) => PackingItemFormScreen(
-          tripId: tripId,
-          item: item,
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(
-    BuildContext context,
-    WidgetRef ref,
-    PackingItemModel item,
-  ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        ),
-        title: Text(
-          'Delete Item',
-          style: AppTypography.headlineSmall.copyWith(
-            color: colorScheme.onSurface,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${item.name}"?',
-          style: AppTypography.bodyMedium.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              'Cancel',
-              style: AppTypography.labelLarge.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              HapticFeedback.mediumImpact();
-              Navigator.of(context).pop();
-              try {
-                await ref
-                    .read(tripPackingProvider(tripId).notifier)
-                    .deletePackingItem(item.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Row(
-                        children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.white),
-                          SizedBox(width: AppSizes.space12),
-                          Text('Item deleted'),
-                        ],
-                      ),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to delete: $e'),
-                      backgroundColor: AppColors.error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(
-              'Delete',
-              style: AppTypography.labelLarge.copyWith(
-                color: AppColors.error,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showQuickAddSheet(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSizes.radiusXl),
-        ),
-      ),
-      builder: (context) => _QuickAddSheet(
-        tripId: tripId,
-        onItemAdded: () {
-          ref.read(tripPackingProvider(tripId).notifier).refresh();
-        },
-      ),
-    );
+    return parsed.displayName;
   }
 }
 
-/// Quick add sheet for common items
-class _QuickAddSheet extends ConsumerStatefulWidget {
-  final String tripId;
-  final VoidCallback onItemAdded;
-
-  const _QuickAddSheet({
-    required this.tripId,
-    required this.onItemAdded,
+/// The lime hero. Stays lime in both themes, like every other hero stat tile.
+class _ProgressHero extends StatelessWidget {
+  const _ProgressHero({
+    required this.percent,
+    required this.packed,
+    required this.total,
   });
 
-  @override
-  ConsumerState<_QuickAddSheet> createState() => _QuickAddSheetState();
-}
-
-class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
-  final TextEditingController _controller = TextEditingController();
-  PackingCategory _selectedCategory = PackingCategory.other;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final int percent;
+  final int packed;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSizes.space20,
-        right: AppSizes.space20,
-        top: AppSizes.space20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.space20,
-      ),
+    return HeroTile(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-              ),
-            ),
+          const EyebrowLabel(
+            'Carry-on ready',
+            color: AppColors.onAccentLabel,
           ),
-          const SizedBox(height: AppSizes.space20),
-
-          Text(
-            'Quick Add Item',
-            style: AppTypography.titleMedium.copyWith(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: AppSizes.space16),
-
-          // Category chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: PackingCategory.values.map((category) {
-                final isSelected = category == _selectedCategory;
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppSizes.space8),
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedCategory = category);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSizes.space12,
-                        vertical: AppSizes.space8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.oceanTeal
-                            : colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(category.icon),
-                          const SizedBox(width: AppSizes.space4),
-                          Text(
-                            category.displayName,
-                            style: AppTypography.labelSmall.copyWith(
-                              color: isSelected
-                                  ? Colors.white
-                                  : colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: AppSizes.space16),
-
-          // Text input with add button
+          const SizedBox(height: AppSizes.space12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  textCapitalization: TextCapitalization.sentences,
-                  autofocus: true,
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Item name...',
-                    hintStyle: AppTypography.bodyLarge.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerHighest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.all(AppSizes.space16),
-                  ),
-                  onSubmitted: (_) => _addItem(),
+              Text(
+                '$percent',
+                style: AppTypography.statHuge.copyWith(
+                  fontSize: 60,
+                  color: AppColors.onAccent,
                 ),
               ),
-              const SizedBox(width: AppSizes.space12),
-              GestureDetector(
-                onTap: _addItem,
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.oceanTeal,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '%',
+                  style: AppTypography.statHuge.copyWith(
+                    fontSize: 15,
+                    color: AppColors.onAccent,
                   ),
-                  child: const Icon(
-                    Icons.add_rounded,
-                    color: Colors.white,
-                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space16),
+          ProgressTrack(
+            value: total == 0 ? 0 : packed / total,
+            trackColor: AppColors.onAccentTrack,
+            fillColor: AppColors.onAccent,
+          ),
+          const SizedBox(height: AppSizes.space12),
+          Row(
+            children: [
+              Text(
+                '$packed of $total packed',
+                style: AppTypography.pill.copyWith(
+                  color: AppColors.onAccent2,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                total - packed == 0 ? 'All in' : '${total - packed} to go',
+                style: AppTypography.pill.copyWith(
+                  color: AppColors.onAccent2,
                 ),
               ),
             ],
@@ -556,56 +247,106 @@ class _QuickAddSheetState extends ConsumerState<_QuickAddSheet> {
       ),
     );
   }
+}
 
-  Future<void> _addItem() async {
-    if (_controller.text.trim().isEmpty) return;
+/// One item: a circular checkbox, the name and quantity, and a mono category
+/// tag. Packed reads exactly as "done" does on the day plan.
+class _PackingRow extends StatelessWidget {
+  const _PackingRow({
+    required this.item,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
-    HapticFeedback.mediumImpact();
+  final PackingItemModel item;
+  final VoidCallback onToggle;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-    try {
-      await ref.read(tripPackingProvider(widget.tripId).notifier).createPackingItem(
-            PackingItemRequest(
-              tripId: widget.tripId,
-              name: _controller.text.trim(),
-              category: _selectedCategory.name,
-            ),
-          );
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final packed = item.isPacked;
 
-      _controller.clear();
-      widget.onItemAdded();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white),
-                SizedBox(width: AppSizes.space12),
-                Text('Item added'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            ),
+    return Pressable(
+      onTap: onToggle,
+      onLongPress: onEdit,
+      borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+      tint: false,
+      child: AnimatedContainer(
+        duration: AppSizes.durationState,
+        curve: AppSizes.curveState,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: packed ? t.accentTint : t.card,
+          borderRadius: BorderRadius.circular(AppSizes.radiusRow),
+          border: Border.all(
+            color: packed ? t.accentTintBorder : t.hairline,
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add item: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        ),
+        child: Row(
+          children: [
+            CircleCheckbox(
+              checked: packed,
+              size: AppSizes.checkboxSmall,
+              onChanged: (_) => onToggle(),
+              semanticLabel: item.name,
             ),
-          ),
-        );
-      }
-    }
+            const SizedBox(width: AppSizes.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.name,
+                    style: AppTypography.rowTitle.copyWith(
+                      color: packed ? t.ink.withValues(alpha: 0.5) : t.ink,
+                      decoration: packed ? TextDecoration.lineThrough : null,
+                      decorationColor: t.ink.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  if (item.quantity > 1 ||
+                      (item.notes != null && item.notes!.isNotEmpty)) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (item.quantity > 1) '×${item.quantity}',
+                        if (item.notes != null && item.notes!.isNotEmpty)
+                          item.notes!,
+                      ].join(' · '),
+                      style: AppTypography.rowMeta.copyWith(color: t.ink3),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSizes.space10),
+            MonoTag(_shortTag(item.category)),
+          ],
+        ),
+      ),
+    );
   }
+
+  /// The mono row tag, as a four-letter code.
+  ///
+  /// Truncating the display name gave "OTHE" and "TOIL", which read as typos.
+  /// These are chosen words, the way the design's own DOCS / TECH / WEAR / CARE
+  /// are.
+  static String _shortTag(String category) =>
+      switch (PackingCategory.values.firstWhere(
+        (c) => c.name == category,
+        orElse: () => PackingCategory.other,
+      )) {
+        PackingCategory.clothes => 'WEAR',
+        PackingCategory.toiletries => 'CARE',
+        PackingCategory.electronics => 'TECH',
+        PackingCategory.documents => 'DOCS',
+        PackingCategory.medicine => 'MEDS',
+        PackingCategory.other => 'MISC',
+      };
 }

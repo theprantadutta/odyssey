@@ -58,6 +58,13 @@ dependencies:
   # UI/Fonts
   google_fonts: ^8.0.0
 
+  # Native splash. The screen is the icon's own plate colour with the waypoint
+  # mark on it and nothing else, so launching reads as the icon expanding into
+  # the app rather than a cut to an unrelated page. Config in
+  # flutter_native_splash.yaml; regenerate with
+  # `dart run flutter_native_splash:create`.
+  flutter_native_splash: ^2.4.6
+
   # Image Handling
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
@@ -124,6 +131,10 @@ dev_dependencies:
   # so the analyzer does not flag the import.
   path_provider_platform_interface: ^2.1.2
 
+  # Platform icon ladders, generated from the masters in brand/.
+  # Regenerate with `dart run flutter_launcher_icons`.
+  flutter_launcher_icons: ^0.14.4
+
   # Code Generation
   build_runner: ^2.4.14
   riverpod_generator: ^4.0.0+1
@@ -144,3 +155,33 @@ flutter:
   assets:
     - .env
     - assets/legal/
+    - assets/brand/mark/
+
+  # Fonts — Odyssey 2.0 design system.
+  # Bundled rather than fetched at runtime: the app is offline-first, and a
+  # cold first launch with no network would otherwise fall back to system type.
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-500.ttf
+          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-600.ttf
+          weight: 600
+        - asset: assets/fonts/SpaceGrotesk-700.ttf
+          weight: 700
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-600.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-400.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-700.ttf
+          weight: 700

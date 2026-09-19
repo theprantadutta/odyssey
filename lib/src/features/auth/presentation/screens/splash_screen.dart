@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../../../common/theme/app_colors.dart';
-import '../../../../common/theme/app_typography.dart';
-import '../../../../common/animations/animation_constants.dart';
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-/// Playful splash screen with bouncy animations
-/// Soft cream gradient background with yellow accents
+import '../../../../common/theme/app_colors.dart';
+import '../../../../common/theme/app_sizes.dart';
+import '../../../../common/widgets/odyssey/brand_mark.dart';
+
+/// The screen that takes over from the native splash while auth resolves.
+///
+/// It is drawn to be indistinguishable from the native splash it replaces:
+/// the same ink field, the same lime mark at the same size, in both
+/// appearances. The handover should be invisible — the only thing that ever
+/// appears is a quiet progress hairline once the wait runs long enough to
+/// need explaining.
+///
+/// This screen does not follow the theme. The native splash cannot, so
+/// matching it means pinning the colours here too.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -15,35 +24,20 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _bounceAnimation;
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
+  )..forward();
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppAnimations.slow,
-    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: AppAnimations.bouncyEnter,
-    ));
-
-    _bounceAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.4, 1.0, curve: Curves.elasticOut),
-    ));
-
-    _controller.forward();
+    // Lifting the native splash here, rather than in main, keeps it covering
+    // the app until something identical is on screen. Anything that renders
+    // for a frame before this — a transient auth route, a first build — stays
+    // hidden behind it.
+    FlutterNativeSplash.remove();
   }
 
   @override
@@ -54,100 +48,87 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
+    // The mark is already on screen from the native splash, so it does not
+    // animate in. Only the progress hairline below it does, and only after a
+    // beat, so a fast launch never shows it at all.
+    final fade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+    );
 
     return Scaffold(
-      body: Container(
+      backgroundColor: AppColors.obsidian,
+      body: Stack(
+        children: [
+          const Center(child: OdysseyMark(size: 119, tone: MarkTone.lime)),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 96,
+            child: FadeTransition(
+              opacity: fade,
+              child: const Center(child: _SplashProgress()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A 48px lime hairline that travels back and forth. No spinner — this system
+/// allows one only on button submit.
+class _SplashProgress extends StatefulWidget {
+  const _SplashProgress();
+
+  @override
+  State<_SplashProgress> createState() => _SplashProgressState();
+}
+
+class _SplashProgressState extends State<_SplashProgress>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+    return SizedBox(
+      width: 48,
+      height: 3,
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [
-                    colorScheme.surface,
-                    colorScheme.surface,
-                  ]
-                : [
-                    AppColors.softCream,
-                    AppColors.snowWhite,
-                  ],
-          ),
+          color: AppColors.accent.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
         ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Animated Logo
-                  Transform.scale(
-                    scale: _scaleAnimation.value,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.sunnyYellow.withValues(alpha: 0.15)
-                            : AppColors.lemonLight,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.sunnyYellow.withValues(alpha: 0.3),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.travel_explore,
-                        size: 80,
-                        color: AppColors.sunnyYellow,
-                      ),
+        child: reduceMotion
+            ? null
+            : AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) => Align(
+                  alignment: Alignment(
+                    Curves.easeInOut.transform(_controller.value) * 2 - 1,
+                    0,
+                  ),
+                  child: Container(
+                    width: 18,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                     ),
                   ),
-                  const SizedBox(height: 32),
-
-                  // Animated Title
-                  Transform.translate(
-                    offset: Offset(0, 20 * (1 - _bounceAnimation.value)),
-                    child: Opacity(
-                      opacity: _bounceAnimation.value.clamp(0.0, 1.0),
-                      child: Text(
-                        'Odyssey',
-                        style: AppTypography.brandLarge.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Tagline
-                  Transform.translate(
-                    offset: Offset(0, 15 * (1 - _bounceAnimation.value)),
-                    child: Opacity(
-                      opacity: (_bounceAnimation.value - 0.2).clamp(0.0, 1.0),
-                      child: Text(
-                        'Your Journey Awaits',
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Bouncing Dots Loader
-                  const BouncingDotsLoader(
-                    dotSize: 12,
-                    spacing: 6,
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+                ),
+              ),
       ),
     );
   }

@@ -3,9 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
@@ -13,19 +17,15 @@ import '../../../settings/presentation/widgets/legal_document_viewer.dart';
 import '../mixins/subscription_lifecycle_mixin.dart';
 import '../providers/feature_access_provider.dart';
 import '../providers/purchase_provider.dart';
-import '../providers/subscription_provider.dart' show SubscriptionState, subscriptionProvider, isPremiumProvider;
+import '../providers/subscription_provider.dart'
+    show SubscriptionState, subscriptionProvider, isPremiumProvider;
 
-/// Paywall screen shown when users try to access premium features
+/// What Pro is, and how to get it.
+///
+/// The lime hero carries the pitch; the plans sit underneath as cards. Nothing
+/// here invents a price: every card shows the store's own localised figure and
+/// only appears when that product actually loaded.
 class PaywallScreen extends ConsumerStatefulWidget {
-  final String? featureName;
-  final String? customTitle;
-  final String? customDescription;
-  final IconData? featureIcon;
-
-  /// When set, free users are offered a "watch an ad to unlock for 24h" option
-  /// in addition to upgrading.
-  final PremiumFeature? unlockableFeature;
-
   const PaywallScreen({
     super.key,
     this.featureName,
@@ -35,566 +35,366 @@ class PaywallScreen extends ConsumerStatefulWidget {
     this.unlockableFeature,
   });
 
+  final String? featureName;
+  final String? customTitle;
+  final String? customDescription;
+  final IconData? featureIcon;
+
+  /// When set, free users are offered a "watch an ad to unlock for 24h" option
+  /// in addition to upgrading.
+  final PremiumFeature? unlockableFeature;
+
   @override
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
 class _PaywallScreenState extends ConsumerState<PaywallScreen>
     with WidgetsBindingObserver, SubscriptionLifecycleMixin {
+  static const List<(IconData, String, String)> _features = [
+    (
+      Icons.all_inclusive_rounded,
+      'No limits',
+      'As many trips, plans, photos and documents as you want.',
+    ),
+    (
+      Icons.map_outlined,
+      'The world map',
+      'Every trip you have taken, pinned where it happened.',
+    ),
+    (
+      Icons.insights_outlined,
+      'The full picture',
+      'Statistics and the year in review, all of it.',
+    ),
+    (
+      Icons.group_outlined,
+      'Travel together',
+      'Let the people you travel with edit the plan, not just read it.',
+    ),
+    (
+      Icons.videocam_outlined,
+      'Video memories',
+      'Keep the moving ones too, not just the stills.',
+    ),
+    (
+      Icons.block_outlined,
+      'No ads',
+      'The whole app, uninterrupted.',
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
-    unawaited(ref.read(analyticsServiceProvider).trackPaywallShown(
-      featureName: widget.featureName ?? 'unknown',
-    ));
-    // Listen for purchase success to close the screen
+    unawaited(
+      ref
+          .read(analyticsServiceProvider)
+          .trackPaywallShown(featureName: widget.featureName ?? 'unknown'),
+    );
+
     ref.listenManual(purchaseProvider, (previous, next) {
       if (next.successMessage != null && previous?.successMessage == null) {
-        // Purchase successful, show success and close
-        _showSuccessAndClose();
+        _onPurchased();
       }
     });
   }
 
-  void _openLegalDocument(String title, String assetPath) {
-    HapticFeedback.lightImpact();
-    Navigator.of(context).push(MaterialPageRoute(
-      settings: TaskRoutes.settings(TaskRoutes.legalViewer),
-      builder: (_) => LegalDocumentViewer(
-        title: title,
-        assetPath: assetPath,
-      ),
-    ));
+  void _onPurchased() {
+    showOdysseyMessage(context, 'You are on Pro. Everything is unlocked.');
+    ref.read(purchaseProvider.notifier).clearSuccess();
+    Navigator.of(context).pop(true);
   }
 
-  void _showSuccessAndClose() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Welcome to Premium! Enjoy all features.'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        ),
+  void _openLegal(String title, String assetPath) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        settings: TaskRoutes.settings(TaskRoutes.legalViewer),
+        builder: (_) => LegalDocumentViewer(title: title, assetPath: assetPath),
       ),
     );
-    ref.read(purchaseProvider.notifier).clearSuccess();
-    Navigator.of(context).pop(true); // Return true to indicate success
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
     final subscription = ref.watch(subscriptionProvider);
-    final purchaseState = ref.watch(purchaseProvider);
+    final purchase = ref.watch(purchaseProvider);
 
-    // Show error if any
-    if (purchaseState.error != null) {
+    if (purchase.error != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(purchaseState.error!),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Dismiss',
-              textColor: AppColors.pureWhite,
-              onPressed: () {
-                ref.read(purchaseProvider.notifier).clearError();
-              },
-            ),
-          ),
-        );
+        if (!mounted) return;
+        showOdysseyMessage(context, purchase.error!);
         ref.read(purchaseProvider.notifier).clearError();
       });
     }
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.close, color: colorScheme.onSurface),
-          onPressed: purchaseState.isPurchasing
-              ? null
-              : () => Navigator.of(context).pop(),
+    return OdysseyScaffold(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSizes.screenPadding,
+          AppSizes.contentTop,
+          AppSizes.screenPadding,
+          AppSizes.scrollBottom,
         ),
-      ),
-      body: Stack(
         children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSizes.space24),
-              child: Column(
-                children: [
-                  // Feature Icon
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.sunnyYellow.withValues(alpha: 0.4),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      widget.featureIcon ?? Icons.workspace_premium,
-                      color: colorScheme.onSurface,
-                      size: 48,
-                    ),
-                  ),
-
-                  const SizedBox(height: AppSizes.space24),
-
-                  // Title
-                  Text(
-                    widget.customTitle ?? 'Unlock ${widget.featureName}',
-                    style: AppTypography.headlineSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: AppSizes.space12),
-
-                  // Description
-                  Text(
-                    widget.customDescription ??
-                        '${widget.featureName ?? 'This feature'} is available with Odyssey Premium. Upgrade now to unlock it and many more features!',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: AppSizes.space32),
-
-                  // Premium Features List
-                  const _PremiumFeaturesList(),
-
-                  const SizedBox(height: AppSizes.space32),
-
-                  // Pricing Options - Use store prices if available, fallback to backend
-                  _buildPricingOptions(subscription, purchaseState),
-
-                  // Free alternative: watch a rewarded ad to unlock for 24h.
-                  if (widget.unlockableFeature != null) ...[
-                    const SizedBox(height: AppSizes.space16),
-                    Text(
-                      'Not ready to upgrade?',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.space8),
-                    WatchAdToUnlockButton(
-                      feature: widget.unlockableFeature!,
-                      onUnlocked: () => Navigator.of(context).pop(true),
-                    ),
-                  ],
-
-                  const SizedBox(height: AppSizes.space24),
-
-                  // Restore purchases link
-                  TextButton(
-                    onPressed: purchaseState.isPurchasing
-                        ? null
-                        : () => ref.read(purchaseProvider.notifier).restorePurchases(),
-                    child: Text(
-                      'Restore Purchases',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: AppSizes.space16),
-
-                  // Terms
-                  Text(
-                    'Payment will be charged to your account. Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the current period.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: theme.hintColor,
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: AppSizes.space8),
-
-                  // Legal links required at point of purchase (App Store Guideline 3.1.2)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () => _openLegalDocument(
-                          'Terms of Use',
-                          'assets/legal/terms.md',
-                        ),
-                        child: Text(
-                          'Terms of Use (EULA)',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '  ·  ',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: theme.hintColor,
-                          fontSize: 11,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _openLegalDocument(
-                          'Privacy Policy',
-                          'assets/legal/privacy.md',
-                        ),
-                        child: Text(
-                          'Privacy Policy',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: CircleButton(
+              glyph: '✕',
+              onPressed: () => Navigator.of(context).pop(),
+              semanticLabel: 'Close',
             ),
           ),
+          const SizedBox(height: AppSizes.space18),
 
-          // Loading overlay
-          if (purchaseState.isPurchasing)
-            Container(
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(AppSizes.space24),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(
-                        color: AppColors.sunnyYellow,
-                      ),
-                      const SizedBox(height: AppSizes.space16),
-                      Text(
-                        'Processing purchase...',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
+          // The lime hero, as everywhere else the brand makes its case.
+          HeroTile(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const EyebrowLabel(
+                  'Odyssey Pro',
+                  color: AppColors.onAccentLabel,
+                ),
+                const SizedBox(height: AppSizes.space14),
+                Text(
+                  widget.customTitle ??
+                      (widget.featureName == null
+                          ? 'The whole\njournal.'
+                          : '${widget.featureName}\nis part of Pro.'),
+                  style: AppTypography.heroTitle.copyWith(
+                    fontSize: 34,
+                    letterSpacing: -1.36,
+                    color: AppColors.onAccent,
                   ),
                 ),
-              ),
+                const SizedBox(height: AppSizes.space12),
+                Text(
+                  widget.customDescription ??
+                      'Every limit lifted, every screen unlocked, no ads.',
+                  style: AppTypography.metaLarge.copyWith(
+                    color: AppColors.onAccent2,
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(height: AppSizes.space20),
+
+          _buildPlans(subscription, purchase),
+
+          if (widget.unlockableFeature != null) ...[
+            const SizedBox(height: AppSizes.space16),
+            Center(
+              child: WatchAdToUnlockButton(feature: widget.unlockableFeature!),
+            ),
+          ],
+
+          const SizedBox(height: AppSizes.space26),
+          const EyebrowLabel('What you get'),
+          const SizedBox(height: AppSizes.space14),
+          GroupedCard(
+            children: [
+              for (var i = 0; i < _features.length; i++)
+                _FeatureRow(
+                  icon: _features[i].$1,
+                  title: _features[i].$2,
+                  body: _features[i].$3,
+                  circleChip: i.isOdd,
+                ),
+            ],
+          ),
+
+          const SizedBox(height: AppSizes.space20),
+          PillButton(
+            label: 'Restore a purchase',
+            style: PillStyle.outline,
+            onPressed: purchase.isPurchasing
+                ? null
+                : () => ref.read(purchaseProvider.notifier).restorePurchases(),
+            padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
+          ),
+
+          const SizedBox(height: AppSizes.space18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegalLink(
+                label: 'Terms',
+                onTap: () => _openLegal(
+                  'Terms & Conditions',
+                  'assets/legal/terms.md',
+                ),
+              ),
+              Text(
+                ' · ',
+                style: AppTypography.rowMeta.copyWith(color: t.ink3),
+              ),
+              _LegalLink(
+                label: 'Privacy',
+                onTap: () => _openLegal(
+                  'Privacy Policy',
+                  'assets/legal/privacy.md',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space10),
+          Text(
+            'Subscriptions renew automatically until cancelled. Manage or '
+            'cancel in your store account.',
+            textAlign: TextAlign.center,
+            style: AppTypography.badgeDesc.copyWith(color: t.ink3),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPricingOptions(SubscriptionState subscription, PurchaseState purchaseState) {
-    // Still initialising the store connection.
-    if (!purchaseState.isInitialized) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.space24),
-        child: Center(child: CircularProgressIndicator()),
+  Widget _buildPlans(SubscriptionState subscription, PurchaseState purchase) {
+    if (!purchase.isInitialized) {
+      return const Column(
+        children: [
+          Skeleton(width: double.infinity, height: 78, radius: AppSizes.radiusTile),
+          SizedBox(height: AppSizes.space10),
+          Skeleton(width: double.infinity, height: 78, radius: AppSizes.radiusTile),
+        ],
       );
     }
 
-    // StoreKit returned no products. Never render tappable price cards in this state:
-    // a card showing a price that fails on tap is exactly what a reviewer reports as
-    // "the subscription is not available for purchase using In-App Purchase". Show an
-    // honest unavailable state with a Retry instead.
-    final hasProducts = purchaseState.yearlyProduct != null ||
-        purchaseState.monthlyProduct != null ||
-        purchaseState.lifetimeProduct != null;
+    // StoreKit returned no products. Never render tappable price cards in this
+    // state: a card showing a price that fails on tap is exactly what a
+    // reviewer reports as "the subscription is not available for purchase
+    // using In-App Purchase". Show an honest unavailable state with a retry.
+    final hasProducts =
+        purchase.yearlyProduct != null ||
+        purchase.monthlyProduct != null ||
+        purchase.lifetimeProduct != null;
+
     if (!hasProducts) {
-      return _buildStoreUnavailable(purchaseState);
+      return OdysseyErrorState(
+        message: 'We could not reach the store to load the plans. Check your '
+            'connection and try again.',
+        onRetry: () => ref.read(purchaseProvider.notifier).retry(),
+      );
     }
 
-    final yearlySavings = subscription.pricing?.yearlySavingsPercent ?? 30;
+    final savings = subscription.pricing?.yearlySavingsPercent ?? 30;
 
     return Column(
       children: [
-        // Each card is shown only when its StoreKit product actually loaded, and uses
-        // the store's own localised price - never a hardcoded fallback that might not
-        // match what the App Store would charge.
-        if (purchaseState.yearlyProduct != null) ...[
-          _PricingCard(
+        // Each card appears only when its store product actually loaded, and
+        // shows the store's own localised price — never a hardcoded fallback
+        // that might not match what the user would be charged.
+        if (purchase.yearlyProduct != null) ...[
+          _PlanCard(
             title: 'Yearly',
-            price: purchaseState.yearlyPrice!,
-            subtitle: 'Save $yearlySavings%',
-            isRecommended: true,
-            isEnabled: !purchaseState.isPurchasing,
+            price: purchase.yearlyPrice!,
+            note: 'Save $savings%',
+            recommended: true,
+            enabled: !purchase.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseYearly(),
           ),
-          const SizedBox(height: AppSizes.space12),
+          const SizedBox(height: AppSizes.space10),
         ],
-        if (purchaseState.monthlyProduct != null) ...[
-          _PricingCard(
+        if (purchase.monthlyProduct != null) ...[
+          _PlanCard(
             title: 'Monthly',
-            price: purchaseState.monthlyPrice!,
-            isEnabled: !purchaseState.isPurchasing,
+            price: purchase.monthlyPrice!,
+            enabled: !purchase.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseMonthly(),
           ),
-          const SizedBox(height: AppSizes.space12),
+          const SizedBox(height: AppSizes.space10),
         ],
-        if (purchaseState.lifetimeProduct != null)
-          _PricingCard(
+        if (purchase.lifetimeProduct != null)
+          _PlanCard(
             title: 'Lifetime',
-            price: purchaseState.lifetimePrice!,
-            subtitle: 'One-time payment',
-            isEnabled: !purchaseState.isPurchasing,
+            price: purchase.lifetimePrice!,
+            note: 'Paid once',
+            enabled: !purchase.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseLifetime(),
           ),
       ],
     );
   }
-
-  Widget _buildStoreUnavailable(PurchaseState purchaseState) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSizes.space20),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.storefront_outlined, color: colorScheme.onSurfaceVariant, size: 32),
-          const SizedBox(height: AppSizes.space12),
-          Text(
-            'Plans are not available right now',
-            style: AppTypography.titleSmall.copyWith(color: colorScheme.onSurface),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSizes.space4),
-          Text(
-            'We could not reach the App Store to load subscription options. '
-            'Please check your connection and try again.',
-            style: AppTypography.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSizes.space16),
-          FilledButton.icon(
-            onPressed: () => ref.read(purchaseProvider.notifier).retry(),
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Try again'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class _PremiumFeaturesList extends StatelessWidget {
-  const _PremiumFeaturesList();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.space16),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Premium includes:',
-            style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: AppSizes.space12),
-          const _FeatureItem(icon: Icons.all_inclusive, text: 'Unlimited trips'),
-          const _FeatureItem(icon: Icons.cloud, text: '25 GB storage'),
-          const _FeatureItem(icon: Icons.videocam, text: 'Video uploads'),
-          const _FeatureItem(icon: Icons.map, text: 'World Map view'),
-          const _FeatureItem(icon: Icons.calendar_month, text: 'Year in Review'),
-          const _FeatureItem(icon: Icons.bar_chart, text: 'Full Statistics'),
-          const _FeatureItem(icon: Icons.people, text: 'Edit collaboration'),
-          const _FeatureItem(icon: Icons.emoji_events, text: 'All achievements'),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeatureItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _FeatureItem({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.space4),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: AppColors.sunnyYellow,
-          ),
-          const SizedBox(width: AppSizes.space12),
-          Text(
-            text,
-            style: AppTypography.bodyMedium.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PricingCard extends StatelessWidget {
-  final String title;
-  final String price;
-  final String? subtitle;
-  final bool isRecommended;
-  final bool isEnabled;
-  final VoidCallback onTap;
-
-  const _PricingCard({
+/// One plan. The recommended one fills with the action colour; the others are
+/// hairlined cards, so the choice reads without a badge shouting about it.
+class _PlanCard extends StatelessWidget {
+  const _PlanCard({
     required this.title,
     required this.price,
-    this.subtitle,
-    this.isRecommended = false,
-    this.isEnabled = true,
+    required this.enabled,
     required this.onTap,
+    this.note,
+    this.recommended = false,
   });
+
+  final String title;
+  final String price;
+  final String? note;
+  final bool recommended;
+  final bool enabled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final t = context.odyssey;
 
-    return InkWell(
-      onTap: isEnabled ? onTap : null,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-      child: Opacity(
-        opacity: isEnabled ? 1.0 : 0.6,
+    final background = recommended ? t.action : t.card;
+    final foreground = recommended ? t.onAction : t.ink;
+    final secondary = recommended
+        ? t.onAction.withValues(alpha: 0.7)
+        : t.ink3;
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: Pressable(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(AppSizes.radiusTile),
+        tint: !recommended,
+        semanticLabel: '$title, $price',
         child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppSizes.space16),
+          padding: const EdgeInsets.all(AppSizes.space18),
           decoration: BoxDecoration(
-            gradient: isRecommended
-                ? const LinearGradient(
-                    colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isRecommended ? null : colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            border: isRecommended
-                ? null
-                : Border.all(color: colorScheme.surfaceContainerHighest, width: 1.5),
-            boxShadow: isRecommended
-                ? [
-                    BoxShadow(
-                      color: AppColors.sunnyYellow.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
+            color: background,
+            borderRadius: BorderRadius.circular(AppSizes.radiusTile),
+            border: Border.all(
+              color: recommended ? Colors.transparent : t.hairline,
+            ),
           ),
           child: Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          title,
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        if (isRecommended) ...[
-                          const SizedBox(width: AppSizes.space8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.space8,
-                              vertical: AppSizes.space4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.onSurface,
-                              borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                            ),
-                            child: Text(
-                              'Best Value',
-                              style: AppTypography.labelSmall.copyWith(
-                                color: AppColors.pureWhite,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      title,
+                      style: AppTypography.cardTitleLarge.copyWith(
+                        color: foreground,
+                      ),
                     ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: AppSizes.space4),
+                    if (note != null) ...[
+                      const SizedBox(height: 3),
                       Text(
-                        subtitle!,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: isRecommended
-                              ? colorScheme.onSurface.withValues(alpha: 0.7)
-                              : colorScheme.onSurfaceVariant,
+                        note!,
+                        style: AppTypography.rowMeta.copyWith(
+                          color: secondary,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
+              const SizedBox(width: AppSizes.space12),
               Text(
                 price,
-                style: AppTypography.titleLarge.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
+                style: AppTypography.statSmall.copyWith(color: foreground),
               ),
             ],
           ),
@@ -604,12 +404,82 @@ class _PricingCard extends StatelessWidget {
   }
 }
 
-/// Dialog version of paywall for in-app prompts
-class PaywallDialog extends StatelessWidget {
-  final String? featureName;
-  final VoidCallback? onUpgrade;
-  final PremiumFeature? unlockableFeature;
+class _FeatureRow extends StatelessWidget {
+  const _FeatureRow({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.circleChip,
+  });
 
+  final IconData icon;
+  final String title;
+  final String body;
+  final bool circleChip;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconChip(icon: icon, circle: circleChip),
+          const SizedBox(width: AppSizes.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.rowLabel.copyWith(color: t.ink),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  style: AppTypography.badgeDesc.copyWith(color: t.ink3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space6,
+          vertical: AppSizes.space4,
+        ),
+        child: Text(
+          label,
+          style: AppTypography.rowMeta.copyWith(color: t.ink2),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact version of the pitch, for interrupting a task rather than
+/// replacing the screen.
+class PaywallDialog extends StatelessWidget {
   const PaywallDialog({
     super.key,
     this.featureName,
@@ -617,14 +487,20 @@ class PaywallDialog extends StatelessWidget {
     this.unlockableFeature,
   });
 
+  final String? featureName;
+  final VoidCallback? onUpgrade;
+  final PremiumFeature? unlockableFeature;
+
   static Future<void> show(
     BuildContext context, {
     String? featureName,
     VoidCallback? onUpgrade,
     PremiumFeature? unlockableFeature,
   }) {
-    return showDialog(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => PaywallDialog(
         featureName: featureName,
         onUpgrade: onUpgrade,
@@ -635,90 +511,61 @@ class PaywallDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final t = context.odyssey;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.screenPadding,
+        AppSizes.space24,
+        AppSizes.screenPadding,
+        AppSizes.space24,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.space24),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(t.sheet, t.canvas),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppSizes.radiusSheet),
+        ),
+        border: Border(top: BorderSide(color: t.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.sunnyYellow, AppColors.goldenGlow],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.lock,
-                color: colorScheme.onSurface,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: AppSizes.space16),
+            const EyebrowLabel('Odyssey Pro'),
+            const SizedBox(height: AppSizes.space12),
             Text(
-              featureName != null
-                  ? '$featureName is Premium'
-                  : 'Premium Feature',
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+              featureName == null
+                  ? 'That is part of Pro'
+                  : '$featureName is part of Pro',
+              style: AppTypography.statSmall.copyWith(color: t.ink),
             ),
-            const SizedBox(height: AppSizes.space8),
+            const SizedBox(height: AppSizes.space10),
             Text(
-              'Upgrade to Premium to unlock this feature and enjoy unlimited trips, video uploads, and more!',
-              style: AppTypography.bodySmall.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
+              'Every limit lifted, every screen unlocked, no ads.',
+              style: AppTypography.subtitle.copyWith(color: t.ink2),
             ),
-            const SizedBox(height: AppSizes.space24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  onUpgrade?.call();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.sunnyYellow,
-                  foregroundColor: colorScheme.onSurface,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppSizes.space12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                  ),
-                ),
-                child: const Text(
-                  'Upgrade to Premium',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
+            const SizedBox(height: AppSizes.space20),
+
             if (unlockableFeature != null) ...[
-              const SizedBox(height: AppSizes.space8),
-              WatchAdToUnlockButton(
-                feature: unlockableFeature!,
-                onUnlocked: () => Navigator.of(context).pop(),
-              ),
+              Center(child: WatchAdToUnlockButton(feature: unlockableFeature!)),
+              const SizedBox(height: AppSizes.space12),
             ],
-            const SizedBox(height: AppSizes.space8),
-            TextButton(
+
+            PillButton(
+              label: 'See Pro',
+              onPressed: () {
+                Navigator.of(context).pop();
+                onUpgrade?.call();
+              },
+            ),
+            const SizedBox(height: AppSizes.space10),
+            PillButton(
+              label: 'Not now',
+              style: PillStyle.outline,
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Maybe Later',
-                style: AppTypography.bodySmall.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space14),
             ),
           ],
         ),
@@ -727,9 +574,9 @@ class PaywallDialog extends StatelessWidget {
   }
 }
 
-/// Utility class for showing paywalls
+/// Entry points to the paywall, kept as they were so call sites do not move.
 class PaywallUtils {
-  /// Show paywall screen for a feature
+  /// Shows the full paywall for a feature.
   static Future<void> showPaywall(
     BuildContext context, {
     String? featureName,
@@ -752,7 +599,7 @@ class PaywallUtils {
     );
   }
 
-  /// Show quick paywall dialog
+  /// Shows the compact version, for interrupting a task.
   static Future<void> showQuickPaywall(
     BuildContext context, {
     String? featureName,
@@ -767,24 +614,21 @@ class PaywallUtils {
     );
   }
 
-  /// Check if feature is available and show paywall if not
+  /// Returns true when the feature is available, and otherwise offers Pro.
   static Future<bool> checkFeatureAccess(
     BuildContext context,
     WidgetRef ref, {
     required String featureName,
     bool showPaywall = true,
   }) async {
-    final isPremium = ref.read(isPremiumProvider);
-    if (isPremium) return true;
+    if (ref.read(isPremiumProvider)) return true;
 
     if (showPaywall) {
       await PaywallUtils.showQuickPaywall(
         context,
         featureName: featureName,
-        onUpgrade: () => PaywallUtils.showPaywall(
-          context,
-          featureName: featureName,
-        ),
+        onUpgrade: () =>
+            PaywallUtils.showPaywall(context, featureName: featureName),
       );
     }
     return false;

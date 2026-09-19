@@ -434,4 +434,33 @@ class StorageService implements NotificationPrimingStore {
       value: jsonEncode(pending),
     );
   }
+  // ============================================================
+  // ACTIVITY TICK-OFF
+  // ============================================================
+  //
+  // Screen 3f makes every activity card tickable. The server's ActivityDto
+  // carries no completion flag, so the state lives on the device: a tick does
+  // not sync between devices and does not survive a reinstall. Adding
+  // IsCompleted to the DTO is what would fix that.
+  //
+  // Stored here rather than behind a new preferences dependency, since this is
+  // already the app's key-value seam.
+
+  static const String _activityDonePrefix = 'activity_done_';
+
+  Future<Set<String>> getDoneActivities(String tripId) async {
+    final raw = await _storage.read(key: '$_activityDonePrefix$tripId');
+    if (raw == null || raw.isEmpty) return <String>{};
+    return (jsonDecode(raw) as List).cast<String>().toSet();
+  }
+
+  Future<void> setDoneActivities(String tripId, Set<String> ids) async {
+    final key = '$_activityDonePrefix$tripId';
+    if (ids.isEmpty) {
+      await _storage.delete(key: key);
+      return;
+    }
+    await _storage.write(key: key, value: jsonEncode(ids.toList()));
+  }
+
 }

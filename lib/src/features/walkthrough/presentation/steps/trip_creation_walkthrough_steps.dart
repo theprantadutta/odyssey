@@ -3,6 +3,9 @@ import '../../../../common/theme/app_colors.dart';
 import '../../data/models/walkthrough_step_model.dart';
 
 /// Builds the 4-step walkthrough for the Trip Creation form.
+// Every step carries AppColors.accent: this system has one accent, and the
+// tooltip ignores the field anyway. It stays on the model so the step
+// definitions do not all need rewriting.
 class TripCreationWalkthroughSteps {
   TripCreationWalkthroughSteps._();
 
@@ -20,7 +23,7 @@ class TripCreationWalkthroughSteps {
         description:
             'Give your trip a title and optional description. Make it memorable!',
         icon: Icons.title_rounded,
-        accentColor: AppColors.sunnyYellow,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
         targetPadding: const EdgeInsets.all(4),
       ),
@@ -31,7 +34,7 @@ class TripCreationWalkthroughSteps {
         description:
             'Pick a photo to make your trip card stand out on the dashboard.',
         icon: Icons.image_rounded,
-        accentColor: AppColors.coralBurst,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
         targetPadding: const EdgeInsets.all(4),
       ),
@@ -42,7 +45,7 @@ class TripCreationWalkthroughSteps {
         description:
             'Pick start and end dates. These help track your trip status automatically.',
         icon: Icons.calendar_today_rounded,
-        accentColor: AppColors.skyBlue,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.below,
         targetPadding: const EdgeInsets.all(4),
       ),
@@ -53,7 +56,7 @@ class TripCreationWalkthroughSteps {
         description:
             'Set a budget in any currency. All expenses you add later will be tracked against this.',
         icon: Icons.account_balance_wallet_rounded,
-        accentColor: AppColors.oceanTeal,
+        accentColor: AppColors.accent,
         preferredPosition: TooltipPosition.above,
         targetPadding: const EdgeInsets.all(4),
       ),

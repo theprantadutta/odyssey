@@ -2,31 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
-import '../../../../common/animations/animation_constants.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/app_router.dart';
 import '../providers/auth_provider.dart';
 
-/// Intro data model for each page
-class IntroPage {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color backgroundColor;
-
-  const IntroPage({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.backgroundColor,
+/// One slide of the intro.
+class _IntroSlide {
+  const _IntroSlide({
+    required this.headline,
+    required this.body,
+    required this.tag,
+    required this.gradient,
   });
+
+  /// Set very large and tight, and deliberately broken across two lines.
+  final String headline;
+
+  final String body;
+
+  /// The `photo · …` label on the placeholder image.
+  final String tag;
+
+  final LinearGradient gradient;
 }
 
-/// Intro screen shown on first app launch (before authentication)
+/// Onboarding — screen 3a.
+///
+/// A 520px full-bleed photo that dissolves into the canvas, then the pitch and
+/// the two ways in. The photo has no radius and bleeds to every edge; its
+/// scrim ends on the theme canvas, which is what makes the image melt into the
+/// page rather than stopping at a line.
 class IntroScreen extends ConsumerStatefulWidget {
   const IntroScreen({super.key});
 
@@ -34,279 +44,244 @@ class IntroScreen extends ConsumerStatefulWidget {
   ConsumerState<IntroScreen> createState() => _IntroScreenState();
 }
 
-class _IntroScreenState extends ConsumerState<IntroScreen>
-    with TickerProviderStateMixin {
+class _IntroScreenState extends ConsumerState<IntroScreen> {
   final PageController _pageController = PageController();
-  int _currentPage = 0;
+  int _page = 0;
 
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-
-  final List<IntroPage> _pages = [
-    const IntroPage(
-      title: 'Plan Your Adventures',
-      subtitle:
-          'Create detailed trip itineraries with activities, packing lists, and budgets all in one place.',
-      icon: Icons.map_outlined,
-      iconColor: AppColors.skyBlue,
-      backgroundColor: Color(0xFFE3F2FD),
+  static const List<_IntroSlide> _slides = [
+    _IntroSlide(
+      headline: 'Every trip,\none place.',
+      body: 'Plan the days, pack the bag, split the spend and keep the '
+          'photos — Odyssey holds the whole journey.',
+      tag: 'photo · open road',
+      gradient: AppColors.kyotoGradient,
     ),
-    const IntroPage(
-      title: 'Capture Memories',
-      subtitle:
-          'Save photos, notes, and special moments from your travels to relive them anytime.',
-      icon: Icons.camera_alt_outlined,
-      iconColor: AppColors.coralBurst,
-      backgroundColor: Color(0xFFFFEBEE),
+    _IntroSlide(
+      headline: 'Plans that\nhold up.',
+      body: 'Build the itinerary day by day, tick activities off as you go, '
+          'and keep the packing list honest.',
+      tag: 'photo · morning gates',
+      gradient: AppColors.greenStayGradient,
     ),
-    const IntroPage(
-      title: 'Track Your Journey',
-      subtitle:
-          'See your travel statistics, earn achievements, and visualize your adventures on a world map.',
-      icon: Icons.emoji_events_outlined,
-      iconColor: AppColors.sunnyYellow,
-      backgroundColor: Color(0xFFFFF8E1),
-    ),
-    const IntroPage(
-      title: 'Share & Collaborate',
-      subtitle:
-          'Plan trips together with friends and family. Share your travel templates with the community.',
-      icon: Icons.people_outline,
-      iconColor: AppColors.success,
-      backgroundColor: Color(0xFFE8F5E9),
+    _IntroSlide(
+      headline: 'The journal\nwrites itself.',
+      body: 'Photos land on the map where you took them. Spending, distance '
+          'and days away add up on their own.',
+      tag: 'photo · high desert',
+      gradient: AppColors.autumnGradient,
     ),
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: AppAnimations.slow,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
-    _fadeController.forward();
-  }
-
-  @override
   void dispose() {
     _pageController.dispose();
-    _fadeController.dispose();
     super.dispose();
   }
 
   void _onPageChanged(int page) {
-    setState(() => _currentPage = page);
+    setState(() => _page = page);
     HapticFeedback.selectionClick();
   }
 
-  Future<void> _completeIntro() async {
+  Future<void> _finish({required String destination}) async {
     HapticFeedback.mediumImpact();
+    // The legal gate stands between this button and where it points, and a
+    // redirect cannot carry intent, so the choice is recorded for the router to
+    // honour once the gate is cleared.
+    setPendingAuthDestination(destination);
     await ref.read(authProvider.notifier).setIntroSeen();
-    if (mounted) {
-      context.go(AppRoutes.login);
-    }
+    if (mounted) context.go(destination);
   }
 
-  void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
+  void _advance() {
+    if (_page < _slides.length - 1) {
       _pageController.nextPage(
-        duration: AppAnimations.medium,
+        duration: AppSizes.durationNormal,
         curve: Curves.easeOutCubic,
       );
     } else {
-      _completeIntro();
+      _finish(destination: AppRoutes.register);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = context.odyssey;
+    final slide = _slides[_page];
+
     return Scaffold(
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Stack(
-          children: [
-            // Page View
-            PageView.builder(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              itemCount: _pages.length,
-              itemBuilder: (context, index) {
-                return _buildPage(_pages[index]);
-              },
-            ),
-
-            // Skip button (top right)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              right: 16,
-              child: TextButton(
-                onPressed: _completeIntro,
-                child: Text(
-                  'Skip',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+      backgroundColor: t.canvas,
+      body: Column(
+        children: [
+          // --- full-bleed photo ---
+          SizedBox(
+            height: AppSizes.introPhotoHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: _onPageChanged,
+                  itemCount: _slides.length,
+                  itemBuilder: (context, index) => _IntroPhoto(
+                    slide: _slides[index],
+                    canvas: t.canvas,
                   ),
                 ),
-              ),
-            ),
-
-            // Bottom section (indicators + button)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(
-                  AppSizes.space24,
-                  AppSizes.space24,
-                  AppSizes.space24,
-                  MediaQuery.of(context).padding.bottom + AppSizes.space24,
+                Positioned(
+                  left: AppSizes.screenPadding,
+                  top: 62,
+                  child: PhotoTag(slide.tag),
                 ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.0),
-                      Colors.white.withValues(alpha: 0.9),
-                      Colors.white,
-                    ],
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Page indicators
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _pages.length,
-                        (index) => _buildIndicator(index),
+                Positioned(
+                  right: AppSizes.screenPadding,
+                  top: 58,
+                  child: Pressable(
+                    onTap: () => _finish(destination: AppRoutes.login),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.photoTagBg,
+                        borderRadius: BorderRadius.circular(
+                          AppSizes.radiusFull,
+                        ),
+                        border: Border.all(color: AppColors.photoTagBorder),
+                      ),
+                      child: Text(
+                        'Skip',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.onPhoto,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: AppSizes.space24),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-                    // Next/Get Started button
-                    SizedBox(
-                      width: double.infinity,
-                      height: AppSizes.buttonHeightLg,
-                      child: FilledButton(
-                        onPressed: _nextPage,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.sunnyYellow,
-                          foregroundColor: AppColors.charcoal,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.radiusMd),
-                          ),
+          // --- pitch ---
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.authPadding,
+                30,
+                AppSizes.authPadding,
+                32,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StepDots(count: _slides.length, index: _page),
+                  const SizedBox(height: AppSizes.space22),
+                  Text(
+                    slide.headline,
+                    style: AppTypography.heroTitle.copyWith(
+                      fontSize: 42,
+                      letterSpacing: -1.89,
+                      height: 0.98,
+                      color: t.ink,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      slide.body,
+                      style: AppTypography.body.copyWith(color: t.ink2),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.space26),
+                  Row(
+                    children: [
+                      // Lime in both themes: this is the brand call to action,
+                      // not an ordinary primary button.
+                      Expanded(
+                        child: PillButton(
+                          label: _page == _slides.length - 1
+                              ? 'Create account'
+                              : 'Next',
+                          style: PillStyle.brand,
+                          onPressed: _advance,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.space12),
+                      CircleButton(
+                        glyph: '→',
+                        size: AppSizes.circleIntroArrow,
+                        glyphSize: 20,
+                        onPressed: _advance,
+                        semanticLabel: 'Next',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.space16),
+                  Center(
+                    child: Pressable(
+                      onTap: () => _finish(destination: AppRoutes.login),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.space12,
+                          vertical: AppSizes.space6,
                         ),
                         child: Text(
-                          _currentPage == _pages.length - 1
-                              ? 'Get Started'
-                              : 'Next',
-                          style: AppTypography.button,
+                          'I already have an account',
+                          style: AppTypography.pill.copyWith(
+                            fontSize: 12.5,
+                            color: t.ink3,
+                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildPage(IntroPage page) {
-    return Container(
-      color: page.backgroundColor,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.space24),
-          child: Column(
-            children: [
-              const Spacer(flex: 1),
+/// The photo block. Its scrim resolves to the theme canvas at the bottom, so
+/// the image dissolves into the page instead of ending at an edge.
+class _IntroPhoto extends StatelessWidget {
+  const _IntroPhoto({required this.slide, required this.canvas});
 
-              // Icon with animated container
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.8, end: 1.0),
-                duration: AppAnimations.slow,
-                curve: AppAnimations.bouncyEnter,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
-                },
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: page.iconColor.withValues(alpha: 0.3),
-                        blurRadius: 40,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    page.icon,
-                    size: 80,
-                    color: page.iconColor,
-                  ),
-                ),
+  final _IntroSlide slide;
+  final Color canvas;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PhotoSurface(
+          gradient: slide.gradient,
+          radius: 0,
+          scrim: false,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.obsidian.withValues(alpha: 0.42),
+                  AppColors.obsidian.withValues(alpha: 0),
+                  canvas,
+                ],
+                stops: const [0.20, 0.46, 1.0],
               ),
-
-              const Spacer(flex: 1),
-
-              // Title
-              Text(
-                page.title,
-                style: AppTypography.headlineLarge.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSizes.space16),
-
-              // Subtitle
-              Text(
-                page.subtitle,
-                style: AppTypography.bodyLarge.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const Spacer(flex: 2),
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildIndicator(int index) {
-    final isActive = index == _currentPage;
-    return AnimatedContainer(
-      duration: AppAnimations.fast,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      width: isActive ? 24 : 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).hintColor,
-        borderRadius: BorderRadius.circular(4),
-      ),
+      ],
     );
   }
 }

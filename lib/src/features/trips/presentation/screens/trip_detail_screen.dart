@@ -1,489 +1,309 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import '../../../../common/animations/loading/bouncing_dots_loader.dart';
+
 import '../../../../common/theme/app_colors.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
+import '../../../../common/theme/odyssey_tokens.dart';
+import '../../../../common/utils/trip_format.dart';
+import '../../../../common/widgets/odyssey/dialogs.dart';
+import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
-import '../../../../common/widgets/pill_tab_bar.dart';
-import '../../../../core/network/authenticated_media_fetch.dart';
-import '../../../../core/utils/file_url_helper.dart';
-import '../../data/models/trip_model.dart';
-import '../providers/trips_provider.dart';
+import '../../../activities/presentation/providers/activities_provider.dart';
+import '../../../packing/presentation/providers/packing_provider.dart';
+import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
+import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
+import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/trip_detail_walkthrough_steps.dart';
 import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
-import '../widgets/trip_overview_tab.dart';
+import '../../data/models/trip_model.dart';
+import '../providers/trips_provider.dart';
 import '../widgets/trip_activities_tab.dart';
-import '../widgets/trip_packing_tab.dart';
-import '../widgets/trip_expenses_tab.dart';
 import '../widgets/trip_documents_tab.dart';
-import '../widgets/trip_memories_tab.dart';
+import '../widgets/trip_expenses_tab.dart';
 import '../widgets/trip_map_tab.dart';
+import '../widgets/trip_memories_tab.dart';
+import '../widgets/trip_overview_tab.dart';
+import '../widgets/trip_packing_tab.dart';
 import 'trip_form_screen.dart';
-import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
-import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
-import '../../../templates/presentation/widgets/save_as_template_dialog.dart';
 
+/// Trip detail — screen 3e.
+///
+/// A 420px full-bleed cover with the place name set very large over the scrim,
+/// then a sheet that overlaps it by 26px carrying the stat row, the segmented
+/// control and the panels.
+///
+/// The design draws three tabs. Odyssey has seven panels of real
+/// functionality, so the control keeps its shape and scrolls rather than
+/// dropping any of them.
 class TripDetailScreen extends ConsumerStatefulWidget {
-  final String tripId;
-  final TripModel? initialTrip;
-
   const TripDetailScreen({
     super.key,
     required this.tripId,
     this.initialTrip,
   });
 
+  final String tripId;
+  final TripModel? initialTrip;
+
   @override
   ConsumerState<TripDetailScreen> createState() => _TripDetailScreenState();
 }
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
-  final PageController _pageController = PageController();
-  final ScrollController _scrollController = ScrollController();
-  bool _isCollapsed = false;
-  TripModel? _currentTrip;
-  int _selectedTabIndex = 0;
+  static const List<String> _tabs = [
+    'Overview',
+    'Plan',
+    'Packing',
+    'Spend',
+    'Documents',
+    'Memories',
+    'Map',
+  ];
 
-  // Walkthrough GlobalKeys
+  final ScrollController _scrollController = ScrollController();
+  TripModel? _currentTrip;
+  String _tab = _tabs.first;
+
+  // Walkthrough anchors.
   final _heroHeaderKey = GlobalKey();
   final _shareButtonKey = GlobalKey();
   final _moreOptionsKey = GlobalKey();
   final _tabBarKey = GlobalKey();
   final _tabContentKey = GlobalKey();
 
-  // Tab items with icons
-  static const List<PillTabItem> _tabItems = [
-    PillTabItem(label: 'Overview', icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard),
-    PillTabItem(label: 'Activities', icon: Icons.event_outlined, activeIcon: Icons.event),
-    PillTabItem(label: 'Packing', icon: Icons.luggage_outlined, activeIcon: Icons.luggage),
-    PillTabItem(label: 'Budget', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet),
-    PillTabItem(label: 'Documents', icon: Icons.folder_outlined, activeIcon: Icons.folder),
-    PillTabItem(label: 'Memories', icon: Icons.photo_library_outlined, activeIcon: Icons.photo_library),
-    PillTabItem(label: 'Map', icon: Icons.map_outlined, activeIcon: Icons.map),
-  ];
-
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
-    // Use initial trip data immediately for Hero animation
+    // Use the trip we were handed immediately, so the cover is painted before
+    // the fetch resolves and the Hero has something to fly to.
     _currentTrip = widget.initialTrip;
 
-    // Trigger walkthrough after screen settles
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          ref.read(walkthroughProvider.notifier).startIfNeeded(
-            'trip_detail',
-            TripDetailWalkthroughSteps.build(
-              heroHeaderKey: _heroHeaderKey,
-              shareButtonKey: _shareButtonKey,
-              moreOptionsKey: _moreOptionsKey,
-              tabBarKey: _tabBarKey,
-              tabContentKey: _tabContentKey,
-            ),
-          );
-        }
+        if (!mounted) return;
+        ref
+            .read(walkthroughProvider.notifier)
+            .startIfNeeded(
+              'trip_detail',
+              TripDetailWalkthroughSteps.build(
+                heroHeaderKey: _heroHeaderKey,
+                shareButtonKey: _shareButtonKey,
+                moreOptionsKey: _moreOptionsKey,
+                tabBarKey: _tabBarKey,
+                tabContentKey: _tabContentKey,
+              ),
+            );
       });
     });
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    final shouldCollapse = _scrollController.offset > 200;
-    if (shouldCollapse != _isCollapsed) {
-      setState(() {
-        _isCollapsed = shouldCollapse;
-      });
+  // ------------------------------------------------------------------
+  // Actions
+  // ------------------------------------------------------------------
+
+  void _handleEdit(TripModel trip) {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            settings: TaskRoutes.settings(TaskRoutes.tripForm),
+            builder: (context) => TripFormScreen(trip: trip),
+          ),
+        )
+        .then((_) => ref.invalidate(tripProvider(trip.id)));
+  }
+
+  void _handleShare(TripModel trip) {
+    HapticFeedback.lightImpact();
+    showDialog<void>(
+      context: context,
+      builder: (context) =>
+          ShareTripDialog(tripId: trip.id, tripTitle: trip.title),
+    );
+  }
+
+  void _openShares(TripModel trip) {
+    context.push(
+      '${AppRoutes.tripDetail}/${trip.id}/shares'
+      '?title=${Uri.encodeComponent(trip.title)}',
+    );
+  }
+
+  Future<void> _showOptions(TripModel trip) async {
+    HapticFeedback.lightImpact();
+    final action = await showOdysseyPicker<String>(
+      context: context,
+      title: 'Trip options',
+      options: const [
+        'Edit trip',
+        'Manage sharing',
+        'Save as template',
+        'Delete trip',
+      ],
+      labelOf: (value) => value,
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case 'Edit trip':
+        _handleEdit(trip);
+      case 'Manage sharing':
+        _openShares(trip);
+      case 'Save as template':
+        showDialog<void>(
+          context: context,
+          builder: (context) =>
+              SaveAsTemplateDialog(tripId: trip.id, tripTitle: trip.title),
+        );
+      case 'Delete trip':
+        await _handleDelete(trip);
     }
   }
 
+  Future<void> _handleDelete(TripModel trip) async {
+    final confirmed = await showOdysseyConfirm(
+      context: context,
+      title: 'Delete trip',
+      body: [
+        'This permanently deletes "${trip.title}" and everything in it — '
+            'activities, packing list, expenses, documents and memories.',
+        'This cannot be undone.',
+      ],
+      confirmLabel: 'Delete trip',
+    );
+
+    if (!confirmed || !mounted) return;
+
+    await ref.read(tripsProvider.notifier).deleteTrip(trip.id);
+    if (mounted) context.go(AppRoutes.trips);
+  }
+
+  // ------------------------------------------------------------------
+  // Build
+  // ------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    // Watch the trip provider for fresh data
+    final t = context.odyssey;
     final tripAsync = ref.watch(tripProvider(widget.tripId));
 
-    // Update current trip when fresh data arrives
     tripAsync.whenData((trip) {
       if (trip != null && trip != _currentTrip) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _currentTrip = trip;
-            });
-          }
+          if (mounted) setState(() => _currentTrip = trip);
         });
       }
     });
 
-    // Check loading state for tabs
-    final isLoading = tripAsync.isLoading && _currentTrip == null;
-    final hasError = tripAsync.hasError && _currentTrip == null;
+    final trip = _currentTrip;
 
-    // If we have no initial trip and are loading, show loading
-    if (isLoading) {
+    if (trip == null) {
       return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const OrbitalLoader(size: 72),
-              const SizedBox(height: 24),
-              Text(
-                'Loading trip...',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // If we have no initial trip and there's an error
-    if (hasError) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Trip')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
-              const SizedBox(height: AppSizes.space16),
-              Text('Failed to load trip', style: AppTypography.titleMedium),
-              const SizedBox(height: AppSizes.space8),
-              FilledButton(
-                onPressed: () => ref.invalidate(tripProvider(widget.tripId)),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // If still no trip data (edge case: no initial trip and fetch returned null)
-    if (_currentTrip == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Trip')),
-        body: const Center(child: Text('Trip not found')),
-      );
-    }
-
-    // Render with current trip data (Hero animation works immediately)
-    return _buildTripDetail(context, _currentTrip!, tripAsync.isLoading);
-  }
-
-  Widget _buildTripDetail(BuildContext context, TripModel trip, bool isTabsLoading) {
-    final startDate = DateTime.parse(trip.startDate);
-    final endDate = DateTime.parse(trip.endDate);
-    final duration = endDate.difference(startDate).inDays + 1;
-
-    final detail = PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        // Scroll to top for smooth Hero animation
-        if (_scrollController.offset > 0) {
-          await _scrollController.animateTo(
+        backgroundColor: t.canvas,
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSizes.screenPadding,
+            AppSizes.contentTop,
+            AppSizes.screenPadding,
             0,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        }
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: NestedScrollView(
-        controller: _scrollController,
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            // Hero Image Header
-            SliverAppBar(
-              expandedHeight: 300,
-              pinned: true,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              surfaceTintColor: Colors.transparent,
-              leading: Padding(
-                padding: const EdgeInsets.all(AppSizes.space8),
-                child: GestureDetector(
-                  onTap: () async {
-                    HapticFeedback.lightImpact();
-                    // Scroll to top for smooth Hero animation
-                    if (_scrollController.offset > 0) {
-                      await _scrollController.animateTo(
-                        0,
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.arrow_back_rounded,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                // Share button
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSizes.space4),
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      _showShareDialog(context, trip);
-                    },
-                    child: Container(
-                      key: _shareButtonKey,
-                      padding: const EdgeInsets.all(AppSizes.space8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.share_outlined,
-                        color: AppColors.oceanTeal,
-                      ),
-                    ),
-                  ),
-                ),
-                // Collaborators indicator
-                CollaborationIndicator(
-                  tripId: trip.id,
-                  onTap: () => context.push(
-                    '/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}',
-                  ),
-                ),
-                // More options
-                Padding(
-                  padding: const EdgeInsets.all(AppSizes.space8),
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      _showOptionsMenu(context, trip);
-                    },
-                    child: Container(
-                      key: _moreOptionsKey,
-                      padding: const EdgeInsets.all(AppSizes.space8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.more_vert_rounded,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                title: _isCollapsed
-                    ? Text(
-                        trip.title,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : null,
-                background: KeyedSubtree(
-                  key: _heroHeaderKey,
-                  child: Stack(
-                  fit: StackFit.expand,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ScreenHeader(onBack: () => context.pop()),
+              const SizedBox(height: AppSizes.space24),
+              if (tripAsync.hasError)
+                OdysseyErrorState(
+                  message: 'That trip could not be loaded.',
+                  onRetry: () => ref.invalidate(tripProvider(widget.tripId)),
+                )
+              else
+                const Column(
                   children: [
-                    // Cover Image with Hero
-                    Hero(
-                      tag: 'trip-image-${trip.id}',
-                      flightShuttleBuilder: (
-                        flightContext,
-                        animation,
-                        flightDirection,
-                        fromHeroContext,
-                        toHeroContext,
-                      ) {
-                        final isPush =
-                            flightDirection == HeroFlightDirection.push;
-                        return AnimatedBuilder(
-                          animation: animation,
-                          builder: (context, child) {
-                            // Card has rounded corners, detail has none
-                            final t = animation.value;
-                            final radius = isPush
-                                ? AppSizes.radiusLg * (1 - t)
-                                : AppSizes.radiusLg * t;
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(radius),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: _buildCoverImage(trip),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      child: _buildCoverImage(trip),
-                    ),
-                    // Gradient Overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Trip Info on Image
-                    if (!_isCollapsed)
-                      Positioned(
-                        bottom: AppSizes.space16,
-                        left: AppSizes.space16,
-                        right: AppSizes.space16,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              trip.title,
-                              style: AppTypography.headlineLarge.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: AppSizes.space8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today_rounded,
-                                  size: AppSizes.iconSm,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                                const SizedBox(width: AppSizes.space8),
-                                Text(
-                                  '${DateFormat('MMM d, yyyy').format(startDate)} - ${DateFormat('MMM d, yyyy').format(endDate)}',
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSizes.space16),
-                                _buildStatusBadge(trip),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                    Skeleton(width: double.infinity, height: 220,
+                        radius: AppSizes.radiusHero),
+                    SizedBox(height: AppSizes.space12),
+                    Skeleton.row(),
                   ],
                 ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final detail = Scaffold(
+      backgroundColor: t.canvas,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // One sliver, not two: the sheet rides up onto the cover, and a
+              // sliver clips to its own bounds, so split across two the
+              // overlapping strip was being cut away.
+              SliverToBoxAdapter(
+                child: OverlapSheet.overlapAbove(
+                  cover: _buildCover(trip),
+                  sheet: _buildSheet(trip),
                 ),
               ),
-            ),
-            // Pill Tab Bar
-            SliverPillTabBar(
-              key: _tabBarKey,
-              tabs: _tabItems,
-              selectedIndex: _selectedTabIndex,
-              onTabSelected: (index) {
-                setState(() => _selectedTabIndex = index);
-                _pageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                );
+            ],
+          ),
+          // Once the cover scrolls away the sheet runs under the status bar,
+          // and its headings would collide with the clock. The cover's own
+          // scrim covers the same ground while it is still on screen.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedBuilder(
+              animation: _scrollController,
+              builder: (context, child) {
+                final offset = _scrollController.hasClients
+                    ? _scrollController.offset
+                    : 0.0;
+                // Fades in over the last 80px before the sheet reaches the top.
+                final progress =
+                    ((offset - (AppSizes.coverHeight - 160)) / 80)
+                        .clamp(0.0, 1.0);
+                return Opacity(opacity: progress, child: child!);
               },
+              child: StatusBarFade(color: t.canvas),
             ),
-          ];
-        },
-        body: KeyedSubtree(
-          key: _tabContentKey,
-          child: PageView(
-          controller: _pageController,
-          onPageChanged: (index) {
-            // Tapping a tab already set this and started the page animation, which
-            // then reports every page it crosses. Rebuilding the tab bar for an
-            // index it is already on is just churn.
-            if (_selectedTabIndex == index) return;
-            setState(() => _selectedTabIndex = index);
-          },
-          children: [
-            TripOverviewTab(trip: trip, duration: duration),
-            TripActivitiesTab(tripId: trip.id),
-            TripPackingTab(tripId: trip.id),
-            TripExpensesTab(tripId: trip.id),
-            TripDocumentsTab(tripId: trip.id),
-            TripMemoriesTab(tripId: trip.id),
-            TripMapTab(tripId: trip.id),
-          ],
-        ),
-        ),
-      ),
+          ),
+        ],
       ),
     );
 
+    // The coach marks paint over the whole screen, so they sit beside the
+    // scaffold rather than wrapping it.
     return Stack(
       children: [
         detail,
         Consumer(
           builder: (context, ref, _) {
-            final wtState = ref.watch(walkthroughProvider);
-            if (!wtState.isActive || wtState.activeSegmentId != 'trip_detail') {
+            final wt = ref.watch(walkthroughProvider);
+            if (!wt.isActive || wt.activeSegmentId != 'trip_detail') {
               return const SizedBox.shrink();
             }
             return WalkthroughOverlay(
-              steps: wtState.steps,
-              currentIndex: wtState.currentStepIndex,
+              steps: wt.steps,
+              currentIndex: wt.currentStepIndex,
               onNext: () => ref.read(walkthroughProvider.notifier).next(),
-              onPrevious: () => ref.read(walkthroughProvider.notifier).previous(),
+              onPrevious: () =>
+                  ref.read(walkthroughProvider.notifier).previous(),
               onSkip: () => ref.read(walkthroughProvider.notifier).skip(),
             );
           },
@@ -492,102 +312,85 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
-  void _showShareDialog(BuildContext context, TripModel trip) {
-    showDialog(
-      context: context,
-      builder: (context) => ShareTripDialog(
-        tripId: trip.id,
-        tripTitle: trip.title,
-      ),
-    );
-  }
+  Widget _buildCover(TripModel trip) {
+    final start = TripFormat.parse(trip.startDate);
+    final end = TripFormat.parse(trip.endDate);
 
-  void _showSaveAsTemplateDialog(BuildContext context, TripModel trip) {
-    showDialog(
-      context: context,
-      builder: (context) => SaveAsTemplateDialog(
-        tripId: trip.id,
-        tripTitle: trip.title,
-      ),
-    );
-  }
-
-  void _showOptionsMenu(BuildContext context, TripModel trip) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLg)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return KeyedSubtree(
+      key: _heroHeaderKey,
+      child: PhotoSurface(
+        imageUrl: trip.coverImageUrl,
+        seed: trip.id,
+        heroTag: 'trip-image-${trip.id}',
+        height: AppSizes.coverHeight,
+        radius: 0,
+        child: Stack(
           children: [
-            ListTile(
-              leading: Icon(Icons.edit_outlined, color: colorScheme.onSurface),
-              title: Text('Edit Trip', style: TextStyle(color: colorScheme.onSurface)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    settings: TaskRoutes.settings(TaskRoutes.tripForm),
-                    builder: (context) => TripFormScreen(trip: trip),
+            Positioned(
+              left: AppSizes.screenPadding,
+              right: AppSizes.screenPadding,
+              top: 58,
+              child: Row(
+                children: [
+                  CircleButton(
+                    glyph: '←',
+                    style: CircleStyle.glass,
+                    onPressed: () => context.pop(),
+                    semanticLabel: 'Back',
                   ),
-                ).then((_) {
-                  // Refresh trip data after editing
-                  ref.invalidate(tripProvider(trip.id));
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.people_outline, color: AppColors.oceanTeal),
-              title: Text('Manage Sharing', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/trips/${trip.id}/shares?title=${Uri.encodeComponent(trip.title)}');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bookmark_add_outlined, color: AppColors.lavenderDream),
-              title: Text('Save as Template', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-              onTap: () {
-                Navigator.pop(context);
-                _showSaveAsTemplateDialog(context, trip);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: const Text('Delete Trip', style: TextStyle(color: AppColors.error)),
-              onTap: () async {
-                Navigator.pop(context);
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Trip'),
-                    content: Text('Are you sure you want to delete "${trip.title}"? This cannot be undone.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                        child: const Text('Delete'),
-                      ),
-                    ],
+                  const Spacer(),
+                  CollaborationIndicator(
+                    tripId: trip.id,
+                    onTap: () => _openShares(trip),
                   ),
-                );
-                if (confirmed == true && context.mounted) {
-                  await ref.read(tripsProvider.notifier).deleteTrip(trip.id);
-                  if (context.mounted) {
-                    context.go('/');
-                  }
-                }
-              },
+                  const SizedBox(width: AppSizes.space8),
+                  CircleButton(
+                    key: _shareButtonKey,
+                    icon: Icons.ios_share_rounded,
+                    style: CircleStyle.glass,
+                    onPressed: () => _handleShare(trip),
+                    semanticLabel: 'Share trip',
+                  ),
+                  const SizedBox(width: AppSizes.space8),
+                  // Lime in both themes — it sits on the photograph, where the
+                  // light theme's ink fill would disappear into the scrim.
+                  CircleButton(
+                    key: _moreOptionsKey,
+                    icon: Icons.more_horiz_rounded,
+                    style: CircleStyle.brand,
+                    onPressed: () => _showOptions(trip),
+                    semanticLabel: 'Trip options',
+                  ),
+                ],
+              ),
+            ),
+
+            // Sits at 48px so it clears the sheet's 26px overlap.
+            Positioned(
+              left: AppSizes.screenPadding,
+              right: AppSizes.screenPadding,
+              bottom: 48,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    trip.title,
+                    style: AppTypography.placeName.copyWith(
+                      color: AppColors.onPhoto,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSizes.space10),
+                  Text(
+                    TripFormat.dateRange(start, end),
+                    style: AppTypography.meta.copyWith(
+                      color: AppColors.onPhoto2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -595,97 +398,103 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
-  Widget _buildCoverImage(TripModel trip) {
-    if (trip.coverImageUrl != null &&
-        trip.coverImageUrl!.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: FileUrlHelper.resolve(trip.coverImageUrl!),
-        // Private files come from our API, which authorizes each request. The
-        // cache manager attaches the current token and refreshes it on a 401;
-        // headers captured at build time go stale within fifteen minutes.
-        cacheManager: AuthenticatedMediaCacheManager.instance,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => _buildPlaceholderCover(),
-        errorWidget: (context, url, error) => _buildPlaceholderCover(),
-      );
-    }
-    return _buildPlaceholderCover();
-  }
+  Widget _buildSheet(TripModel trip) {
+    final start = TripFormat.parse(trip.startDate);
+    final end = TripFormat.parse(trip.endDate);
+    final nights = TripFormat.nights(start, end);
 
-  Widget _buildPlaceholderCover() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.softCream,
-            AppColors.lemonLight,
-            AppColors.sunnyYellow,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.landscape_rounded,
-          size: 80,
-          color: AppColors.sunnyYellow.withValues(alpha: 0.5),
-        ),
-      ),
-    );
-  }
+    final activities = ref.watch(tripActivitiesProvider(trip.id));
+    final packing = ref.watch(tripPackingProvider(trip.id));
+    final readiness = packing.total == 0
+        ? null
+        : (packing.packedCount / packing.total * 100).round();
 
-  Widget _buildStatusBadge(TripModel trip) {
-    final status = TripStatus.values.firstWhere(
-      (s) => s.name == trip.status,
-      orElse: () => TripStatus.planned,
-    );
-
-    Color bgColor;
-    Color textColor;
-    IconData icon;
-
-    switch (status) {
-      case TripStatus.planned:
-        bgColor = AppColors.statusPlannedBg;
-        textColor = AppColors.goldenGlow;
-        icon = Icons.schedule_rounded;
-        break;
-      case TripStatus.ongoing:
-        bgColor = AppColors.statusOngoingBg;
-        textColor = AppColors.oceanTeal;
-        icon = Icons.flight_takeoff_rounded;
-        break;
-      case TripStatus.completed:
-        bgColor = AppColors.statusCompletedBg;
-        textColor = AppColors.success;
-        icon = Icons.check_circle_rounded;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.space12,
-        vertical: AppSizes.space4,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return OverlapSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: AppSizes.space4),
-          Text(
-            status.displayName,
-            style: AppTypography.caption.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
+          // --- stat row ---
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  value: '${nights + 1}',
+                  label: nights == 0 ? 'day' : 'days',
+                ),
+              ),
+              const SizedBox(width: AppSizes.space10),
+              Expanded(
+                child: StatCard(
+                  value: '${activities.total}',
+                  label: activities.total == 1 ? 'plan' : 'plans',
+                ),
+              ),
+              const SizedBox(width: AppSizes.space10),
+              // The lime tile, in both themes. It shows packing readiness when
+              // there is a list to be ready against, and the spend otherwise —
+              // an empty list would make "0% ready" the loudest thing on the
+              // screen for a trip that simply has no packing list yet.
+              Expanded(
+                child: StatCard(
+                  value: readiness != null ? '$readiness%' : '—',
+                  label: readiness != null ? 'ready' : 'no list',
+                  highlight: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space18),
+
+          KeyedSubtree(
+            key: _tabBarKey,
+            child: ScrollableSegmentedControl(
+              labels: _tabs,
+              selected: _tab,
+              onSelected: (value) {
+                HapticFeedback.selectionClick();
+                setState(() => _tab = value);
+              },
+            ),
+          ),
+          const SizedBox(height: AppSizes.space18),
+
+          // Panels unmount rather than hide, per the design's note, and enter
+          // with a cross-fade and an 8px lift.
+          KeyedSubtree(
+            key: _tabContentKey,
+            child: AnimatedSwitcher(
+              duration: AppSizes.durationPanel,
+              switchInCurve: AppSizes.curveState,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.03),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(_tab),
+                child: _buildPanel(trip, nights + 1),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildPanel(TripModel trip, int duration) {
+    return switch (_tab) {
+      'Overview' => TripOverviewTab(trip: trip, duration: duration),
+      'Plan' => TripActivitiesTab(tripId: trip.id),
+      'Packing' => TripPackingTab(tripId: trip.id),
+      'Spend' => TripExpensesTab(tripId: trip.id),
+      'Documents' => TripDocumentsTab(tripId: trip.id),
+      'Memories' => TripMemoriesTab(tripId: trip.id),
+      _ => TripMapTab(tripId: trip.id),
+    };
   }
 }

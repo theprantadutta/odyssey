@@ -107,11 +107,6 @@ Future<void> Function() showPrivacyOptions(Ref ref) {
   };
 }
 
-/// Gate for the anchored bottom banner. [adsEnabled] plus the format switch.
-@Riverpod(keepAlive: true)
-bool bannerAdsEnabled(Ref ref) =>
-    AdConstants.bannerEnabled && ref.watch(adsEnabledProvider);
-
 /// Gate for inline native list tiles. [adsEnabled] plus the format switch.
 @Riverpod(keepAlive: true)
 bool nativeAdsEnabled(Ref ref) =>

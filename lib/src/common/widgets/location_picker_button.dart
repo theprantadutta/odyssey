@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
+import '../theme/odyssey_tokens.dart';
 import '../theme/app_typography.dart';
-import '../animations/animation_constants.dart';
 import '../../core/services/location_service.dart';
 
 /// A button that fetches the current GPS location and populates lat/lng controllers
@@ -37,14 +36,14 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
     super.initState();
     _scaleController = AnimationController(
       vsync: this,
-      duration: AppAnimations.micro,
+      duration: AppSizes.durationPress,
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
     ).animate(CurvedAnimation(
       parent: _scaleController,
-      curve: AppAnimations.buttonPress,
+      curve: AppSizes.curveState,
     ));
   }
 
@@ -127,12 +126,12 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
             Expanded(
               child: Text(
                 message,
-                style: AppTypography.bodySmall.copyWith(color: Colors.white),
+                style: AppTypography.rowMeta.copyWith(color: Colors.white),
               ),
             ),
           ],
         ),
-        backgroundColor: isError ? AppColors.error : AppColors.success,
+        // No colour semantics in this palette — the copy carries the outcome.
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -152,8 +151,7 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
   @override
   Widget build(BuildContext context) {
     final isDisabled = !widget.isEnabled || _isLoading;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final t = context.odyssey;
 
     return GestureDetector(
       onTapDown: _handleTapDown,
@@ -166,21 +164,16 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
           return Transform.scale(
             scale: _scaleAnimation.value,
             child: AnimatedContainer(
-              duration: AppAnimations.fast,
+              duration: AppSizes.durationState,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.space16,
                 vertical: AppSizes.space12,
               ),
               decoration: BoxDecoration(
-                color: isDisabled
-                    ? colorScheme.surfaceContainerHighest
-                    : AppColors.lemonLight,
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                color: isDisabled ? t.cardAlt : t.card,
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                 border: Border.all(
-                  color: isDisabled
-                      ? theme.hintColor.withValues(alpha: 0.3)
-                      : colorScheme.primary.withValues(alpha: 0.5),
-                  width: 1.5,
+                  color: isDisabled ? t.hairline : t.hairlineStrong,
                 ),
               ),
               child: Row(
@@ -192,27 +185,20 @@ class _LocationPickerButtonState extends State<LocationPickerButton>
                       height: AppSizes.iconSm,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          colorScheme.primary,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(t.ink2),
                       ),
                     )
                   else
                     Icon(
                       Icons.my_location_rounded,
                       size: AppSizes.iconSm,
-                      color: isDisabled
-                          ? theme.hintColor
-                          : colorScheme.primary,
+                      color: isDisabled ? t.ink3 : t.ink2,
                     ),
                   const SizedBox(width: AppSizes.space8),
                   Text(
-                    _isLoading ? 'Getting Location...' : 'Get Current Location',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: isDisabled
-                          ? theme.hintColor
-                          : colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                    _isLoading ? 'Finding you…' : 'Use current location',
+                    style: AppTypography.chip.copyWith(
+                      color: isDisabled ? t.ink3 : t.ink,
                     ),
                   ),
                 ],
