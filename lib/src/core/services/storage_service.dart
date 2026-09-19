@@ -170,16 +170,36 @@ class StorageService implements NotificationPrimingStore {
   }
 
   // Onboarding (post-authentication)
-  Future<void> setOnboardingCompleted(bool completed) async {
+  //
+  // Scoped to the user, not the device. Onboarding offers to fill a brand new
+  // account with demo trips, which is a question about that account - a device
+  // that has seen it once is not a reason to deny it to whoever signs in next.
+  static String _onboardingKeyFor(String userId) =>
+      '${ApiConfig.onboardingCompletedKey}_$userId';
+
+  Future<void> setOnboardingCompleted(String userId, bool completed) async {
     await _storage.write(
-      key: ApiConfig.onboardingCompletedKey,
+      key: _onboardingKeyFor(userId),
       value: completed.toString(),
     );
   }
 
-  Future<bool> isOnboardingCompleted() async {
-    final value = await _storage.read(key: ApiConfig.onboardingCompletedKey);
-    return value == 'true';
+  Future<bool> isOnboardingCompleted(String userId) async {
+    final value = await _storage.read(key: _onboardingKeyFor(userId));
+    if (value != null) return value == 'true';
+
+    // Grandfather the old device-wide flag onto whoever is signing in when it
+    // is first read. There is only ever one signed-in user, so on an upgrade
+    // that user is the one who set it. It is then removed, so the next account
+    // to sign in does not inherit an answer it never gave.
+    final legacy = await _storage.read(key: ApiConfig.onboardingCompletedKey);
+    if (legacy == null) return false;
+
+    await _storage.delete(key: ApiConfig.onboardingCompletedKey);
+    if (legacy != 'true') return false;
+
+    await setOnboardingCompleted(userId, true);
+    return true;
   }
 
   // Cached User Data (for offline auth)

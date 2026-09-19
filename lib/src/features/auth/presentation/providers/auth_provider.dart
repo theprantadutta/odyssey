@@ -186,7 +186,7 @@ class Auth extends _$Auth {
     final cachedUser = await _loadCachedUser();
     if (cachedUser != null) {
       final hasCompletedOnboarding =
-          await storageService.isOnboardingCompleted();
+          await storageService.isOnboardingCompleted(cachedUser.id);
       AppLogger.auth(
         'Authenticated from cache: ${cachedUser.email}',
       );
@@ -279,7 +279,7 @@ class Auth extends _$Auth {
               .saveUserData(jsonEncode(user.toJson()));
 
           final hasCompletedOnboarding =
-              await storageService.isOnboardingCompleted();
+              await storageService.isOnboardingCompleted(user.id);
           AppLogger.auth(
             'User authenticated: ${user.email}, onboarding: $hasCompletedOnboarding',
           );
@@ -390,10 +390,18 @@ class Auth extends _$Auth {
       await StorageService().saveUserData(jsonEncode(user.toJson()));
       AppLogger.auth('Login successful: ${user.email}');
 
+      // Asked here as everywhere else: signing in with an email and password
+      // says nothing about whether this account has been through onboarding,
+      // and leaving the field alone quietly kept whatever the last session put
+      // there - which skipped onboarding for anyone who had never seen it.
+      final hasCompletedOnboarding = await StorageService()
+          .isOnboardingCompleted(user.id);
+
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
         isLoading: false,
+        needsOnboarding: !hasCompletedOnboarding,
       );
 
       final analytics = ref.read(analyticsServiceProvider);
@@ -511,7 +519,17 @@ class Auth extends _$Auth {
 
   /// Complete onboarding (mark as done and update state)
   Future<void> completeOnboarding({bool addedDemoTrips = false}) async {
-    await StorageService().setOnboardingCompleted(true);
+    final userId = state.user?.id;
+    // Without a user there is no one to record this against, and writing it
+    // device-wide is the bug this is scoped to avoid.
+    if (userId == null) {
+      AppLogger.auth(
+        'Onboarding completed with no signed-in user; not recorded',
+        isError: true,
+      );
+      return;
+    }
+    await StorageService().setOnboardingCompleted(userId, true);
     state = state.copyWith(needsOnboarding: false);
     final analytics = ref.read(analyticsServiceProvider);
     unawaited(analytics.trackOnboardingCompleted(addedDemoTrips: addedDemoTrips));
@@ -542,7 +560,7 @@ class Auth extends _$Auth {
 
       // Check if onboarding was completed
       final hasCompletedOnboarding = await StorageService()
-          .isOnboardingCompleted();
+          .isOnboardingCompleted(user.id);
 
       state = state.copyWith(
         user: user,
@@ -603,7 +621,7 @@ class Auth extends _$Auth {
 
       // Check if onboarding was completed
       final hasCompletedOnboarding = await StorageService()
-          .isOnboardingCompleted();
+          .isOnboardingCompleted(user.id);
 
       state = state.copyWith(
         user: user,
@@ -705,7 +723,7 @@ class Auth extends _$Auth {
 
       // Check if onboarding was completed
       final hasCompletedOnboarding = await StorageService()
-          .isOnboardingCompleted();
+          .isOnboardingCompleted(user.id);
 
       state = state.copyWith(
         user: user,
