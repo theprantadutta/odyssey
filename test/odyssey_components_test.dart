@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -426,10 +425,11 @@ void main() {
     testWidgets('an avatar with a photo still carries its initial', (
       tester,
     ) async {
-      // The account used for testing has no picture, so this is what stands in
-      // for seeing it. Two things must hold for anyone who does have one: the
-      // photo is fetched, and the initial is still in the tree underneath it -
-      // it is the fallback while the image loads and if it never arrives.
+      // The initial is the floor, not a placeholder that gets swapped out: it
+      // is what shows while the picture is being fetched and judged, what shows
+      // if the fetch fails, and what shows when the picture turns out to be a
+      // provider monogram. Whether a given image is a photograph is decided by
+      // AvatarPhoto, which has its own tests - this one only holds the floor.
       await pump(
         tester,
         const AvatarCircle(
@@ -438,14 +438,6 @@ void main() {
         ),
       );
 
-      final image = tester.widget<CachedNetworkImage>(
-        find.byType(CachedNetworkImage),
-      );
-      expect(
-        image.imageUrl,
-        'https://lh3.googleusercontent.com/a/example=s96-c',
-      );
-      expect(image.fit, BoxFit.cover);
       expect(find.text('J'), findsOneWidget);
     });
 
@@ -453,7 +445,6 @@ void main() {
       tester,
     ) async {
       await pump(tester, const AvatarCircle(name: 'John Doe'));
-      expect(find.byType(CachedNetworkImage), findsNothing);
       expect(find.text('J'), findsOneWidget);
     });
 

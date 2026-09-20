@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -5,6 +9,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/odyssey_tokens.dart';
+import '../../utils/avatar_photo.dart';
 import 'buttons.dart';
 
 /// The screen shell for this design system.
@@ -254,13 +259,7 @@ class AvatarCircle extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   Center(child: initial),
-                  CachedNetworkImage(
-                    imageUrl: imageUrl!,
-                    fit: BoxFit.cover,
-                    fadeInDuration: AppSizes.durationFast,
-                    placeholder: (_, _) => const SizedBox.shrink(),
-                    errorWidget: (_, _, _) => const SizedBox.shrink(),
-                  ),
+                  _ProviderPhoto(url: imageUrl!),
                 ],
               ),
             ),
@@ -268,5 +267,123 @@ class AvatarCircle extends StatelessWidget {
 
     if (onTap == null) return avatar;
     return GestureDetector(onTap: onTap, child: avatar);
+  }
+}
+
+/// The account picture from Google or Apple, shown only when it is one.
+///
+/// Every Google account has a picture, but for an account that never uploaded
+/// one it is a generated monogram - a flat tile in Google's palette with the
+/// first letter on it. Dropped into this design it is the only unbranded colour
+/// on the page, and it carries no more information than the initial already
+/// underneath it. So the bytes are looked at before the image is shown, and a
+/// monogram is left off in favour of Odyssey's own. See [AvatarPhoto].
+class _ProviderPhoto extends StatefulWidget {
+  const _ProviderPhoto({required this.url});
+
+  final String url;
+
+  /// Verdicts by URL, so an avatar that appears on several screens - and in a
+  /// list - is judged once per run rather than once per build.
+  static final Map<String, bool> _isPhoto = {};
+
+  @override
+  State<_ProviderPhoto> createState() => _ProviderPhotoState();
+}
+
+class _ProviderPhotoState extends State<_ProviderPhoto> {
+  bool? _show;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_ProviderPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _show = null;
+      _resolve();
+    }
+  }
+
+  Future<void> _resolve() async {
+    final cached = _ProviderPhoto._isPhoto[widget.url];
+    if (cached != null) {
+      setState(() => _show = cached);
+      return;
+    }
+
+    var verdict = true;
+    try {
+      // The same provider CachedNetworkImage will use below, so deciding this
+      // does not cost a second download.
+      final bytes = await _decode(CachedNetworkImageProvider(widget.url));
+      if (bytes != null) {
+        verdict = !AvatarPhoto.looksGenerated(
+          bytes.$1,
+          width: bytes.$2,
+          height: bytes.$3,
+        );
+      }
+    } catch (_) {
+      // Unreadable for any reason: show it. An avatar is not worth failing on,
+      // and CachedNetworkImage has its own error path below.
+      verdict = true;
+    }
+
+    _ProviderPhoto._isPhoto[widget.url] = verdict;
+    if (mounted) setState(() => _show = verdict);
+  }
+
+  static Future<(Uint8List, int, int)?> _decode(ImageProvider provider) {
+    final completer = Completer<(Uint8List, int, int)?>();
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+
+    listener = ImageStreamListener(
+      (image, _) async {
+        stream.removeListener(listener);
+        try {
+          final data = await image.image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          completer.complete(
+            data == null
+                ? null
+                : (
+                    data.buffer.asUint8List(),
+                    image.image.width,
+                    image.image.height,
+                  ),
+          );
+        } catch (_) {
+          completer.complete(null);
+        }
+      },
+      onError: (_, _) {
+        stream.removeListener(listener);
+        completer.complete(null);
+      },
+    );
+
+    stream.addListener(listener);
+    return completer.future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Undecided, or decided against: the initial underneath is what shows.
+    if (_show != true) return const SizedBox.shrink();
+
+    return CachedNetworkImage(
+      imageUrl: widget.url,
+      fit: BoxFit.cover,
+      fadeInDuration: AppSizes.durationFast,
+      placeholder: (_, _) => const SizedBox.shrink(),
+      errorWidget: (_, _, _) => const SizedBox.shrink(),
+    );
   }
 }
