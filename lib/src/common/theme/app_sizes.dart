@@ -257,6 +257,15 @@ class AppSizes {
   /// Skeleton pulse.
   static const Duration durationPulse = Duration(milliseconds: 1200);
 
+  /// Height of the home screen's horizontal trip-thumbnail strip.
+  static const double homeThumbStrip = 200;
+
+  /// The skeleton standing in for a summary row's right-aligned value.
+  static const double summaryValueSkeleton = 64;
+
+  /// One pass of the highlight across a skeleton.
+  static const Duration durationShimmer = Duration(milliseconds: 1500);
+
   /// One sweep of the indeterminate wait track.
   static const Duration durationWaitSweep = Duration(milliseconds: 1400);
 

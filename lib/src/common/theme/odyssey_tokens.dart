@@ -41,6 +41,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
     required this.sheet,
     required this.card,
     required this.cardAlt,
+    required this.skeleton,
+    required this.skeletonSheen,
     required this.hairline,
     required this.hairlineStrong,
     required this.separator,
@@ -83,6 +85,18 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
 
   /// Slightly heavier card — map tiles, icon chips, file thumbs.
   final Color cardAlt;
+
+  /// The block a [Skeleton] is drawn in.
+  ///
+  /// Deliberately not [cardAlt]. In the light theme cardAlt *is* the canvas
+  /// colour, so a skeleton drawn in it is invisible against the page - loading
+  /// looked exactly like empty. This tone is chosen to read against the canvas
+  /// in both themes.
+  final Color skeleton;
+
+  /// The highlight that sweeps across a [Skeleton]. Lighter than [skeleton] in
+  /// both themes.
+  final Color skeletonSheen;
 
   /// Fill behind a floating bar. Pair with a `BackdropFilter`; see
   /// `GlassBar`, which does both.
@@ -180,6 +194,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
     sheet: AppColors.darkSheet,
     card: AppColors.darkCard,
     cardAlt: AppColors.darkCardAlt,
+    skeleton: AppColors.darkSkeleton,
+    skeletonSheen: AppColors.darkSkeletonSheen,
     hairline: AppColors.darkHairline,
     hairlineStrong: AppColors.darkHairlineStrong,
     separator: AppColors.darkSeparator,
@@ -209,6 +225,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
     sheet: AppColors.lightSheet,
     card: AppColors.lightCard,
     cardAlt: AppColors.lightCardAlt,
+    skeleton: AppColors.lightSkeleton,
+    skeletonSheen: AppColors.lightSkeletonSheen,
     hairline: AppColors.lightHairline,
     hairlineStrong: AppColors.lightHairlineStrong,
     separator: AppColors.lightSeparator,
@@ -245,6 +263,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
     Color? sheet,
     Color? card,
     Color? cardAlt,
+    Color? skeleton,
+    Color? skeletonSheen,
     Color? hairline,
     Color? hairlineStrong,
     Color? separator,
@@ -273,6 +293,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
       sheet: sheet ?? this.sheet,
       card: card ?? this.card,
       cardAlt: cardAlt ?? this.cardAlt,
+      skeleton: skeleton ?? this.skeleton,
+      skeletonSheen: skeletonSheen ?? this.skeletonSheen,
       hairline: hairline ?? this.hairline,
       hairlineStrong: hairlineStrong ?? this.hairlineStrong,
       separator: separator ?? this.separator,
@@ -307,6 +329,8 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
       sheet: c(sheet, other.sheet),
       card: c(card, other.card),
       cardAlt: c(cardAlt, other.cardAlt),
+      skeleton: c(skeleton, other.skeleton),
+      skeletonSheen: c(skeletonSheen, other.skeletonSheen),
       hairline: c(hairline, other.hairline),
       hairlineStrong: c(hairlineStrong, other.hairlineStrong),
       separator: c(separator, other.separator),

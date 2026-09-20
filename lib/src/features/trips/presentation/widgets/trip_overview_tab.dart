@@ -129,29 +129,36 @@ class TripOverviewTab extends ConsumerWidget {
         // rather than repeating the stat row above it.
         GroupedCard(
           children: [
+            // Each row waits on its own panel. 'No list' and 'Nothing yet'
+            // are answers, and a panel that has not loaded has not given one.
             _SummaryRow(
               label: 'Plans',
               value: '${activities.total}',
+              loading: activities.isLoading,
             ),
             _SummaryRow(
               label: 'Packing',
               value: packing.total == 0
                   ? 'No list'
                   : '${packing.packedCount} of ${packing.total} packed',
+              loading: packing.isLoading,
             ),
             _SummaryRow(
               label: 'Spend',
               value: expenses.expenses.isEmpty
                   ? 'Nothing yet'
                   : TripFormat.compactMoney(expenses.totalAmount, symbol),
+              loading: expenses.isLoading,
             ),
             _SummaryRow(
               label: 'Documents',
               value: '${documents.documents.length}',
+              loading: documents.isLoading,
             ),
             _SummaryRow(
               label: 'Memories',
               value: '${memories.memories.length}',
+              loading: memories.isLoading,
             ),
           ],
         ),
@@ -161,10 +168,17 @@ class TripOverviewTab extends ConsumerWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.loading = false,
+  });
 
   final String label;
   final String value;
+
+  /// Draws the value as a skeleton. See the note at the call site.
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -179,10 +193,13 @@ class _SummaryRow extends StatelessWidget {
               style: AppTypography.rowLabel.copyWith(color: t.ink),
             ),
           ),
-          Text(
-            value,
-            style: AppTypography.caption.copyWith(color: t.ink3),
-          ),
+          if (loading)
+            const Skeleton(width: AppSizes.summaryValueSkeleton, height: 11)
+          else
+            Text(
+              value,
+              style: AppTypography.caption.copyWith(color: t.ink3),
+            ),
         ],
       ),
     );

@@ -356,6 +356,72 @@ void main() {
       expect(find.byType(Skeleton), findsNWidgets(2));
     });
 
+    testWidgets('a skeleton is visible against the canvas in both themes', (
+      tester,
+    ) async {
+      // The bug this guards: the light theme's cardAlt IS its canvas colour,
+      // so a skeleton drawn in it could not be seen at all and loading looked
+      // exactly like empty.
+      for (final dark in [true, false]) {
+        // Unmounted between themes: pumping the same widget type again updates
+        // the existing element in place, and the second theme never reaches it.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pump(tester, const Skeleton(width: 100, height: 20), dark: dark);
+
+        final tokens = dark ? OdysseyTokens.dark : OdysseyTokens.light;
+        final box = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(Skeleton),
+            matching: find.byType(Container),
+          ),
+        );
+        final decoration = box.decoration! as BoxDecoration;
+
+        expect(
+          decoration.color,
+          isNot(tokens.canvas),
+          reason: 'skeleton must not be the canvas colour (dark: $dark)',
+        );
+        expect(decoration.color, tokens.skeleton);
+      }
+    });
+
+    testWidgets('a skeleton sweeps a lighter sheen across itself', (
+      tester,
+    ) async {
+      await pump(tester, const Skeleton(width: 100, height: 20));
+
+      // The sheen is its own layer over a solid block, so the block keeps its
+      // own tone no matter where the band happens to be.
+      // Matched by the gradient rather than by type: Container paints through a
+      // DecoratedBox of its own, so there is more than one in here.
+      final overlay = tester.widget<DecoratedBox>(
+        find.byWidgetPredicate((w) {
+          final decoration = w is DecoratedBox ? w.decoration : null;
+          return decoration is BoxDecoration && decoration.gradient != null;
+        }),
+      );
+      final gradient =
+          (overlay.decoration as BoxDecoration).gradient! as LinearGradient;
+
+      expect(gradient.colors, contains(OdysseyTokens.dark.skeletonSheen));
+      // Transparent at both ends, so the band travels rather than flashing.
+      expect(gradient.colors.first.a, 0);
+      expect(gradient.colors.last.a, 0);
+
+      // And the block underneath is still painted in the skeleton tone.
+      final block = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(Skeleton),
+          matching: find.byType(Container),
+        ),
+      );
+      expect(
+        (block.decoration! as BoxDecoration).color,
+        OdysseyTokens.dark.skeleton,
+      );
+    });
+
     testWidgets('a loaded stat card states its value', (tester) async {
       await pump(
         tester,

@@ -202,7 +202,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
             // --- recent trips ---
-            if (recent.isNotEmpty) ...[
+            //
+            // While the first load is still running there is nothing to say
+            // about how many trips there are, so the strip is drawn as
+            // thumbnails-in-waiting rather than left blank. A blank gap and
+            // "you have no other trips" look identical, and only one of them
+            // is true.
+            if (tripsState.isLoading && tripsState.trips.isEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSizes.screenPadding,
+                  AppSizes.space26,
+                  AppSizes.screenPadding,
+                  0,
+                ),
+                child: Skeleton(width: 148, height: 19),
+              ),
+              const SizedBox(height: AppSizes.space14),
+              SizedBox(
+                height: AppSizes.homeThumbStrip,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.screenPadding,
+                  ),
+                  itemCount: 3,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: AppSizes.space12),
+                  itemBuilder: (context, _) => const _TripThumbSkeleton(),
+                ),
+              ),
+            ] else if (recent.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSizes.screenPadding,
@@ -232,7 +262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: AppSizes.space14),
               SizedBox(
-                height: 200,
+                height: AppSizes.homeThumbStrip,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(
@@ -391,6 +421,34 @@ class _TripThumb extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A [_TripThumb] before its trip has arrived: the same square, the same
+/// caption lines, in the same places.
+class _TripThumbSkeleton extends StatelessWidget {
+  const _TripThumbSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: AppSizes.tripThumb,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Skeleton(
+            width: AppSizes.tripThumb,
+            height: AppSizes.tripThumb,
+            radius: AppSizes.radiusTile,
+          ),
+          SizedBox(height: AppSizes.space10),
+          Skeleton(width: 108, height: 13),
+          SizedBox(height: AppSizes.space6),
+          Skeleton(width: 68, height: 11),
         ],
       ),
     );

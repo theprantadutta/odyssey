@@ -307,11 +307,17 @@ class StepDots extends StatelessWidget {
   }
 }
 
-/// A loading placeholder: a block in the card colour at the real component's
-/// radius, pulsing between 0.4 and 0.7 opacity over 1.2s.
+/// A loading placeholder: a block at the real component's radius with a
+/// highlight sweeping across it.
 ///
 /// The design permits no spinners outside button submit, so lists and cards
-/// load as skeletons shaped like the thing that is coming.
+/// load as skeletons shaped like the thing that is coming. Shape carries the
+/// message - a row-shaped skeleton says a row is coming - and the sweep says
+/// the app is working rather than stalled.
+///
+/// Drawn in [OdysseyTokens.skeleton] rather than a card tone. In the light
+/// theme the card tone *is* the canvas colour, and a skeleton in it cannot be
+/// seen at all, which made loading indistinguishable from empty.
 class Skeleton extends StatefulWidget {
   const Skeleton({
     super.key,
@@ -348,8 +354,8 @@ class _SkeletonState extends State<Skeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: AppSizes.durationPulse,
-  )..repeat(reverse: true);
+    duration: AppSizes.durationShimmer,
+  )..repeat();
 
   @override
   void dispose() {
@@ -361,26 +367,71 @@ class _SkeletonState extends State<Skeleton>
   Widget build(BuildContext context) {
     final t = context.odyssey;
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final base = widget.color ?? t.skeleton;
+
+    if (reduceMotion) {
+      // A still block rather than a stuttering one. The shape alone still says
+      // what is coming, which is most of the message.
+      return _block(base, null);
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => _block(base, t.skeletonSheen),
+    );
+  }
+
+  Widget _block(Color base, Color? sheen) {
+    final radius = BorderRadius.circular(widget.radius);
 
     final block = Container(
       width: widget.width,
       height: widget.height,
-      decoration: BoxDecoration(
-        color: widget.color ?? t.cardAlt,
-        borderRadius: BorderRadius.circular(widget.radius),
-      ),
+      decoration: BoxDecoration(color: base, borderRadius: radius),
     );
 
-    if (reduceMotion) {
-      return Opacity(opacity: 0.55, child: block);
-    }
+    if (sheen == null) return block;
 
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.4, end: 0.7).animate(_controller),
-      child: block,
+    // The sheen is its own layer over a solid block, rather than a gradient in
+    // the block's own decoration. BoxDecoration ignores `color` once a gradient
+    // is set, so that route makes the gradient responsible for painting the
+    // whole shape - and the block came out barely darker than the page.
+    //
+    // The band is positioned by moving the gradient's own begin and end, which
+    // is in alignment units: -1 is the left edge, 1 the right. It runs from
+    // fully off one side to fully off the other.
+    final travel = _controller.value * 2 - 1;
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          block,
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment(travel * 2 - _bandHalfWidth, 0),
+                  end: Alignment(travel * 2 + _bandHalfWidth, 0),
+                  colors: [
+                    sheen.withValues(alpha: 0),
+                    sheen,
+                    sheen.withValues(alpha: 0),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
+
+/// Half the sheen band's width, in alignment units.
+const double _bandHalfWidth = 0.55;
 
 /// The empty-state pattern: a one-line explanation in [OdysseyTokens.ink3]
 /// above a dashed affordance.

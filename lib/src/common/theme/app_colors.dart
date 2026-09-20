@@ -38,6 +38,13 @@ class AppColors {
   static const Color darkSheet = Color(0xFF111316);
   static const Color darkCard = Color(0x0BFFFFFF); // white @ .045
   static const Color darkCardAlt = Color(0x12FFFFFF); // white @ .07
+
+  /// Skeleton block and the sheen that sweeps it.
+  ///
+  /// Kept apart from the card tones because a skeleton sits on the canvas
+  /// as often as on a card, and has to read against both.
+  static const Color darkSkeleton = Color(0x1AFFFFFF); // white @ .10
+  static const Color darkSkeletonSheen = Color(0x1FFFFFFF); // white @ .12
   static const Color darkHairline = Color(0x14FFFFFF); // .08
   static const Color darkHairlineStrong = Color(0x1AFFFFFF); // .10
   static const Color darkSeparator = Color(0x12FFFFFF); // .07
@@ -57,6 +64,12 @@ class AppColors {
   static const Color lightSheet = paper;
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightCardAlt = paper;
+
+  /// Skeleton block and sheen. Ink rather than paper: [lightCardAlt] is the
+  /// light canvas colour exactly, so a skeleton in it cannot be seen.
+  static const Color lightSkeleton = Color(0x240A0B0D); // ink @ .14
+  /// White, not ink: the sheen is painted over the block, so it lightens.
+  static const Color lightSkeletonSheen = Color(0x99FFFFFF); // white @ .60
   static const Color lightHairline = Color(0x120A0B0D); // .07
   static const Color lightHairlineStrong = Color(0x140A0B0D); // .08
   static const Color lightSeparator = Color(0x0F0A0B0D); // .06
