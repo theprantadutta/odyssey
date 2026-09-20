@@ -8,6 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+// Prefixed deliberately: material_ui re-exports the whole Material surface
+// and would otherwise collide with package:flutter/material.dart on
+// MaterialApp, ThemeData, Colors and the rest.
+import 'package:material_ui/material_ui.dart' as material_ui;
 import 'firebase_options.dart';
 import 'src/core/config/admob_config.dart';
 import 'src/features/ads/presentation/providers/ads_providers.dart';
@@ -178,6 +182,18 @@ class _OdysseyAppState extends ConsumerState<OdysseyApp>
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,
+      // Material is being split out of the framework into package:material_ui,
+      // and go_router 18 has already moved. That package declares its own
+      // MaterialLocalizations - a distinct Dart type that the framework's
+      // delegates cannot satisfy - so without these a migrated widget throws
+      // "No MaterialLocalizations found" at runtime, from a stack frame in
+      // material_ui, nowhere near whatever the user was actually doing.
+      //
+      // Both sets coexist. material_ui ships 80 locales, so this costs no
+      // coverage. They come out again once the app itself has migrated.
+      localizationsDelegates: const [
+        ...material_ui.GlobalMaterialLocalizations.delegates,
+      ],
       builder: (context, child) {
         return child ?? const SizedBox.shrink();
       },

@@ -24,6 +24,38 @@ const int _defaultMaxFilesPerDocument = 10;
 /// Maximum file size (10MB).
 const int _maxFileSizeBytes = 10 * 1024 * 1024;
 
+/// A file the user chose, whichever picker it came from.
+///
+/// This screen used to pass file_picker's own PlatformFile around, and
+/// constructed one by hand for photos that never came from that picker at all.
+/// Version 13 made PlatformFile an abstract base class, which is a reasonable
+/// thing for a package to do with its own type - the mistake was borrowing it.
+/// Both pickers convert into this instead.
+class PickedFile {
+  const PickedFile({
+    required this.path,
+    required this.name,
+    required this.size,
+  });
+
+  final String path;
+  final String name;
+
+  /// Length in bytes, resolved when the file was picked. file_picker 13 reports
+  /// this asynchronously, so it is read once here rather than at every use.
+  final int size;
+
+  /// The extension of [name] without the leading dot, or null if it has none.
+  ///
+  /// A name that begins with a dot is a dotfile, not an extension, and a name
+  /// that ends with one has no extension either.
+  String? get extension {
+    final dot = name.lastIndexOf('.');
+    if (dot <= 0 || dot == name.length - 1) return null;
+    return name.substring(dot + 1);
+  }
+}
+
 /// Add a document: one or more files, a name, a kind and a note.
 class DocumentUploadScreen extends ConsumerStatefulWidget {
   const DocumentUploadScreen({super.key, required this.tripId});
@@ -40,7 +72,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   final _nameController = TextEditingController();
   final _notesController = TextEditingController();
 
-  final List<fp.PlatformFile> _selectedFiles = [];
+  final List<PickedFile> _selectedFiles = [];
   DocumentType _type = DocumentType.other;
   bool _isLoading = false;
   double _uploadProgress = 0.0;
@@ -127,7 +159,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
       setState(() {
         _selectedFiles.add(
-          fp.PlatformFile(path: image.path, name: name, size: size),
+          PickedFile(path: image.path, name: name, size: size),
         );
         _autofillName();
       });
@@ -145,7 +177,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       );
       if (images.isEmpty) return;
 
-      final accepted = <fp.PlatformFile>[];
+      final accepted = <PickedFile>[];
       for (final image in images) {
         final size = await File(image.path).length();
         if (size > _maxFileSizeBytes) {
@@ -164,7 +196,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           break;
         }
         accepted.add(
-          fp.PlatformFile(
+          PickedFile(
             path: image.path,
             name: image.name.isNotEmpty
                 ? image.name
@@ -186,17 +218,36 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      // file_picker 12.x: the methods are static on FilePicker, and pickFiles
-      // defaults to multiple selection.
-      final result = await fp.FilePicker.pickFiles(
+      // file_picker 13: the methods are static on FilePicker, pickFiles
+      // defaults to multiple selection, and it returns the files directly -
+      // an empty list where it used to return null for a cancelled picker.
+      final picked = await fp.FilePicker.pickFiles(
         type: fp.FileType.custom,
         allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
       );
-      if (result == null || result.files.isEmpty) return;
+      if (picked.isEmpty) return;
 
-      final accepted = <fp.PlatformFile>[];
-      for (final file in result.files) {
-        if (file.size > _maxFileSizeBytes) {
+      final accepted = <PickedFile>[];
+      for (final file in picked) {
+        // Not everything a picker can return lives on disk - a cloud provider
+        // can hand back a file with no local path. The upload reads from a
+        // path, so one without is declined rather than silently dropped.
+        final path = file.path;
+        if (path == null) {
+          if (mounted) {
+            showOdysseyMessage(
+              context,
+              '"${file.name}" is not stored on this device. Download it first.',
+            );
+          }
+          continue;
+        }
+
+        // length() is null when the picker could not work the size out, which
+        // is not the same as an empty file. We already know this one is on
+        // disk, so ask the disk rather than wave the limit through.
+        final size = await file.length() ?? await File(path).length();
+        if (size > _maxFileSizeBytes) {
           if (mounted) {
             showOdysseyMessage(
               context,
@@ -211,7 +262,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
           }
           break;
         }
-        accepted.add(file);
+        accepted.add(PickedFile(path: path, name: file.name, size: size));
       }
 
       if (accepted.isEmpty) return;
@@ -250,7 +301,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       final files = _selectedFiles
           .map(
             (file) => SelectedDocumentFile(
-              file: File(file.path!),
+              file: File(file.path),
               fileName: file.name,
               mimeType: _mimeType(file.extension ?? ''),
             ),
@@ -357,7 +408,7 @@ class _FileList extends StatelessWidget {
     required this.onRemove,
   });
 
-  final List<fp.PlatformFile> files;
+  final List<PickedFile> files;
   final VoidCallback onAdd;
   final ValueChanged<int> onRemove;
 
