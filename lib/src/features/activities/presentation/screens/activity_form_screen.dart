@@ -11,6 +11,7 @@ import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../data/models/activity_model.dart';
+import '../../../trips/presentation/providers/trips_provider.dart';
 import '../providers/activities_provider.dart';
 
 /// Add or edit a plan.
@@ -50,9 +51,34 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
     if (widget.activity != null) {
       _initializeWith(widget.activity!);
     } else {
-      _scheduledDate = DateTime.now();
+      _scheduledDate = _defaultDay();
       _scheduledTime = const TimeOfDay(hour: 12, minute: 0);
     }
+  }
+
+  /// The day a new plan lands on before the user says otherwise.
+  ///
+  /// Today, but only when today is actually part of the trip. A trip four days
+  /// out opened its plan form on today's date, which is outside the trip
+  /// altogether - so the first plan anyone added, without noticing, sat in a
+  /// day the itinerary does not have.
+  DateTime _defaultDay() {
+    final now = DateTime.now();
+
+    final trip = ref
+        .read(tripsProvider)
+        .trips
+        .where((t) => t.id == widget.tripId)
+        .firstOrNull;
+
+    final start = TripFormat.parse(trip?.startDate);
+    final end = TripFormat.parse(trip?.endDate);
+    if (start == null) return now;
+
+    final today = DateTime(now.year, now.month, now.day);
+    if (today.isBefore(start)) return start;
+    if (end != null && today.isAfter(end)) return start;
+    return today;
   }
 
   void _initializeWith(ActivityModel activity) {

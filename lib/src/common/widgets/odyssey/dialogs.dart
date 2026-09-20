@@ -7,6 +7,8 @@ import '../../theme/odyssey_tokens.dart';
 import 'buttons.dart';
 import 'chips.dart';
 import 'inputs.dart';
+import 'pressable.dart';
+import 'surfaces.dart';
 
 /// A confirmation sheet in the Odyssey surface language.
 ///
@@ -87,6 +89,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
     final t = context.odyssey;
 
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.fromLTRB(
         AppSizes.screenPadding,
         AppSizes.space24,
@@ -157,6 +160,7 @@ Future<T?> showOdysseyPicker<T>({
   required List<T> options,
   required String Function(T) labelOf,
   T? selected,
+  bool asRows = false,
 }) {
   return showModalBottomSheet<T>(
     // Pushed on the root navigator so the sheet covers the tab bar. The
@@ -170,6 +174,11 @@ Future<T?> showOdysseyPicker<T>({
     builder: (context) {
       final t = context.odyssey;
       return Container(
+        // A sheet spans the screen. Without this it shrinks to its content -
+        // the Column below is MainAxisSize.min and a Wrap sizes to its widest
+        // run - and a sheet of three short options came up as a narrow panel
+        // floating inset from both edges.
+        width: double.infinity,
         padding: const EdgeInsets.fromLTRB(
           AppSizes.screenPadding,
           AppSizes.space24,
@@ -193,19 +202,35 @@ Future<T?> showOdysseyPicker<T>({
               const SizedBox(height: AppSizes.space16),
               Flexible(
                 child: SingleChildScrollView(
-                  child: Wrap(
-                    spacing: AppSizes.space8,
-                    runSpacing: AppSizes.space8,
-                    children: [
-                      for (final option in options)
-                        OdysseyChip(
-                          label: labelOf(option),
-                          selected: option == selected,
-                          activeStyle: ChipActiveStyle.action,
-                          onTap: () => Navigator.of(context).pop(option),
+                  // Chips suit a set of values to choose between - a year, a
+                  // currency. A short list of *actions* reads better as rows:
+                  // each one full width, with room to tap.
+                  child: asRows
+                      ? GroupedCard(
+                          children: [
+                            for (final option in options)
+                              _PickerRow(
+                                label: labelOf(option),
+                                selected: option == selected,
+                                onTap: () =>
+                                    Navigator.of(context).pop(option),
+                              ),
+                          ],
+                        )
+                      : Wrap(
+                          spacing: AppSizes.space8,
+                          runSpacing: AppSizes.space8,
+                          children: [
+                            for (final option in options)
+                              OdysseyChip(
+                                label: labelOf(option),
+                                selected: option == selected,
+                                activeStyle: ChipActiveStyle.action,
+                                onTap: () =>
+                                    Navigator.of(context).pop(option),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -223,4 +248,49 @@ void showOdysseyMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// One option in a row-style [showOdysseyPicker].
+class _PickerRow extends StatelessWidget {
+  const _PickerRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return Pressable(
+      onTap: onTap,
+      selected: selected,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space16,
+          vertical: AppSizes.space16,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.rowTitle.copyWith(color: t.ink),
+              ),
+            ),
+            if (selected)
+              Icon(
+                Icons.check_rounded,
+                size: AppSizes.iconMd,
+                color: t.limeText,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

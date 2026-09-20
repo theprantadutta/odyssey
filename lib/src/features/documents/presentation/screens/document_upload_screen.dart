@@ -121,6 +121,8 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       context: context,
       title: 'Add a file',
       options: const ['Take a photo', 'Photo library', 'Browse files'],
+      // Actions, not values: full-width rows rather than chips.
+      asRows: true,
       labelOf: (value) => value,
     );
     if (choice == null || !mounted) return;
