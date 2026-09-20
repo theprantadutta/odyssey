@@ -18,7 +18,9 @@ import '../../../../core/router/task_routes.dart';
 import '../../../ads/presentation/providers/ads_providers.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/data/models/notification_preference_model.dart';
+import '../../../notifications/application/notification_permission_policy.dart';
 import '../../../notifications/presentation/providers/notification_preference_provider.dart';
+import '../../../notifications/presentation/widgets/notification_permission_prompt.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../trips/data/models/default_trips_eligibility.dart';
@@ -48,6 +50,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isAddingSampleTrips = false;
   bool _isRemovingSampleTrips = false;
 
+  /// Whether the operating system will actually deliver anything.
+  ///
+  /// The toggles below are server-side preferences and say nothing about this.
+  /// Without it someone who declined the system prompt could switch all four on
+  /// and never hear from the app again, with nothing on screen to say why.
+  NotificationPermissionState? _permission;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +65,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Future.microtask(
       () => ref.read(notificationPreferencesProvider.notifier).loadPreferences(),
     );
+    _refreshPermission();
+  }
+
+  Future<void> _refreshPermission() async {
+    final state = await NotificationPermissionPolicy().currentStateAsync();
+    if (mounted) setState(() => _permission = state);
+  }
+
+  Future<void> _enableNotifications() async {
+    HapticFeedback.lightImpact();
+    await askAboutNotificationsOnRequest(context, ref);
+    // Whatever the answer, the row has to catch up - including the case where
+    // the person went out to the settings app and came back.
+    await _refreshPermission();
   }
 
   // ------------------------------------------------------------------
@@ -406,6 +429,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: AppSizes.space12),
 
           // --- notification toggles ---
+          //
+          // Led by the system's own answer when it is no. A preference that
+          // cannot fire is worth saying out loud.
+          if (_permission != null &&
+              _permission != NotificationPermissionState.granted) ...[
+            OdysseyCard(
+              radius: AppSizes.radiusTile,
+              padding: const EdgeInsets.all(AppSizes.space18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const IconChip(icon: Icons.notifications_off_outlined),
+                      const SizedBox(width: AppSizes.space12),
+                      Expanded(
+                        child: Text(
+                          'Notifications are off',
+                          style: AppTypography.rowLabel.copyWith(color: t.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.space10),
+                  // Given the full width rather than squeezed beside a value:
+                  // the sentence is the point, and it was being cut off.
+                  Text(
+                    _permission == NotificationPermissionState.blocked
+                        ? 'Turned off for Odyssey in your system settings. '
+                              'Nothing below will arrive until they are '
+                              'turned back on.'
+                        : 'Nothing below will arrive until you allow them.',
+                    style: AppTypography.badgeDesc.copyWith(color: t.ink3),
+                  ),
+                  const SizedBox(height: AppSizes.space14),
+                  PillButton(
+                    label: _permission == NotificationPermissionState.blocked
+                        ? 'Open settings'
+                        : 'Turn on notifications',
+                    onPressed: _enableNotifications,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.space14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSizes.space12),
+          ],
+
           GroupedCard(
             children: [
               SettingsToggleRow(
