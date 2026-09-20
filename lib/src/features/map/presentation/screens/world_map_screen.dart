@@ -16,6 +16,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../subscription/presentation/providers/feature_access_provider.dart';
 import '../../../subscription/presentation/widgets/temporary_unlock_banner.dart';
 import '../providers/map_provider.dart';
+import '../../domain/map_frame.dart';
 
 /// Map & memories — screen 3g.
 ///
@@ -39,25 +40,55 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
   static const String _tileUrl =
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
+  /// Whether the map has been laid out. [MapController.fitCamera] needs a size
+  /// to fit against, so nothing can be framed before this.
+  bool _mapReady = false;
+
+  /// The opening fit happens once. After that the camera is the user's.
+  bool _framedOnce = false;
+
+  /// Frames the user's trips the first time there are any to frame.
+  ///
+  /// Without this the map opened on a fixed view of the Atlantic and left the
+  /// user to go looking for their own pins - which, at zoom 2 with trips in New
+  /// York and Bali, were not on screen at all.
+  void _frameOnFirstLoad(List<TripLocation> located) {
+    if (_framedOnce || !_mapReady || located.isEmpty) return;
+    _framedOnce = true;
+
+    // After the frame that is currently building: fitCamera moves the camera,
+    // and doing that during a build is not allowed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fitToTrips(located, haptic: false);
+    });
+  }
+
   void _zoom(double delta) {
     HapticFeedback.selectionClick();
     final camera = _mapController.camera;
     _mapController.move(camera.center, camera.zoom + delta);
   }
 
-  void _fitToTrips(List<TripLocation> locations) {
+  void _fitToTrips(List<TripLocation> locations, {bool haptic = true}) {
     final located = locations.where((l) => l.hasLocation).toList();
     if (located.isEmpty) return;
 
-    HapticFeedback.selectionClick();
-    _mapController.fitCamera(
-      CameraFit.coordinates(
-        coordinates: located
-            .map((l) => LatLng(l.latitude!, l.longitude!))
-            .toList(),
-        padding: const EdgeInsets.all(64),
-      ),
+    // The opening fit is not something the user did, so it does not buzz.
+    if (haptic) HapticFeedback.selectionClick();
+
+    // Framed by hand rather than with CameraFit.coordinates, which treats
+    // longitude as a line. See [MapFrame] for why that puts a New York and a
+    // Bali trip on opposite edges of a map centred on Africa.
+    final size = MediaQuery.sizeOf(context);
+    final frame = MapFrame.of(
+      located.map((l) => LatLng(l.latitude!, l.longitude!)).toList(),
+      width: size.width,
+      height: size.height,
+      minZoom: MapFrame.minZoomFor(size.height),
     );
+    if (frame == null) return;
+
+    _mapController.move(frame.centre, frame.zoom);
   }
 
   @override
@@ -69,6 +100,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
     if (!hasAccess) return _buildPaywall(context);
 
     final located = state.tripLocations.where((l) => l.hasLocation).toList();
+    _frameOnFirstLoad(located);
 
     return Scaffold(
       backgroundColor: t.canvas,
@@ -84,6 +116,11 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
               controller: _mapController,
               tileUrl: _tileUrl,
               locations: located,
+              minZoom: MapFrame.minZoomFor(MediaQuery.sizeOf(context).height),
+              onReady: () {
+                _mapReady = true;
+                _frameOnFirstLoad(located);
+              },
               selected: _selected,
               onSelect: (trip) => setState(() => _selected = trip),
               onClearSelection: () => setState(() => _selected = null),
@@ -224,6 +261,11 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
                   selected: null,
                   onSelect: (_) {},
                   onClearSelection: () {},
+                  minZoom: MapFrame.minZoomFor(
+                    MediaQuery.sizeOf(context).height,
+                  ),
+                  // Nothing to frame behind a paywall.
+                  onReady: () {},
                 ),
               ),
             ),
@@ -275,6 +317,8 @@ class _MapCanvas extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onClearSelection,
+    required this.minZoom,
+    required this.onReady,
   });
 
   final MapController controller;
@@ -283,6 +327,12 @@ class _MapCanvas extends StatelessWidget {
   final TripLocation? selected;
   final ValueChanged<TripLocation> onSelect;
   final VoidCallback onClearSelection;
+
+  /// The zoom floor. See [MapFrame.minZoomFor].
+  final double minZoom;
+
+  /// Fired once the map has a size, so the camera can be framed against it.
+  final VoidCallback onReady;
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +366,16 @@ class _MapCanvas extends StatelessWidget {
         options: MapOptions(
           initialCenter: const LatLng(20.0, 0.0),
           initialZoom: 2.0,
+          // Floored where the world still covers the viewport, so zooming out
+          // cannot leave bands of empty canvas above and below it.
+          //
+          // CameraConstraint.containLatitude() reads like the right tool and is
+          // not: it *refuses* a camera that is zoomed out too far rather than
+          // correcting it, so the opening fit was being cancelled outright and
+          // the map never moved at all.
+          minZoom: minZoom,
+          maxZoom: 18.0,
+          onMapReady: onReady,
           onTap: (_, _) => onClearSelection(),
         ),
         children: [
