@@ -257,6 +257,9 @@ class AppSizes {
   /// Skeleton pulse.
   static const Duration durationPulse = Duration(milliseconds: 1200);
 
+  /// How far a viewer's chrome scrim reaches in from the top or bottom edge.
+  static const double viewerChromeScrim = 132;
+
   /// The plate an empty or error state is built around, and its glyph.
   static const double statePlate = 92;
   static const double statePlateIcon = 34;

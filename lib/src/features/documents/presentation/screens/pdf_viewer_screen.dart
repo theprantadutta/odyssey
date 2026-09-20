@@ -119,6 +119,42 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         children: [
           Positioned.fill(child: _buildBody()),
 
+          // The chrome below is white-on-dark, and a PDF page is white, so it
+          // was disappearing into the document. These wash the strips it sits
+          // in, and nothing else - the page itself stays untinted.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: IgnorePointer(
+              child: SizedBox(
+                height: topInset + AppSizes.viewerChromeScrim,
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppColors.viewerTopScrim,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          if (_totalPages > 1 && _pdfController != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: SizedBox(
+                  height: bottomInset + AppSizes.viewerChromeScrim,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.viewerBottomScrim,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           Positioned(
             left: AppSizes.screenPadding,
             right: AppSizes.screenPadding,
@@ -152,7 +188,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
               right: 0,
               bottom: bottomInset + AppSizes.space20,
               child: Center(
-                child: GlassBar(
+                // No glass bar behind these. GlassBar takes its fill from the
+                // theme, so in the light theme it came out white - and the page
+                // counter, which is white because this chrome sits on a dark
+                // viewer, was white on white. The scrim above is the backing.
+                child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 6,

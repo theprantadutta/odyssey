@@ -103,6 +103,23 @@ class AppColors {
     stops: [0.18, 0.40, 1.0],
   );
 
+  /// Backing for chrome that floats over content the app does not control.
+  ///
+  /// A photograph is usually dark enough to carry white controls on its own. A
+  /// document is not - a PDF page is white, and the viewer's controls vanished
+  /// into it. These put a dark wash under the chrome whatever is behind it.
+  static const LinearGradient viewerTopScrim = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xCC0A0B0D), Color(0x000A0B0D)],
+  );
+
+  static const LinearGradient viewerBottomScrim = LinearGradient(
+    begin: Alignment.bottomCenter,
+    end: Alignment.topCenter,
+    colors: [Color(0xCC0A0B0D), Color(0x000A0B0D)],
+  );
+
   // ============================================================
   // ON LIME
   // ============================================================
