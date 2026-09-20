@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -222,6 +223,16 @@ class AvatarCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.odyssey;
 
+    final initial = Text(
+      _initial,
+      style: AppTypography.avatarInitial.copyWith(
+        fontSize: size * 0.37,
+        color: t.isDark ? AppColors.obsidian : AppColors.accent,
+      ),
+    );
+
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+
     final avatar = Container(
       width: size,
       height: size,
@@ -230,20 +241,27 @@ class AvatarCircle extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: t.isDark ? AppColors.darkAvatarGradient : null,
         color: t.isDark ? null : AppColors.obsidian,
-        image: imageUrl != null && imageUrl!.isNotEmpty
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
       ),
-      child: imageUrl != null && imageUrl!.isNotEmpty
-          ? null
-          : Text(
-              _initial,
-              style: AppTypography.avatarInitial.copyWith(
-                fontSize: size * 0.37,
-                color: t.isDark ? AppColors.obsidian : AppColors.accent,
+      // The initial stays underneath the picture rather than being replaced by
+      // it. A DecorationImage has no error path, so a photo that 404s or a
+      // device that is offline left an empty coloured disc with nothing in it;
+      // this way the letter is what shows until the image arrives, and what
+      // comes back if it never does.
+      child: !hasImage
+          ? initial
+          : ClipOval(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Center(child: initial),
+                  CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    fadeInDuration: AppSizes.durationFast,
+                    placeholder: (_, _) => const SizedBox.shrink(),
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ],
               ),
             ),
     );

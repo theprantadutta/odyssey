@@ -118,6 +118,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(width: AppSizes.space10),
                   AvatarCircle(
                     name: firstName ?? user?.email,
+                    imageUrl: user?.photoUrl,
                     onTap: () => context.go(AppRoutes.settings),
                   ),
                 ],

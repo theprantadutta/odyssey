@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -420,6 +421,40 @@ void main() {
         (block.decoration! as BoxDecoration).color,
         OdysseyTokens.dark.skeleton,
       );
+    });
+
+    testWidgets('an avatar with a photo still carries its initial', (
+      tester,
+    ) async {
+      // The account used for testing has no picture, so this is what stands in
+      // for seeing it. Two things must hold for anyone who does have one: the
+      // photo is fetched, and the initial is still in the tree underneath it -
+      // it is the fallback while the image loads and if it never arrives.
+      await pump(
+        tester,
+        const AvatarCircle(
+          name: 'John Doe',
+          imageUrl: 'https://lh3.googleusercontent.com/a/example=s96-c',
+        ),
+      );
+
+      final image = tester.widget<CachedNetworkImage>(
+        find.byType(CachedNetworkImage),
+      );
+      expect(
+        image.imageUrl,
+        'https://lh3.googleusercontent.com/a/example=s96-c',
+      );
+      expect(image.fit, BoxFit.cover);
+      expect(find.text('J'), findsOneWidget);
+    });
+
+    testWidgets('an avatar without a photo is just the initial', (
+      tester,
+    ) async {
+      await pump(tester, const AvatarCircle(name: 'John Doe'));
+      expect(find.byType(CachedNetworkImage), findsNothing);
+      expect(find.text('J'), findsOneWidget);
     });
 
     testWidgets('a disabled pill is still visibly a button', (tester) async {

@@ -13,11 +13,20 @@ class UserModel extends Equatable {
   @JsonKey(name: 'display_name')
   final String? displayName;
 
+  /// The account's picture, as the identity provider gave it.
+  ///
+  /// Set when signing in with Google or Apple; null for an email account. The
+  /// backend has always recorded it - the app simply dropped it on the way in,
+  /// so every avatar fell back to an initial.
+  @JsonKey(name: 'photo_url')
+  final String? photoUrl;
+
   const UserModel({
     required this.id,
     required this.email,
     required this.isActive,
     this.displayName,
+    this.photoUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -26,7 +35,7 @@ class UserModel extends Equatable {
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   @override
-  List<Object?> get props => [id, email, isActive, displayName];
+  List<Object?> get props => [id, email, isActive, displayName, photoUrl];
 }
 
 /// Login request

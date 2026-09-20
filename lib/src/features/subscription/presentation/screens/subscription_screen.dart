@@ -108,24 +108,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen>
                         label: 'Storage',
                         used: usage.storageUsedBytes.toDouble(),
                         limit: usage.storageLimitBytes.toDouble(),
-                        detail: '${_bytes(usage.storageUsedBytes)} of '
-                            '${_bytes(usage.storageLimitBytes)}',
+                        format: (value) => _bytes(value.round()),
                       ),
                       const SizedBox(height: AppSizes.space16),
                       _UsageRow(
                         label: 'Active trips',
                         used: usage.activeTripCount.toDouble(),
                         limit: usage.activeTripLimit.toDouble(),
-                        detail: '${usage.activeTripCount} of '
-                            '${usage.activeTripLimit}',
+                        format: (value) => value.round().toString(),
                       ),
                       const SizedBox(height: AppSizes.space16),
                       _UsageRow(
                         label: 'Templates',
                         used: usage.templateCount.toDouble(),
                         limit: usage.templateLimit.toDouble(),
-                        detail: '${usage.templateCount} of '
-                            '${usage.templateLimit}',
+                        format: (value) => value.round().toString(),
                       ),
                     ],
                   ),
@@ -249,17 +246,31 @@ class _UsageRow extends StatelessWidget {
     required this.label,
     required this.used,
     required this.limit,
-    required this.detail,
+    required this.format,
   });
 
   final String label;
   final double used;
+
+  /// Negative means there is no cap. The API says so with -1.
   final double limit;
-  final String detail;
+
+  /// Renders a raw figure - bytes for storage, a plain count otherwise. The
+  /// row formats both numbers itself so the unlimited case is decided in one
+  /// place rather than at each call site.
+  final String Function(double) format;
 
   @override
   Widget build(BuildContext context) {
     final t = context.odyssey;
+
+    // Pro lifts most caps, and the sentinel was going straight to the screen:
+    // 'Active trips  3 of -1'. There is nothing to be a fraction of either, so
+    // the bar goes too - a track that can never fill says nothing.
+    final unlimited = limit < 0;
+    final detail = unlimited
+        ? '${format(used)} used'
+        : '${format(used)} of ${format(limit)}';
     final fraction = limit <= 0 ? 0.0 : (used / limit).clamp(0.0, 1.0);
 
     return Column(
@@ -279,8 +290,10 @@ class _UsageRow extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppSizes.space10),
-        ProgressTrack(value: fraction),
+        if (!unlimited) ...[
+          const SizedBox(height: AppSizes.space10),
+          ProgressTrack(value: fraction),
+        ],
       ],
     );
   }

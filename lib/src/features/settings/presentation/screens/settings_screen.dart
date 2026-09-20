@@ -337,7 +337,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.all(AppSizes.space18),
             child: Row(
               children: [
-                AvatarCircle(name: name, size: AppSizes.circleAvatarLarge),
+                AvatarCircle(
+                  name: name,
+                  imageUrl: user?.photoUrl,
+                  size: AppSizes.circleAvatarLarge,
+                ),
                 const SizedBox(width: AppSizes.space14),
                 Expanded(
                   child: Column(
