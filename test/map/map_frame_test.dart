@@ -115,6 +115,39 @@ void main() {
     }
   });
 
+  test('the viewport never hangs off the top or bottom of the world', () {
+    const height = 780.0;
+
+    // Trips well north of the equator, at a zoom where the world is only just
+    // taller than the screen. Centring on their midpoint would leave a band of
+    // empty canvas above the map.
+    final frame = MapFrame.of(
+      [newYork, bali],
+      width: width,
+      height: height,
+      minZoom: MapFrame.minZoomFor(height),
+    )!;
+
+    final worldPixels = 256 * math.pow(2, frame.zoom);
+    final halfSpan = math.pi * height / worldPixels;
+    final centreY = math.log(
+      math.tan(math.pi / 4 + frame.centre.latitude * math.pi / 360),
+    );
+
+    expect(
+      centreY.abs() + halfSpan,
+      lessThanOrEqualTo(math.pi + 0.001),
+      reason: 'the visible strip must stay within the projected world',
+    );
+  });
+
+  test('a tightly framed pair keeps its own centre', () {
+    // Zoomed right in, there is acres of world either side, so nothing is
+    // clamped and the centre stays where the trips put it.
+    final frame = MapFrame.of([london, paris], width: width, height: height)!;
+    expect(frame.centre.latitude, closeTo(50.18, 0.5));
+  });
+
   test('a pair straddling the antimeridian centres on it, not on zero', () {
     final frame = MapFrame.of(
       [const LatLng(0, 179), const LatLng(0, -179)],

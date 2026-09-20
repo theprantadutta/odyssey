@@ -232,11 +232,11 @@ class _StatisticsDashboardScreenState
               const SizedBox(height: AppSizes.space18),
               BarChart(
                 values: spendEntries.map((e) => e.value).toList(),
-                labels: spendEntries
-                    .map((e) => e.key.length > 6
-                        ? e.key.substring(0, 5)
-                        : e.key)
-                    .toList(),
+                // Passed whole. BarChart ellipsises what will not fit, which
+                // is honest about having shortened it - chopping to five
+                // characters here turned 'shopping' into 'shopp', which reads
+                // as a typo rather than as a label that ran out of room.
+                labels: spendEntries.map((e) => e.key).toList(),
               ),
             ],
           ),

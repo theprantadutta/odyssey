@@ -343,16 +343,23 @@ class _MapCanvas extends StatelessWidget {
       userAgentPackageName: 'com.odyssey.app',
     );
 
-    // OSM's standard tiles are light. Inverting and desaturating them gives a
-    // dark map without a second tile source, which keeps one attribution and
-    // one cache. The hue rotation puts the greens and blues back the right way
-    // round after the inversion.
+    // OSM's standard tiles are light. Inverting them gives a dark map without a
+    // second tile source, which keeps one attribution and one cache.
+    //
+    // The inversion is of *luminance*, not of each channel separately. Channel
+    // inversion turns the tiles' pale blue water into its complement, which is
+    // brown, and the whole map came out muddy. Every output channel here reads
+    // the same luminance and differs only in its offset, which collapses the
+    // hue and leaves a neutral - then leans the offsets slightly cool, so the
+    // result sits with the rest of the dark theme rather than beside it.
     if (t.isDark) {
+      // The coefficients are Rec. 709 luminance scaled by -0.75; the offsets
+      // set where white and black land, and carry the cool lean.
       tiles = ColorFiltered(
         colorFilter: const ColorFilter.matrix(<double>[
-          -0.60, -0.20, -0.05, 0, 225,
-          -0.15, -0.65, -0.05, 0, 225,
-          -0.10, -0.20, -0.55, 0, 225,
+          -0.1595, -0.5364, -0.0542, 0, 208,
+          -0.1595, -0.5364, -0.0542, 0, 214,
+          -0.1595, -0.5364, -0.0542, 0, 224,
           0, 0, 0, 1, 0,
         ]),
         child: tiles,

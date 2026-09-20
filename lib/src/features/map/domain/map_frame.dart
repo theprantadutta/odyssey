@@ -72,10 +72,45 @@ class MapFrame {
         .toDouble();
 
     return MapFrame(
-      centre: LatLng((minLat + maxLat) / 2, centreLon),
+      centre: LatLng(
+        _clampLatitudeToWorld(
+          (minLat + maxLat) / 2,
+          zoom: zoom,
+          viewportHeight: height,
+        ),
+        centreLon,
+      ),
       zoom: zoom,
     );
   }
+
+  /// Pulls a centre latitude back until the viewport sits wholly on the world.
+  ///
+  /// At the zoom floor the world is only just as tall as the screen, so a
+  /// centre anywhere other than the equator hangs part of the viewport off the
+  /// top or the bottom - which shows up as a band of empty canvas above the
+  /// map, easily mistaken for a status bar.
+  static double _clampLatitudeToWorld(
+    double latitude, {
+    required double zoom,
+    required double viewportHeight,
+  }) {
+    final worldPixels = _tileSize * math.pow(2, zoom);
+    // Half the viewport, measured in the projection's own units.
+    final halfSpan = math.pi * viewportHeight / worldPixels;
+    final limit = math.pi - halfSpan;
+
+    // The world is shorter than the viewport: nothing can hide the gap, so at
+    // least centre it rather than leaving it all at one end.
+    if (limit <= 0) return 0;
+
+    final y = _mercatorY(latitude).clamp(-limit, limit).toDouble();
+    return _latitudeFromMercatorY(y);
+  }
+
+  /// The inverse of [_mercatorY].
+  static double _latitudeFromMercatorY(double y) =>
+      (2 * math.atan(math.exp(y)) - math.pi / 2) * 180 / math.pi;
 
   /// The centre and width, in degrees, of the shortest arc of longitude that
   /// contains every point.

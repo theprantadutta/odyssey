@@ -252,6 +252,11 @@ class BarChart extends StatelessWidget {
                 child: Text(
                   labels[i],
                   textAlign: TextAlign.center,
+                  // A label wider than its bar was being cut off mid-word with
+                  // no sign it had been - 'shopping' came out as 'shopp',
+                  // which reads as a typo rather than as a shortening.
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.microLabel.copyWith(
                     color: i < values.length && values[i] == peak
                         ? t.limeText
