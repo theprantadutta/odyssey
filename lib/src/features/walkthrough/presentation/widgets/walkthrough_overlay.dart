@@ -90,6 +90,12 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
     }
   }
 
+  /// Roughly how tall a tooltip is: the title row, a couple of lines of body
+  /// and the button row. An estimate, because the card has not been laid out at
+  /// the point the side has to be chosen, and it only has to be close enough to
+  /// tell "there is room here" from "there is not".
+  static const double _tooltipExtent = 240;
+
   void _updateTargetRect() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -109,16 +115,31 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay>
             size.height + padding.top + padding.bottom,
           );
 
-          // Auto-position: if target is in top half, show tooltip below; otherwise above
-          final screenHeight = MediaQuery.of(context).size.height;
-          final targetCenter = offset.dy + size.height / 2;
-          if (step.preferredPosition == TooltipPosition.above) {
-            _showAbove = true;
-          } else if (step.preferredPosition == TooltipPosition.below) {
-            _showAbove = false;
-          } else {
-            _showAbove = targetCenter > screenHeight / 2;
+          final media = MediaQuery.of(context);
+          final screenHeight = media.size.height;
+
+          var above = step.preferredPosition == TooltipPosition.above;
+
+          // ...but a preference is only a preference. A step that asks to sit
+          // above a target near the top of the screen pushes its own card off
+          // the edge - which is what happened once the trip dashboard's add
+          // button moved from a floating button at the bottom into the header,
+          // leaving the last coach mark with its title and body above the
+          // status bar and only its buttons on screen. If the chosen side has
+          // no room and the other does, it flips.
+          final roomAbove = _targetRect!.top - media.padding.top;
+          final roomBelow =
+              screenHeight - _targetRect!.bottom - media.padding.bottom;
+
+          if (above && roomAbove < _tooltipExtent && roomBelow >= roomAbove) {
+            above = false;
+          } else if (!above &&
+              roomBelow < _tooltipExtent &&
+              roomAbove > roomBelow) {
+            above = true;
           }
+
+          _showAbove = above;
         });
 
         _tooltipController.forward();

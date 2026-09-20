@@ -217,11 +217,11 @@ class YearInReviewScreen extends ConsumerWidget {
               const SizedBox(height: AppSizes.space18),
               BarChart(
                 values: monthEntries.map((e) => e.value.toDouble()).toList(),
-                labels: monthEntries
-                    .map(
-                      (e) => e.key.length > 3 ? e.key.substring(0, 1) : e.key,
-                    )
-                    .toList(),
+                // Three letters, not one: a single initial is ambiguous - June
+                // and July are both 'J', March and May both 'M' - and it came
+                // out lowercase besides. BarChart ellipsises anything that
+                // still will not fit.
+                labels: monthEntries.map((e) => _shortMonth(e.key)).toList(),
               ),
             ],
           ),
@@ -289,6 +289,13 @@ class YearInReviewScreen extends ConsumerWidget {
         ),
       ],
     ];
+  }
+
+  /// 'september' to 'Sep'. The API's month names arrive in lower case.
+  static String _shortMonth(String month) {
+    if (month.isEmpty) return month;
+    final short = month.length > 3 ? month.substring(0, 3) : month;
+    return short[0].toUpperCase() + short.substring(1).toLowerCase();
   }
 
   Widget _buildPaywall(BuildContext context) {

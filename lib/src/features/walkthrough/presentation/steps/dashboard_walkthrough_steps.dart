@@ -76,7 +76,9 @@ class DashboardWalkthroughSteps {
             'Ready to plan? Tap here to create a new trip with activities, packing lists, budgets, and more!',
         icon: Icons.add_rounded,
         accentColor: AppColors.accent,
-        preferredPosition: TooltipPosition.above,
+        // Below: this button lives in the header now, not in a floating button
+        // at the foot of the screen, so there is nothing above it to sit in.
+        preferredPosition: TooltipPosition.below,
       ),
     ];
   }
