@@ -134,6 +134,7 @@ class _TripActivitiesTabState extends ConsumerState<TripActivitiesTab> {
 
     if (state.activities.isEmpty) {
       return OdysseyEmptyState(
+        icon: Icons.event_note_outlined,
         message: 'No plans yet. Days fill up one idea at a time.',
         actionLabel: 'Add a plan',
         onAction: _addActivity,

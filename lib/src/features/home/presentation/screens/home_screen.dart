@@ -193,6 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   0,
                 ),
                 child: OdysseyEmptyState(
+                  icon: Icons.explore_outlined,
                   message: _chip == _chips.first
                       ? 'No trips yet. The next one starts here.'
                       : 'Nothing matches $_chip.',

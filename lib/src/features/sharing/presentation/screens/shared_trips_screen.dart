@@ -77,6 +77,7 @@ class SharedTripsScreen extends ConsumerWidget {
               )
             else if (state.trips.isEmpty)
               const OdysseyEmptyState(
+                icon: Icons.groups_outlined,
                 message: 'Nothing shared with you yet. When someone invites '
                     'you to a trip, it lands here.',
               )

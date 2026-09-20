@@ -210,6 +210,7 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
               )
             else if (templates.isEmpty)
               OdysseyEmptyState(
+                icon: Icons.dashboard_customize_outlined,
                 message: discovering
                     ? 'Nothing here under that filter.'
                     : 'You have no templates yet. Save a trip as one from its '

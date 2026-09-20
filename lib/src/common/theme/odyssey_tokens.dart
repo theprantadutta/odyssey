@@ -84,6 +84,11 @@ class OdysseyTokens extends ThemeExtension<OdysseyTokens> {
   final Color card;
 
   /// Slightly heavier card — map tiles, icon chips, file thumbs.
+  ///
+  /// Only ever on top of [card]. In the light theme this IS [canvas] - both are
+  /// paper - so anything drawn in it directly on the page is invisible. That
+  /// caught the skeletons, the disabled button fill and the error plate in
+  /// turn; reach for [skeleton] or [card] when something sits on the canvas.
   final Color cardAlt;
 
   /// The block a [Skeleton] is drawn in.

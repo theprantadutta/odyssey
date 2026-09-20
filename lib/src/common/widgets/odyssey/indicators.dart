@@ -4,10 +4,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/odyssey_tokens.dart';
-import 'buttons.dart';
-import 'chips.dart';
-import 'pressable.dart';
-import 'surfaces.dart';
 
 /// A rounded progress bar.
 ///
@@ -437,88 +433,6 @@ class _SkeletonState extends State<Skeleton>
 
 /// Half the sheen band's width, in alignment units.
 const double _bandHalfWidth = 0.55;
-
-/// The empty-state pattern: a one-line explanation in [OdysseyTokens.ink3]
-/// above a dashed affordance.
-class OdysseyEmptyState extends StatelessWidget {
-  const OdysseyEmptyState({
-    super.key,
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.odyssey;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTypography.rowMeta.copyWith(color: t.ink3),
-        ),
-        if (actionLabel != null) ...[
-          const SizedBox(height: AppSizes.space14),
-          PillButton(
-            label: actionLabel!,
-            onPressed: onAction,
-            style: PillStyle.dashed,
-            padding: const EdgeInsets.symmetric(vertical: 15),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// The error-state pattern. There is no red in this palette, so failure is
-/// signalled with copy on an ordinary card plus a text action.
-class OdysseyErrorState extends StatelessWidget {
-  const OdysseyErrorState({
-    super.key,
-    required this.message,
-    this.onRetry,
-    this.retryLabel = 'Try again',
-  });
-
-  final String message;
-  final VoidCallback? onRetry;
-  final String retryLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.odyssey;
-    return OdysseyCard(
-      padding: const EdgeInsets.all(AppSizes.space18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const EyebrowLabel('Something went wrong'),
-          const SizedBox(height: AppSizes.space10),
-          Text(message, style: AppTypography.subtitle.copyWith(color: t.ink)),
-          if (onRetry != null) ...[
-            const SizedBox(height: AppSizes.space14),
-            Pressable(
-              onTap: onRetry,
-              borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
-              child: Text(
-                retryLabel,
-                style: AppTypography.buttonSmall.copyWith(color: t.limeText),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 /// A compact stat card: a display numeral over a small label. Three of these
 /// sit in the trip detail stat row.

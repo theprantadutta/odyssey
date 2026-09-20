@@ -192,6 +192,7 @@ class _NotificationHistoryScreenState
               )
             else if (state.notifications.isEmpty)
               const OdysseyEmptyState(
+                icon: Icons.notifications_none_rounded,
                 message: 'Nothing yet. Reminders and invites land here.',
               )
             else

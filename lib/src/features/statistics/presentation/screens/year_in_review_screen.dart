@@ -99,6 +99,7 @@ class YearInReviewScreen extends ConsumerWidget {
             ..._buildContent(context, state.stats!)
           else
             const OdysseyEmptyState(
+              icon: Icons.calendar_month_outlined,
               message: 'Nothing recorded for that year.',
             ),
         ],

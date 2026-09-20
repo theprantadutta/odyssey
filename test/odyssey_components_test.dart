@@ -422,6 +422,30 @@ void main() {
       );
     });
 
+    testWidgets('a disabled pill is still visibly a button', (tester) async {
+      // It used to fall back to cardAlt, which in the light theme is the canvas
+      // colour - so 'Agree to continue' on the legal gate rendered as a line of
+      // grey text with no button around it.
+      for (final dark in [true, false]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await pump(tester, const PillButton(label: 'Continue'), dark: dark);
+
+        final tokens = dark ? OdysseyTokens.dark : OdysseyTokens.light;
+        final box = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(PillButton),
+            matching: find.byType(Container),
+          ),
+        );
+
+        expect(
+          (box.decoration! as BoxDecoration).color,
+          isNot(tokens.canvas),
+          reason: 'a disabled pill must not be the canvas colour (dark: $dark)',
+        );
+      }
+    });
+
     testWidgets('a loaded stat card states its value', (tester) async {
       await pump(
         tester,

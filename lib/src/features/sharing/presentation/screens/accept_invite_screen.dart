@@ -87,6 +87,7 @@ class AcceptInviteScreen extends ConsumerWidget {
             OdysseyErrorState(message: state.error!)
           else if (invite == null)
             const OdysseyEmptyState(
+              icon: Icons.link_off_rounded,
               message: 'That invitation could not be found. The link may have '
                   'been used already.',
             )

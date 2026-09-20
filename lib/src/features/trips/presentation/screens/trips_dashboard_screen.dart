@@ -357,6 +357,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
           _searchController.text.isNotEmpty;
       return SliverToBoxAdapter(
         child: OdysseyEmptyState(
+          icon: Icons.luggage_outlined,
           message: filtered
               ? 'Nothing here under that filter.'
               : 'No trips yet. The next one starts here.',

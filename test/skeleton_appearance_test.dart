@@ -29,6 +29,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
+  Future<void> pumpStates(WidgetTester tester, {required bool dark}) async {
+    tester.view.physicalSize = const Size(900, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: dark ? AppTheme.darkTheme : AppTheme.lightTheme,
+        home: const _StateSampler(),
+      ),
+    );
+    await tester.pump();
+  }
+
+  testWidgets('empty and error states, dark', (tester) async {
+    await pumpStates(tester, dark: true);
+    await expectLater(
+      find.byType(_StateSampler),
+      matchesGoldenFile('goldens/states-dark.png'),
+    );
+  });
+
+  testWidgets('empty and error states, light', (tester) async {
+    await pumpStates(tester, dark: false);
+    await expectLater(
+      find.byType(_StateSampler),
+      matchesGoldenFile('goldens/states-light.png'),
+    );
+  });
+
   testWidgets('loading states, dark', (tester) async {
     await pumpSheet(tester, dark: true);
     await expectLater(
@@ -120,6 +150,42 @@ class _LoadingSampler extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The empty and error states side by side, on the page background they sit on.
+class _StateSampler extends StatelessWidget {
+  const _StateSampler();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return ColoredBox(
+      color: t.canvas,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.screenPadding),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            OdysseyEmptyState(
+              icon: Icons.event_note_outlined,
+              message: 'No plans yet. Days fill up one idea at a time.',
+              actionLabel: 'Add a plan',
+              onAction: () {},
+            ),
+            const OdysseyEmptyState(
+              icon: Icons.emoji_events_outlined,
+              message: 'Nothing here yet. Badges arrive as you travel.',
+            ),
+            OdysseyErrorState(
+              message: 'Failed host lookup: odyssey.pranta.dev',
+              onRetry: () {},
             ),
           ],
         ),

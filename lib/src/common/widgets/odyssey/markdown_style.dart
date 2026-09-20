@@ -46,7 +46,8 @@ MarkdownStyleSheet odysseyMarkdownStyle(BuildContext context) {
       color: t.ink2,
     ),
     codeblockDecoration: BoxDecoration(
-      color: t.cardAlt,
+      // card, not cardAlt: cardAlt is the light canvas colour exactly.
+      color: t.card,
       borderRadius: BorderRadius.circular(AppSizes.radiusChip),
     ),
     codeblockPadding: const EdgeInsets.all(AppSizes.space14),

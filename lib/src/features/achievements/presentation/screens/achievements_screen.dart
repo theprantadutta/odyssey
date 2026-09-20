@@ -292,6 +292,7 @@ class _BadgeGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tiles.isEmpty) {
       return const OdysseyEmptyState(
+        icon: Icons.emoji_events_outlined,
         message: 'Nothing here yet. Badges arrive as you travel.',
       );
     }

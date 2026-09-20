@@ -92,6 +92,7 @@ class _SyncConflictsScreenState extends ConsumerState<SyncConflictsScreen> {
                 )
               else if (conflicts.isEmpty)
                 const OdysseyEmptyState(
+                  icon: Icons.cloud_done_outlined,
                   message: 'Everything is in sync. Changes that could not be '
                       'saved automatically would appear here.',
                 )

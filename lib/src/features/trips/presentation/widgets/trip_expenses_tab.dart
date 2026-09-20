@@ -109,6 +109,7 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
 
     if (state.expenses.isEmpty) {
       return OdysseyEmptyState(
+        icon: Icons.payments_outlined,
         message: 'Nothing spent yet. It starts with the first coffee.',
         actionLabel: 'Add an expense',
         onAction: _addExpense,

@@ -115,6 +115,7 @@ class _StatisticsDashboardScreenState
               ..._buildBento(state.statistics!)
             else
               const OdysseyEmptyState(
+                icon: Icons.insights_outlined,
                 message: 'Nothing to count yet. Take a trip.',
               ),
           ],

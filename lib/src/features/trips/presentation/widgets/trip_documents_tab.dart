@@ -142,6 +142,7 @@ class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
 
     if (state.documents.isEmpty) {
       return OdysseyEmptyState(
+        icon: Icons.folder_open_rounded,
         message: 'The wallet is empty. Tickets and bookings live here.',
         actionLabel: 'Upload a document',
         onAction: _upload,

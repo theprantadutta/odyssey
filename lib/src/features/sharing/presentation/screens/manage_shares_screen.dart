@@ -161,6 +161,7 @@ class ManageSharesScreen extends ConsumerWidget {
 
               if (state.shares.isEmpty)
                 const OdysseyEmptyState(
+                  icon: Icons.group_add_outlined,
                   message: 'Only you can see this trip. Invite someone and '
                       'they can follow along.',
                 ),

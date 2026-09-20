@@ -257,6 +257,17 @@ class AppSizes {
   /// Skeleton pulse.
   static const Duration durationPulse = Duration(milliseconds: 1200);
 
+  /// The plate an empty or error state is built around, and its glyph.
+  static const double statePlate = 92;
+  static const double statePlateIcon = 34;
+
+  /// The dash and the gap between dashes on an empty state's outline.
+  static const double stateDash = 7;
+  static const double stateDashGap = 6;
+
+  /// The widest an explanation under a state headline is allowed to run.
+  static const double stateMeasure = 280;
+
   /// Height of the home screen's horizontal trip-thumbnail strip.
   static const double homeThumbStrip = 200;
 

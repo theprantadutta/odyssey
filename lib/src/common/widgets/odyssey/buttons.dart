@@ -128,7 +128,10 @@ class PillButton extends StatelessWidget {
         width: expand ? double.infinity : null,
         padding: effectivePadding,
         decoration: BoxDecoration(
-          color: _enabled ? bg : t.cardAlt,
+          // skeleton, not cardAlt, for the disabled fill: in the light theme
+          // cardAlt is the canvas colour, so a disabled pill vanished into the
+          // page and read as a line of grey text with no button around it.
+          color: _enabled ? bg : t.skeleton,
           borderRadius: BorderRadius.circular(AppSizes.radiusFull),
           border: border != null ? Border.all(color: border) : null,
         ),

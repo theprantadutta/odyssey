@@ -91,6 +91,7 @@ class _TripPackingTabState extends ConsumerState<TripPackingTab> {
 
     if (state.items.isEmpty) {
       return OdysseyEmptyState(
+        icon: Icons.checklist_rounded,
         message: 'Nothing on the list yet. Start with what you would miss.',
         actionLabel: 'Add an item',
         onAction: _addItem,

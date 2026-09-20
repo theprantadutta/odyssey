@@ -96,6 +96,7 @@ class TripMemoriesTab extends ConsumerWidget {
 
     if (state.memories.isEmpty) {
       return OdysseyEmptyState(
+        icon: Icons.photo_camera_outlined,
         message: 'No photos yet. The journal fills itself as you go.',
         actionLabel: 'Add a photo',
         onAction: () => _upload(context),
