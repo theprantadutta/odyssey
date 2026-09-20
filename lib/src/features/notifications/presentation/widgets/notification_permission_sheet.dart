@@ -26,6 +26,11 @@ Future<bool> showNotificationPermissionSheet(
   final blocked = state == NotificationPermissionState.blocked;
 
   final optedIn = await showModalBottomSheet<bool>(
+    // Pushed on the root navigator so the sheet covers the tab bar. The
+    // bar belongs to the shell's Scaffold, which sits outside a branch
+    // navigator - present it there and the bar paints over the sheet,
+    // undimmed, with a dead strip of screen beneath it.
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

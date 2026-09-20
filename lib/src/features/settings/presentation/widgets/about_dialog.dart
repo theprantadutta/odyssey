@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
@@ -11,6 +13,11 @@ Future<void> showAboutOdysseyDialog({
   required String appVersion,
 }) {
   return showModalBottomSheet<void>(
+    // Pushed on the root navigator so the sheet covers the tab bar. The
+    // bar belongs to the shell's Scaffold, which sits outside a branch
+    // navigator - present it there and the bar paints over the sheet,
+    // undimmed, with a dead strip of screen beneath it.
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -80,6 +87,11 @@ class AboutOdysseyDialog extends StatelessWidget {
               children: [
                 _MetaRow(label: 'Built by', value: 'Pranta Dutta'),
                 _MetaRow(
+                  label: 'Website',
+                  value: 'pranta.dev',
+                  url: Uri.parse('https://pranta.dev'),
+                ),
+                _MetaRow(
                   label: 'Copyright',
                   value: '© ${DateTime.now().year}',
                 ),
@@ -101,15 +113,21 @@ class AboutOdysseyDialog extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.label, required this.value});
+  const _MetaRow({required this.label, required this.value, this.url});
 
   final String label;
   final String value;
 
+  /// Opens in the browser when given. The row then reads as a link - the value
+  /// in the accent's text weight, with an outward arrow - rather than sitting
+  /// there looking like the two facts above it.
+  final Uri? url;
+
   @override
   Widget build(BuildContext context) {
     final t = context.odyssey;
-    return Padding(
+
+    final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
@@ -121,10 +139,33 @@ class _MetaRow extends StatelessWidget {
           ),
           Text(
             value,
-            style: AppTypography.caption.copyWith(color: t.ink3),
+            style: AppTypography.caption.copyWith(
+              color: url == null ? t.ink3 : t.limeText,
+            ),
           ),
+          if (url != null) ...[
+            const SizedBox(width: AppSizes.space6),
+            Icon(
+              Icons.north_east_rounded,
+              size: AppSizes.iconXs,
+              color: t.limeText,
+            ),
+          ],
         ],
       ),
+    );
+
+    if (url == null) return row;
+
+    return Pressable(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        // Externally, so the site opens in the browser the user already has
+        // signed in rather than in a stripped-down view inside the app.
+        launchUrl(url!, mode: LaunchMode.externalApplication);
+      },
+      semanticLabel: '$label, $value, opens in your browser',
+      child: row,
     );
   }
 }

@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/network/authenticated_media_fetch.dart';
+import '../../../core/utils/file_url_helper.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_typography.dart';
@@ -303,7 +305,19 @@ class PhotoSurface extends StatelessWidget {
           children: [
             if (hasImage)
               CachedNetworkImage(
-                imageUrl: imageUrl!,
+                // Resolved and fetched through the session, because a file the
+                // user uploaded is not public. Stored media URLs point at the
+                // storage service, which answers 401 on its own; resolve()
+                // rewrites them to Odyssey's file endpoint, which checks the
+                // caller and the owning trip, and the cache manager carries the
+                // token there. Without this every memory photo and every
+                // uploaded cover quietly fell back to its placeholder gradient
+                // - and looked, on screen, like a trip that had no photos.
+                //
+                // An externally hosted cover is left alone by both: resolve()
+                // returns it unchanged and no credential is attached.
+                imageUrl: FileUrlHelper.resolve(imageUrl),
+                cacheManager: AuthenticatedMediaCacheManager.instance,
                 fit: BoxFit.cover,
                 fadeInDuration: AppSizes.durationState,
                 placeholder: (_, _) =>
