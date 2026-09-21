@@ -255,6 +255,7 @@ class PhotoSurface extends StatelessWidget {
   const PhotoSurface({
     super.key,
     this.imageUrl,
+    this.asset,
     this.seed = '',
     this.gradient,
     this.child,
@@ -268,6 +269,14 @@ class PhotoSurface extends StatelessWidget {
   });
 
   final String? imageUrl;
+
+  /// A photograph bundled with the app, drawn instead of [imageUrl].
+  ///
+  /// Separate rather than sniffed out of [imageUrl] by its prefix: one comes
+  /// off the network through the session and the cache, the other is already
+  /// in the binary, and guessing which from the string is how a URL that
+  /// happens to start with the wrong characters becomes a blank tile.
+  final String? asset;
 
   /// Seeds the placeholder gradient so the same entity always renders the same
   /// colours. Pass the trip or memory id.
@@ -292,7 +301,8 @@ class PhotoSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(radius);
-    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    final hasAsset = asset != null && asset!.isNotEmpty;
+    final hasImage = !hasAsset && imageUrl != null && imageUrl!.isNotEmpty;
     final fallback = gradient ?? AppColors.gradientFor(seed);
 
     Widget surface = ClipRRect(
@@ -303,7 +313,14 @@ class PhotoSurface extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (hasImage)
+            if (hasAsset)
+              Image.asset(
+                asset!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) =>
+                    DecoratedBox(decoration: BoxDecoration(gradient: fallback)),
+              )
+            else if (hasImage)
               CachedNetworkImage(
                 // Resolved and fetched through the session, because a file the
                 // user uploaded is not public. Stored media URLs point at the
@@ -330,7 +347,7 @@ class PhotoSurface extends StatelessWidget {
 
             // Texture only belongs on the placeholder — a real photograph
             // already carries its own detail.
-            if (stripes && !hasImage)
+            if (stripes && !hasImage && !hasAsset)
               const _StripeOverlay(),
 
             if (scrim)

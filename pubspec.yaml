@@ -165,6 +165,7 @@ flutter:
     - .env
     - assets/legal/
     - assets/brand/mark/
+    - assets/intro/
 
   # Fonts — Odyssey 2.0 design system.
   # Bundled rather than fetched at runtime: the app is offline-first, and a

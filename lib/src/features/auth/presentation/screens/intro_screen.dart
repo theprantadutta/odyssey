@@ -16,8 +16,7 @@ class _IntroSlide {
   const _IntroSlide({
     required this.headline,
     required this.body,
-    required this.tag,
-    required this.gradient,
+    required this.image,
   });
 
   /// Set very large and tight, and deliberately broken across two lines.
@@ -25,10 +24,8 @@ class _IntroSlide {
 
   final String body;
 
-  /// The `photo · …` label on the placeholder image.
-  final String tag;
-
-  final LinearGradient gradient;
+  /// The photograph behind the pitch. See assets/intro/CREDITS.md.
+  final String image;
 }
 
 /// Onboarding — screen 3a.
@@ -51,24 +48,24 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   static const List<_IntroSlide> _slides = [
     _IntroSlide(
       headline: 'Every trip,\none place.',
-      body: 'Plan the days, pack the bag, split the spend and keep the '
+      body:
+          'Plan the days, pack the bag, split the spend and keep the '
           'photos — Odyssey holds the whole journey.',
-      tag: 'photo · open road',
-      gradient: AppColors.kyotoGradient,
+      image: 'assets/intro/slide-1-open-road.jpg',
     ),
     _IntroSlide(
       headline: 'Plans that\nhold up.',
-      body: 'Build the itinerary day by day, tick activities off as you go, '
+      body:
+          'Build the itinerary day by day, tick activities off as you go, '
           'and keep the packing list honest.',
-      tag: 'photo · morning gates',
-      gradient: AppColors.greenStayGradient,
+      image: 'assets/intro/slide-2-morning-gates.jpg',
     ),
     _IntroSlide(
       headline: 'The journal\nwrites itself.',
-      body: 'Photos land on the map where you took them. Spending, distance '
+      body:
+          'Photos land on the map where you took them. Spending, distance '
           'and days away add up on their own.',
-      tag: 'photo · high desert',
-      gradient: AppColors.autumnGradient,
+      image: 'assets/intro/slide-3-high-desert.jpg',
     ),
   ];
 
@@ -109,131 +106,53 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
     final t = context.odyssey;
     final slide = _slides[_page];
 
-    return Scaffold(
-      backgroundColor: t.canvas,
-      body: Column(
-        children: [
-          // --- full-bleed photo ---
-          SizedBox(
-            height: AppSizes.introPhotoHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PageView.builder(
-                  controller: _pageController,
-                  onPageChanged: _onPageChanged,
-                  itemCount: _slides.length,
-                  itemBuilder: (context, index) => _IntroPhoto(
-                    slide: _slides[index],
-                    canvas: t.canvas,
-                  ),
-                ),
-                Positioned(
-                  left: AppSizes.screenPadding,
-                  top: 62,
-                  child: PhotoTag(slide.tag),
-                ),
-                Positioned(
-                  right: AppSizes.screenPadding,
-                  top: 58,
-                  child: Pressable(
-                    onTap: () => _finish(destination: AppRoutes.login),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.photoTagBg,
-                        borderRadius: BorderRadius.circular(
-                          AppSizes.radiusFull,
-                        ),
-                        border: Border.all(color: AppColors.photoTagBorder),
-                      ),
-                      child: Text(
-                        'Skip',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.onPhoto,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- pitch ---
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.authPadding,
-                30,
-                AppSizes.authPadding,
-                32,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    // Light status-bar icons whatever the theme: the top of this screen is
+    // a photograph under a dark scrim, not the app's canvas.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: t.canvas,
+        body: Column(
+          children: [
+            // --- full-bleed photo ---
+            SizedBox(
+              height: AppSizes.introPhotoHeight,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  StepDots(count: _slides.length, index: _page),
-                  const SizedBox(height: AppSizes.space22),
-                  Text(
-                    slide.headline,
-                    style: AppTypography.heroTitle.copyWith(
-                      fontSize: 42,
-                      letterSpacing: -1.89,
-                      height: 0.98,
-                      color: t.ink,
-                    ),
+                  PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    itemCount: _slides.length,
+                    itemBuilder: (context, index) =>
+                        _IntroPhoto(slide: _slides[index], canvas: t.canvas),
                   ),
-                  const SizedBox(height: AppSizes.space16),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 300),
-                    child: Text(
-                      slide.body,
-                      style: AppTypography.body.copyWith(color: t.ink2),
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.space26),
-                  Row(
-                    children: [
-                      // Lime in both themes: this is the brand call to action,
-                      // not an ordinary primary button.
-                      Expanded(
-                        child: PillButton(
-                          label: _page == _slides.length - 1
-                              ? 'Create account'
-                              : 'Next',
-                          style: PillStyle.brand,
-                          onPressed: _advance,
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.space12),
-                      CircleButton(
-                        glyph: '→',
-                        size: AppSizes.circleIntroArrow,
-                        glyphSize: 20,
-                        onPressed: _advance,
-                        semanticLabel: 'Next',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.space16),
-                  Center(
+                  Positioned(
+                    right: AppSizes.screenPadding,
+                    top: 58,
                     child: Pressable(
                       onTap: () => _finish(destination: AppRoutes.login),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
-                      child: Padding(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.space12,
-                          vertical: AppSizes.space6,
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.photoTagBg,
+                          borderRadius: BorderRadius.circular(
+                            AppSizes.radiusFull,
+                          ),
+                          border: Border.all(color: AppColors.photoTagBorder),
                         ),
                         child: Text(
-                          'I already have an account',
-                          style: AppTypography.pill.copyWith(
-                            fontSize: 12.5,
-                            color: t.ink3,
+                          'Skip',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.onPhoto,
                           ),
                         ),
                       ),
@@ -242,8 +161,90 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
                 ],
               ),
             ),
-          ),
-        ],
+
+            // --- pitch ---
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.authPadding,
+                  30,
+                  AppSizes.authPadding,
+                  32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StepDots(count: _slides.length, index: _page),
+                    const SizedBox(height: AppSizes.space22),
+                    Text(
+                      slide.headline,
+                      style: AppTypography.heroTitle.copyWith(
+                        fontSize: 42,
+                        letterSpacing: -1.89,
+                        height: 0.98,
+                        color: t.ink,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.space16),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 300),
+                      child: Text(
+                        slide.body,
+                        style: AppTypography.body.copyWith(color: t.ink2),
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.space26),
+                    Row(
+                      children: [
+                        // Lime in both themes: this is the brand call to action,
+                        // not an ordinary primary button.
+                        Expanded(
+                          child: PillButton(
+                            label: _page == _slides.length - 1
+                                ? 'Create account'
+                                : 'Next',
+                            style: PillStyle.brand,
+                            onPressed: _advance,
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.space12),
+                        CircleButton(
+                          glyph: '→',
+                          size: AppSizes.circleIntroArrow,
+                          glyphSize: 20,
+                          onPressed: _advance,
+                          semanticLabel: 'Next',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.space16),
+                    Center(
+                      child: Pressable(
+                        onTap: () => _finish(destination: AppRoutes.login),
+                        borderRadius: BorderRadius.circular(
+                          AppSizes.radiusChipXs,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSizes.space12,
+                            vertical: AppSizes.space6,
+                          ),
+                          child: Text(
+                            'I already have an account',
+                            style: AppTypography.pill.copyWith(
+                              fontSize: 12.5,
+                              color: t.ink3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -263,7 +264,7 @@ class _IntroPhoto extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         PhotoSurface(
-          gradient: slide.gradient,
+          asset: slide.image,
           radius: 0,
           scrim: false,
           child: DecoratedBox(
@@ -272,7 +273,13 @@ class _IntroPhoto extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AppColors.obsidian.withValues(alpha: 0.42),
+                  // 0.55, not the mock's 0.42, now that real photographs sit
+                  // behind it. The three differ wildly at the top - open sky on
+                  // two, a dark vault on the third - and at 0.42 the light ones
+                  // left the strip mid-grey, where neither a dark nor a light
+                  // status bar clock could be read. This puts every slide's top
+                  // firmly in the dark, so one icon colour serves all three.
+                  AppColors.obsidian.withValues(alpha: 0.55),
                   AppColors.obsidian.withValues(alpha: 0),
                   canvas,
                 ],
