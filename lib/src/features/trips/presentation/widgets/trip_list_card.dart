@@ -47,17 +47,23 @@ class TripListCard extends StatelessWidget {
         radius: AppSizes.radiusHero,
         child: Stack(
           children: [
-            if (countdown != null)
-              Positioned(
-                right: AppSizes.space14,
-                top: AppSizes.space14,
-                child: PhotoPill(label: countdown),
-              ),
+            // One or the other, never both. Once a trip is under way the
+            // countdown stops counting down and reports progress instead - so
+            // a card in the middle of a trip carried 'DAY 3 / 6' on the left
+            // and 'Day 3 of 6' on the right, the same fact twice. Being on the
+            // trip is the louder thing to say, so it takes the lime badge and
+            // the pill stands down.
             if (progress != null)
               Positioned(
                 left: AppSizes.space14,
                 top: AppSizes.space14,
                 child: OdysseyBadge('DAY ${progress.$1} / ${progress.$2}'),
+              )
+            else if (countdown != null)
+              Positioned(
+                right: AppSizes.space14,
+                top: AppSizes.space14,
+                child: PhotoPill(label: countdown),
               ),
             Positioned(
               left: 0,

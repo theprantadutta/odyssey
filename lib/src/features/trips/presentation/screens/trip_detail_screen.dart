@@ -278,7 +278,20 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                 final progress =
                     ((offset - (AppSizes.coverHeight - 160)) / 80)
                         .clamp(0.0, 1.0);
-                return Opacity(opacity: progress, child: child!);
+                // The status bar icons follow the same fade. Above the fold
+                // they sit on the cover photograph, which the scrim keeps
+                // dark, so they are light; once the fade has replaced that
+                // strip with the canvas they belong to the theme again. A
+                // fixed choice is wrong at one end or the other - and it was
+                // wrong at the top, where a dark clock sat on a dark cover.
+                final overCover = progress < 0.5;
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: (overCover || t.isDark
+                          ? SystemUiOverlayStyle.light
+                          : SystemUiOverlayStyle.dark)
+                      .copyWith(statusBarColor: Colors.transparent),
+                  child: Opacity(opacity: progress, child: child!),
+                );
               },
               child: StatusBarFade(color: t.canvas),
             ),

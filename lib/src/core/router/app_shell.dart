@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../common/theme/odyssey_tokens.dart';
@@ -35,14 +36,26 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.odyssey;
 
-    return Scaffold(
-      backgroundColor: t.canvas,
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: OdysseyNavBar(
-        destinations: kOdysseyDestinations,
-        currentIndex: navigationShell.currentIndex,
-        onSelected: _onSelected,
+    // The four roots declare the status bar for everything inside them.
+    //
+    // AnnotatedRegion is read from whatever is on top of the screen's top edge,
+    // so a screen that says nothing keeps whatever the last screen that *did*
+    // say something asked for. Pop back from the trip detail - which asks for
+    // light icons over its cover photograph - and the map kept them, leaving a
+    // white clock on a cream map. This is the floor the overriding screens sit
+    // on top of.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (t.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: t.canvas,
+        extendBody: true,
+        body: navigationShell,
+        bottomNavigationBar: OdysseyNavBar(
+          destinations: kOdysseyDestinations,
+          currentIndex: navigationShell.currentIndex,
+          onSelected: _onSelected,
+        ),
       ),
     );
   }

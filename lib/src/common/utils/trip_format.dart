@@ -76,7 +76,8 @@ class TripFormat {
         .inDays;
   }
 
-  /// The countdown pill copy: `14 days out`, `Tomorrow`, `Today`, `Under way`.
+  /// The countdown pill copy: `14 days out`, `Tomorrow`, `Today`, `Day 3 of 6`,
+  /// `Completed`, `Under way`.
   static String? countdown(DateTime? start, DateTime? end) {
     final days = daysUntil(start);
     if (days == null) return null;
@@ -87,6 +88,14 @@ class TripFormat {
     // Already started — say where we are in it rather than counting backwards.
     final progress = dayProgress(start, end);
     if (progress != null) return 'Day ${progress.$1} of ${progress.$2}';
+
+    // Past its end date. dayProgress only answers for a day inside the trip, so
+    // without this a trip that finished last week still read 'Under way'.
+    if (end != null && DateTime(end.year, end.month, end.day).isBefore(_today)) {
+      return 'Completed';
+    }
+
+    // Started, with no end date to have passed: genuinely still going.
     return 'Under way';
   }
 
