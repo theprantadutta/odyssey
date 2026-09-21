@@ -23,6 +23,7 @@ import '../../../notifications/presentation/providers/notification_preference_pr
 import '../../../notifications/presentation/widgets/notification_permission_prompt.dart';
 import '../../../subscription/data/models/subscription_model.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/widgets/pro_upsell_card.dart';
 import '../../../trips/data/models/default_trips_eligibility.dart';
 import '../../../trips/presentation/providers/trips_provider.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
@@ -397,6 +398,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: AppSizes.space12),
+
+          // --- what Pro is, for an account that does not have it ---
+          // Renders nothing for a subscriber, and nothing while the
+          // entitlement is still unknown.
+          const ProUpsellCard(),
 
           // --- appearance ---
           // This control is the real theme switch.

@@ -8,6 +8,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../subscription/presentation/widgets/limit_meter.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../memories/data/models/memory_model.dart';
 import '../../../memories/presentation/providers/memories_provider.dart';
@@ -127,6 +128,8 @@ class TripMemoriesTab extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppSizes.space16),
+
+        LimitMeter(LimitKind.memoriesPerTrip, count: memories.length),
 
         // The first tile is twice as tall as the rest, which is what gives the
         // wall its rhythm. Everything after it is a square in a two-up grid.

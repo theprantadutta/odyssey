@@ -9,6 +9,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../subscription/presentation/widgets/limit_meter.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../documents/data/models/document_model.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
@@ -184,6 +185,11 @@ class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
           style: AppTypography.meta.copyWith(color: t.ink3),
         ),
         const SizedBox(height: AppSizes.space18),
+
+        LimitMeter(
+          LimitKind.documentsPerTrip,
+          count: state.documents.length,
+        ),
 
         if (ticket != null) ...[
           _BoardingPassCard(document: ticket, onTap: () => _open(ticket)),

@@ -20,6 +20,8 @@ import '../../data/models/trip_model.dart';
 import '../providers/trips_provider.dart';
 import '../widgets/trip_list_card.dart';
 import 'trip_form_screen.dart';
+import '../../../subscription/presentation/providers/subscription_provider.dart';
+import '../../../subscription/presentation/widgets/limit_meter.dart';
 
 /// Trips — the full list, and the second tab.
 ///
@@ -294,6 +296,23 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
                     selected: _status,
                     counts: _counts(state.trips),
                     onSelected: (value) => setState(() => _status = value),
+                  ),
+                ),
+              ),
+
+              // The count the cap is actually measured against is the server's
+              // own, not the length of what happens to be loaded here.
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSizes.screenPadding,
+                    AppSizes.space14,
+                    AppSizes.screenPadding,
+                    0,
+                  ),
+                  child: LimitMeter(
+                    LimitKind.activeTrips,
+                    count: ref.watch(usageInfoProvider)?.activeTripCount ?? 0,
                   ),
                 ),
               ),
