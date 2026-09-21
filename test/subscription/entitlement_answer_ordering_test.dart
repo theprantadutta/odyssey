@@ -282,6 +282,39 @@ void main() {
     expect(await cachedIsPremium(), isFalse);
   });
 
+  test('signing out and back in leaves a working provider', () async {
+    // Logging out invalidates this provider while the app is still listening to
+    // it, so Riverpod rebuilds it in place rather than disposing it - and a
+    // Notifier is reused across a rebuild. Anything assigned in build() with
+    // `late final` therefore gets assigned twice, which throws and leaves the
+    // provider permanently in error: the next account has no entitlement at
+    // all, only 'Tried to use a provider that is in error state'.
+    adapter.on(_statusPath, () async => _premium.toJson());
+
+    final seen = <Entitlement>[];
+    final container = containerWithEntitlementLog(seen);
+    await pumpEventQueue();
+    expect(container.read(entitlementProvider), Entitlement.premium);
+
+    // Sign out, in the order AccountStateReset does it: empty the account's
+    // tables, close the session, invalidate the user-scoped providers.
+    await db.clearAllData();
+    AccountSession().end();
+    container.invalidate(subscriptionProvider);
+    await pumpEventQueue();
+
+    // Sign back in, as a free account this time.
+    adapter.on(_statusPath, () async => _free.toJson());
+    AccountSession().begin('user-2');
+    await pumpEventQueue();
+
+    expect(container.read(subscriptionProvider).error, isNull,
+        reason: 'the rebuild must not leave the provider in error');
+    expect(container.read(entitlementProvider), Entitlement.free,
+        reason: "the second account's own entitlement must be resolved");
+    expect(container.read(isKnownFreeProvider), isTrue);
+  });
+
   test('a first status read that lands after a sign-out is never applied',
       () async {
     // Nothing cached, so this is the uncached fetch rather than the background

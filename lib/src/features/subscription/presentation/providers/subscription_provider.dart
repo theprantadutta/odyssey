@@ -98,7 +98,13 @@ SubscriptionRepository subscriptionRepository(Ref ref) {
 /// Subscription state notifier provider
 @Riverpod(keepAlive: true)
 class Subscription extends _$Subscription {
-  late final SubscriptionRepository _repository;
+  /// Not `late final`. Invalidating this provider while the app is listening to
+  /// it - which is what signing out does - rebuilds it in place instead of
+  /// disposing it, and a Notifier is reused across a rebuild. A `late final`
+  /// assigned in [build] is therefore assigned twice, which throws and leaves
+  /// the provider permanently in error, so the account that signs in next has
+  /// no entitlement at all.
+  late SubscriptionRepository _repository;
 
   /// Counts entitlement answers applied, so a slower one cannot undo a newer one.
   int _statusSerial = 0;
@@ -115,6 +121,12 @@ class Subscription extends _$Subscription {
   @override
   SubscriptionState build() {
     _repository = ref.read(subscriptionRepositoryProvider);
+
+    // Cleared for the same reason: the instance survives a rebuild, and these
+    // order one account's answers against each other. Carried over, they would
+    // judge the next account's answers against the previous account's history.
+    _statusSerial = 0;
+    _appliedStatusSequence = SubscriptionStatusAnswer.unordered;
 
     // The cached read answers first and the network answers second. Listening is
     // what makes the second answer count: without it the refresh reached the
@@ -143,8 +155,15 @@ class Subscription extends _$Subscription {
     });
     ref.onDispose(sessions.cancel);
 
-    // Load subscription data after initialization
-    Future.microtask(() => refresh());
+    // Only when there is an account to ask about. Signing out rebuilds this
+    // provider, and asking at that moment fetches on behalf of nobody - an
+    // answer that at best is discarded and at worst is the previous account's,
+    // applied to whoever signs in next and then blocking the real read, since
+    // the listener above only re-asks while the entitlement is still unknown.
+    // With no session, that listener is the trigger instead.
+    if (AccountSession().isSignedIn) {
+      Future.microtask(() => refresh());
+    }
 
     return const SubscriptionState(isLoading: true);
   }
