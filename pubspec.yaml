@@ -119,7 +119,8 @@ dependencies:
   in_app_update: ^5.0.0
 
   # Markdown Rendering
-  flutter_markdown: ^0.7.6
+  # The replacement for flutter_markdown, which its authors discontinued.
+  flutter_markdown_plus: ^1.0.12
 
   # Ads (free users only; gated by isPremiumProvider). Bundles the UMP consent SDK.
   google_mobile_ads: ^9.0.0

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
@@ -87,11 +87,14 @@ class _LegalDocumentViewerState extends State<LegalDocumentViewer> {
                   )
                 : Markdown(
                     data: _content,
-                    padding: const EdgeInsets.fromLTRB(
+                    // Plus the nav spacer: this is pushed on the tab's own
+                    // navigator, so the floating bar stays over it and the last
+                    // lines of the document were running underneath.
+                    padding: EdgeInsets.fromLTRB(
                       AppSizes.screenPadding,
                       0,
                       AppSizes.screenPadding,
-                      AppSizes.scrollBottom,
+                      AppSizes.scrollBottom + navScrollSpacer(context),
                     ),
                     styleSheet: odysseyMarkdownStyle(context),
                   ),
