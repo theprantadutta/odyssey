@@ -142,7 +142,12 @@ class SettingsNavRow extends StatelessWidget {
             ),
             if (value != null) ...[
               const SizedBox(width: AppSizes.space10),
+              // flex: 0 so the label's Expanded absorbs all the slack and this
+              // sits against the chevron. With the default flex of 1 the two
+              // split the free space evenly, which left the value stranded in
+              // the middle of the row with a gap either side of it.
               Flexible(
+                flex: 0,
                 child: Text(
                   value!,
                   style: AppTypography.caption.copyWith(color: t.ink3),

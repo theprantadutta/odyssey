@@ -133,7 +133,14 @@ class Subscription extends _$Subscription {
     // and nothing writes it to the cache either - so a fresh install of a
     // Premium account showed Free, and kept showing Free on every launch,
     // because the cache it would have read on the next start was never filled.
-    final sessions = AccountSession().opened.listen((_) => refresh());
+    // Only while the entitlement is still unknown. An account *change* is
+    // already covered: signing out invalidates this provider, so the next
+    // account rebuilds it and asks from scratch. Re-asking on every session
+    // would put a second, unnecessary read in flight across that boundary,
+    // which is precisely where an answer can be applied to the wrong person.
+    final sessions = AccountSession().opened.listen((_) {
+      if (state.entitlement == Entitlement.unknown) refresh();
+    });
     ref.onDispose(sessions.cancel);
 
     // Load subscription data after initialization

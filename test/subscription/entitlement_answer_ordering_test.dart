@@ -297,16 +297,30 @@ void main() {
     expect(container.read(entitlementProvider), Entitlement.unknown);
 
     AccountSession().end();
+
+    // From here the stub answers as user-2, because that is what the server
+    // would do: a read issued after the switch carries user-2's token. Opening
+    // a session prompts one, since an entitlement that never resolved has to be
+    // asked for again - without that, an account whose first read is lost has
+    // no second chance and sits on unknown forever.
+    adapter.on(_statusPath, () async => _free.toJson());
     AccountSession().begin('user-2');
 
+    // ...and only now does user-1's read land. It is the answer under test.
     held.complete(_premium.toJson());
     await pumpEventQueue();
 
-    expect(container.read(entitlementProvider), Entitlement.unknown,
+    expect(container.read(entitlementProvider), isNot(Entitlement.premium),
         reason: "user-1's Premium must not be handed to user-2");
-    expect(container.read(isKnownFreeProvider), isFalse,
-        reason: 'unknown is never shown as free');
-    expect(seen, everyElement(Entitlement.unknown));
-    expect(await db.subscriptionCacheDao.getSubscriptionStatus(), isNull);
+    expect(seen, isNot(contains(Entitlement.premium)),
+        reason: "user-1's Premium must never have been published at all");
+
+    // Whatever is cached belongs to user-2, so the next launch starts from
+    // their entitlement and not from the one that was in flight for user-1.
+    final cached = await db.subscriptionCacheDao.getSubscriptionStatus();
+    if (cached != null) {
+      expect(jsonDecode(cached)['is_premium'], isFalse,
+          reason: "user-1's answer must not be what the next launch reads");
+    }
   });
 }
