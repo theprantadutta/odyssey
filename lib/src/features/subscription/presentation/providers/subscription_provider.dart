@@ -6,6 +6,7 @@ import '../../../../core/services/logger_service.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/repositories/subscription_repository.dart';
 import 'entitlement_state.dart';
+import '../../../../core/session/account_session.dart';
 
 part 'subscription_provider.g.dart';
 
@@ -122,6 +123,18 @@ class Subscription extends _$Subscription {
     // until something happened to read the cache again.
     final updates = _repository.statusUpdates.listen(_applyStatus);
     ref.onDispose(updates.cancel);
+
+    // ...and again when a session opens.
+    //
+    // beginSession is started but not awaited when someone signs in, so the
+    // session can open a moment *after* the auth state flips and after this
+    // provider has already asked. The answer then comes back tagged to session
+    // zero, the guard drops it as belonging to an account that has signed out,
+    // and nothing writes it to the cache either - so a fresh install of a
+    // Premium account showed Free, and kept showing Free on every launch,
+    // because the cache it would have read on the next start was never filled.
+    final sessions = AccountSession().opened.listen((_) => refresh());
+    ref.onDispose(sessions.cancel);
 
     // Load subscription data after initialization
     Future.microtask(() => refresh());

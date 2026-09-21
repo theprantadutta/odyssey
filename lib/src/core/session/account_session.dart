@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../services/logger_service.dart';
 
 /// Tracks which account the app is currently working on behalf of.
@@ -20,6 +22,16 @@ class AccountSession {
   String? _userId;
   int _generation = 0;
 
+  final StreamController<int> _opened = StreamController<int>.broadcast();
+
+  /// Emits the new generation each time a session opens.
+  ///
+  /// Work that is meaningless without an account - loading an entitlement, for
+  /// one - can start before anyone has signed in, and the session guard will
+  /// rightly throw its answer away. Waiting on this is how such work knows to
+  /// ask again once there is somebody to ask about.
+  Stream<int> get opened => _opened.stream;
+
   /// The signed-in account, or null when signed out.
   String? get userId => _userId;
 
@@ -37,6 +49,7 @@ class AccountSession {
     _userId = userId;
     _generation++;
     AppLogger.info('Account session $_generation opened');
+    _opened.add(_generation);
     return _generation;
   }
 
