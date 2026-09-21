@@ -18,43 +18,39 @@ A beautiful, cinematic travel journal mobile app built with Flutter. Plan trips,
 - **Documents** - Store and manage travel documents (PDFs, tickets, reservations)
 - **Achievements** - Gamification system with badges, points, and leaderboard
 - **Statistics** - Visual insights into your travel patterns and history
-- **Beautiful UI** - Sunny warm theme with yellow accents and soft shadows
+- **Odyssey 2.0 design** - Near-black or paper canvas, one acid lime accent, no drop shadows; depth comes from translucent layering and hairlines
 - **Offline Support** - Secure local storage for authentication tokens
 
 ## Screenshots
 
-### 1. Home & Dashboard
+### Home and your trips
 <p align="center">
-  <img src="screenshots/01_home_screen.jpg" width="300" alt="Home Screen">
+  <img src="screenshots/01_home.jpg" width="260" alt="Home">
+  <img src="screenshots/02_trips.jpg" width="260" alt="Your trips">
 </p>
 
-### 2-3. Trip Details
+### A trip, and the days inside it
 <p align="center">
-  <img src="screenshots/02_trip_detail_overview.jpg" width="300" alt="Trip Overview">
-  <img src="screenshots/03_trip_detail_activities.jpg" width="300" alt="Activities">
+  <img src="screenshots/03_trip_overview.jpg" width="260" alt="Trip overview">
+  <img src="screenshots/04_day_plan.jpg" width="260" alt="Day plan">
 </p>
 
-### 4-5. Memories & Map
+### Packing and spend
 <p align="center">
-  <img src="screenshots/04_trip_detail_memories.jpg" width="300" alt="Memories">
-  <img src="screenshots/05_trip_detail_map.jpg" width="300" alt="Map View">
+  <img src="screenshots/05_packing.jpg" width="260" alt="Packing list">
+  <img src="screenshots/06_spend.jpg" width="260" alt="Spend">
 </p>
 
-### 6-7. Packing & Budget
+### Memories and the world map
 <p align="center">
-  <img src="screenshots/06_trip_detail_packing.jpg" width="300" alt="Packing List">
-  <img src="screenshots/07_trip_detail_budget.jpg" width="300" alt="Budget Tracking">
+  <img src="screenshots/07_memories.jpg" width="260" alt="Memories">
+  <img src="screenshots/08_world_map.jpg" width="260" alt="World map">
 </p>
 
-### 8-9. Documents & Achievements
+### What it all adds up to
 <p align="center">
-  <img src="screenshots/08_trip_detail_documents.jpg" width="300" alt="Documents">
-  <img src="screenshots/09_trip_detail_achievements.jpg" width="300" alt="Achievements">
-</p>
-
-### 10. Statistics
-<p align="center">
-  <img src="screenshots/10_statistics.jpg" width="300" alt="Statistics">
+  <img src="screenshots/09_statistics.jpg" width="260" alt="Statistics">
+  <img src="screenshots/10_year_in_review.jpg" width="260" alt="Year in review">
 </p>
 
 ## Tech Stack
@@ -63,7 +59,7 @@ A beautiful, cinematic travel journal mobile app built with Flutter. Plan trips,
 |----------|------------|
 | **Framework** | Flutter 3.10+ |
 | **State Management** | Riverpod 3.0 with code generation |
-| **Navigation** | GoRouter 17.0 |
+| **Navigation** | GoRouter 18.0 |
 | **HTTP Client** | Dio 5.7 with interceptors |
 | **Storage** | Flutter Secure Storage |
 | **Maps** | Flutter Map + LatLong2 |

@@ -42,8 +42,9 @@ class YearInReviewScreen extends ConsumerWidget {
     return OdysseyScaffold(
       // A temporary unlock looks exactly like Pro until the day it stops
       // working. Saying how long is left turns "it broke" into "it ran out".
-      bottomBar:
-          const TemporaryUnlockBanner(feature: PremiumFeature.yearInReview),
+      bottomBar: const TemporaryUnlockBanner(
+        feature: PremiumFeature.yearInReview,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSizes.screenPadding,
@@ -111,7 +112,11 @@ class YearInReviewScreen extends ConsumerWidget {
     final t = context.odyssey;
     final symbol = _symbolFor(stats.reportingCurrency);
 
-    final monthEntries = stats.tripsByMonth.entries.toList();
+    // Sorted, because a map arrives in whatever order it was built and a
+    // chart of the year read 'Oct Sep Nov'. Anything unrecognised goes last
+    // rather than being dropped or landing in January.
+    final monthEntries = stats.tripsByMonth.entries.toList()
+      ..sort((a, b) => _monthIndex(a.key).compareTo(_monthIndex(b.key)));
     final categorySegments = BarSegment.capped(
       (stats.expensesByCategory.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value)))
@@ -289,6 +294,27 @@ class YearInReviewScreen extends ConsumerWidget {
         ),
       ],
     ];
+  }
+
+  static const _months = [
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
+  ];
+
+  /// Where a month name falls in the year, or past the end if it is not one.
+  static int _monthIndex(String month) {
+    final i = _months.indexOf(month.trim().toLowerCase());
+    return i == -1 ? _months.length : i;
   }
 
   /// 'september' to 'Sep'. The API's month names arrive in lower case.
