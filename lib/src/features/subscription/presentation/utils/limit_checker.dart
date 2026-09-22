@@ -1,22 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/subscription_model.dart';
+import '../providers/entitlement_state.dart';
 import '../providers/subscription_provider.dart';
 import '../screens/paywall_screen.dart';
 
 /// Centralized utility for proactive limit checking before creation flows.
 /// Shows the paywall and returns false if the user has hit their tier limit.
 class LimitChecker {
-  /// Returns the TierLimits for the user's current tier, or null if not loaded.
+  /// The caps that apply to this account, or null when they must not be
+  /// applied here.
+  ///
+  /// Three answers, not two. `sub.isPremium` is false for an account whose
+  /// entitlement has not resolved yet, so choosing the tier with it handed a
+  /// subscriber the free caps during startup - and every caller below turns a
+  /// cap into a paywall. A paying customer could be stopped from adding a
+  /// sixth photo and asked to buy what they had already bought.
+  ///
+  /// While the answer is unknown this returns null, which every caller already
+  /// reads as 'let the server decide'. That is the honest position: the server
+  /// is the authority on entitlement and enforces these caps itself, so the
+  /// worst case for a free account at its cap is a rejection a moment later
+  /// instead of a paywall a moment sooner. The worst case for the alternative
+  /// is billing someone twice.
   static TierLimits? _getTierLimits(WidgetRef ref) {
     final sub = ref.read(subscriptionProvider);
-    return sub.isPremium ? sub.limits?.premium : sub.limits?.free;
+    return switch (sub.entitlement) {
+      Entitlement.premium => sub.limits?.premium,
+      Entitlement.free => sub.limits?.free,
+      Entitlement.unknown => null,
+    };
   }
 
   /// Check if user can create a new trip. Shows paywall if limit hit.
   static Future<bool> canCreateTrip(BuildContext context, WidgetRef ref) async {
     final limits = _getTierLimits(ref);
-    if (limits == null) return true; // Limits not loaded yet, let backend handle it
+    // Not loaded, or the entitlement is still unknown. Either way this is
+    // not the place to decide - the server enforces the same caps.
+    if (limits == null) return true;
 
     final usage = ref.read(usageInfoProvider);
     final currentCount = usage?.activeTripCount ?? 0;

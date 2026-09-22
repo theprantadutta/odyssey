@@ -18,7 +18,7 @@ import '../mixins/subscription_lifecycle_mixin.dart';
 import '../providers/feature_access_provider.dart';
 import '../providers/purchase_provider.dart';
 import '../providers/subscription_provider.dart'
-    show SubscriptionState, subscriptionProvider, isPremiumProvider;
+    show SubscriptionState, subscriptionProvider;
 
 /// What Pro is, and how to get it.
 ///
@@ -622,15 +622,27 @@ class PaywallUtils {
   }
 
   /// Returns true when the feature is available, and otherwise offers Pro.
+  ///
+  /// Asks for the entitlement rather than reading whatever is known so far.
+  /// `isPremiumProvider` is false for a subscriber whose status has not arrived
+  /// yet, so reading it here would turn a slow network into a paywall in front
+  /// of somebody who has already paid. A tap can wait; a widget build cannot.
+  ///
+  /// If it still cannot be established, access is refused but no paywall is
+  /// shown: we have no grounds to sell anything to an account we know nothing
+  /// about. Callers should say the check did not complete.
   static Future<bool> checkFeatureAccess(
     BuildContext context,
     WidgetRef ref, {
     required String featureName,
     bool showPaywall = true,
   }) async {
-    if (ref.read(isPremiumProvider)) return true;
+    final entitlement =
+        await ref.read(subscriptionProvider.notifier).resolved();
+    if (entitlement.isPremium) return true;
+    if (!context.mounted) return false;
 
-    if (showPaywall) {
+    if (showPaywall && entitlement.isKnownFree) {
       await PaywallUtils.showQuickPaywall(
         context,
         featureName: featureName,

@@ -8,6 +8,7 @@ import '../../../../common/utils/validators.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../settings/presentation/widgets/settings_rows.dart';
+import '../../../subscription/presentation/providers/entitlement_state.dart';
 import '../../../subscription/presentation/providers/subscription_provider.dart';
 import '../../../subscription/presentation/screens/paywall_screen.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
@@ -50,18 +51,39 @@ class _SaveAsTemplateDialogState extends ConsumerState<SaveAsTemplateDialog> {
     super.dispose();
   }
 
-  void _setPublic(bool isPublic) {
-    if (isPublic && !ref.read(isPremiumProvider)) {
-      PaywallUtils.showPaywall(
-        context,
-        featureName: 'Public Templates',
-        customDescription:
-            'Put your trips in the gallery for other people to build from.',
-        featureIcon: Icons.public,
-      );
+  Future<void> _setPublic(bool isPublic) async {
+    // Turning it off needs no permission, and turning it on is the only branch
+    // that can be wrong.
+    if (!isPublic) {
+      setState(() => _isPublic = false);
       return;
     }
-    setState(() => _isPublic = isPublic);
+
+    // Asked rather than read. `!isPremium` is true for a subscriber whose
+    // entitlement has not arrived yet, and this is a paywall - the one place
+    // where guessing wrong bills somebody for what they already own.
+    final entitlement =
+        await ref.read(subscriptionProvider.notifier).resolved();
+    if (!mounted) return;
+
+    switch (entitlement) {
+      case Entitlement.premium:
+        setState(() => _isPublic = true);
+      case Entitlement.free:
+        PaywallUtils.showPaywall(
+          context,
+          featureName: 'Public Templates',
+          customDescription:
+              'Put your trips in the gallery for other people to build from.',
+          featureIcon: Icons.public,
+        );
+      case Entitlement.unknown:
+        // Neither a paywall nor a free pass. Saying so is better than either.
+        showOdysseyMessage(
+          context,
+          'We could not check your plan just now. Try again in a moment.',
+        );
+    }
   }
 
   Future<void> _save() async {

@@ -62,7 +62,9 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
     final t = context.odyssey;
     final state = ref.watch(achievementsProvider);
     final leaderboard = ref.watch(leaderboardProvider);
-    final isPremium = ref.watch(isPremiumProvider);
+    // isKnownFree, not !isPremium: an entitlement that has not resolved is
+    // neither, and a subscriber must not be asked to buy what they have.
+    final showNudge = ref.watch(isKnownFreeProvider);
 
     final (tierName, toNext, tierFraction) = _tierProgress(state.totalPoints);
 
@@ -126,7 +128,7 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
               ),
               const SizedBox(height: AppSizes.space16),
 
-              if (!isPremium) ...[
+              if (showNudge) ...[
                 _PremiumNudge(onTap: () => context.push(AppRoutes.subscription)),
                 const SizedBox(height: AppSizes.space12),
               ],

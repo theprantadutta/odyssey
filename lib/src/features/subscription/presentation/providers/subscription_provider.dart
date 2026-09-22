@@ -218,6 +218,39 @@ class Subscription extends _$Subscription {
     await _loadSupportingData(fresh: false);
   }
 
+  /// Waits for a definite answer about this account, for callers that need one.
+  ///
+  /// Anything that *denies* on the absence of Premium has no safe reading of
+  /// `unknown`: treating it as free charges a subscriber twice, and treating it
+  /// as Premium hands a free account something it has not bought. Those callers
+  /// are answering a tap, so they can afford to ask and wait where a widget
+  /// being built cannot.
+  ///
+  /// Returns [Entitlement.unknown] if it still cannot be established, which is
+  /// the honest answer and not a licence to assume the cheaper one - say so
+  /// rather than guessing.
+  Future<Entitlement> resolved({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    if (state.entitlement.isResolved) return state.entitlement;
+    if (!AccountSession().isSignedIn) return Entitlement.unknown;
+
+    // Several gated taps in a row share one request rather than starting a
+    // race whose answers would arrive out of order.
+    final inFlight = _resolving ??= _loadEntitlement(fresh: false);
+    try {
+      await inFlight.timeout(timeout);
+    } catch (e) {
+      AppLogger.warning('Entitlement did not resolve in time: $e');
+    } finally {
+      if (identical(_resolving, inFlight)) _resolving = null;
+    }
+    return state.entitlement;
+  }
+
+  /// The entitlement load [resolved] is waiting on, if there is one.
+  Future<void>? _resolving;
+
   /// Loads the one thing that decides access.
   ///
   /// On failure the entitlement is left **as it was**, not reset to free. A

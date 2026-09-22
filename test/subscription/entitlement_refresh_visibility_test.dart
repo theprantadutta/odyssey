@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odyssey/src/core/database/app_database.dart';
 import 'package:odyssey/src/core/database/database_service.dart';
-import 'package:odyssey/src/core/network/dio_client.dart';
 import 'package:odyssey/src/core/providers/analytics_provider.dart';
 import 'package:odyssey/src/core/services/analytics_service.dart';
 import 'package:odyssey/src/core/session/account_session.dart';
@@ -15,6 +13,8 @@ import 'package:odyssey/src/features/subscription/data/models/subscription_model
 import 'package:odyssey/src/features/subscription/data/repositories/subscription_repository.dart';
 import 'package:odyssey/src/features/subscription/presentation/providers/entitlement_state.dart';
 import 'package:odyssey/src/features/subscription/presentation/providers/subscription_provider.dart';
+
+import 'stub_dio_client.dart';
 
 /// Whether a subscription bought, or lost, somewhere else reaches the ad gate
 /// (audit A23).
@@ -43,96 +43,16 @@ const _free = SubscriptionStatus(
   isPremium: false,
 );
 
-/// A `DioClient` that answers from a script instead of the network.
-class _StubDioClient implements DioClient {
-  final List<String> requested = <String>[];
-  final Map<String, Future<Map<String, dynamic>> Function()> _handlers = {};
-
-  void onGet(String path, Future<Map<String, dynamic>> Function() handler) {
-    _handlers[path] = handler;
-  }
-
-  int callsTo(String path) => requested.where((p) => p == path).length;
-
-  @override
-  Future<Response> get(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    requested.add(path);
-
-    final handler = _handlers[path];
-    if (handler == null) {
-      // Usage, limits and pricing are not what these tests are about. Failing
-      // them also checks they cannot take entitlement down with them.
-      throw StateError('no stubbed response for $path');
-    }
-
-    return Response<Map<String, dynamic>>(
-      requestOptions: RequestOptions(path: path),
-      statusCode: 200,
-      data: await handler(),
-    );
-  }
-
-  @override
-  Dio get dio => throw UnimplementedError();
-
-  @override
-  void init() => throw UnimplementedError();
-
-  @override
-  Future<Response> post(String path,
-          {dynamic data,
-          Map<String, dynamic>? queryParameters,
-          Options? options,
-          CancelToken? cancelToken}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<Response> put(String path,
-          {dynamic data,
-          Map<String, dynamic>? queryParameters,
-          Options? options,
-          CancelToken? cancelToken}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<Response> patch(String path,
-          {dynamic data,
-          Map<String, dynamic>? queryParameters,
-          Options? options,
-          CancelToken? cancelToken}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<Response> delete(String path,
-          {dynamic data,
-          Map<String, dynamic>? queryParameters,
-          Options? options,
-          CancelToken? cancelToken}) =>
-      throw UnimplementedError();
-
-  @override
-  Future<Response> multipart(String path, FormData formData,
-          {Map<String, dynamic>? queryParameters,
-          CancelToken? cancelToken,
-          ProgressCallback? onSendProgress}) =>
-      throw UnimplementedError();
-}
-
 void main() {
   late AppDatabase db;
-  late _StubDioClient dio;
+  late StubDioClient dio;
 
   const statusPath = '/subscription/status';
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     DatabaseService.overrideForTesting(db);
-    dio = _StubDioClient();
+    dio = StubDioClient();
     AccountSession().begin('user-1');
   });
 
