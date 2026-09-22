@@ -125,8 +125,9 @@ class _TripActivitiesTabState extends ConsumerState<TripActivitiesTab> {
     }
 
     if (state.error != null && state.activities.isEmpty) {
-      return OdysseyErrorState(
-        message: state.error!,
+      return OdysseyErrorState.fromError(
+        state.error,
+        message: 'The plans for this trip could not be loaded.',
         onRetry: () =>
             ref.read(tripActivitiesProvider(widget.tripId).notifier).refresh(),
       );

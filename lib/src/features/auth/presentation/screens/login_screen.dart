@@ -54,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        showOdysseyMessage(context, e.toString());
+        showOdysseyError(context, 'That did not work. Please try again.', error: e);
       }
     }
   }
@@ -70,7 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        showOdysseyMessage(context, e.toString());
+        showOdysseyError(context, 'That did not work. Please try again.', error: e);
       }
     }
   }
@@ -90,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         HapticFeedback.heavyImpact();
-        showOdysseyMessage(context, e.toString());
+        showOdysseyError(context, 'That did not work. Please try again.', error: e);
       }
     }
   }

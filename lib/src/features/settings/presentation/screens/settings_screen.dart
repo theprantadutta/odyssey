@@ -141,7 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'Could not request account deletion: $e');
+      showOdysseyError(context, 'Could not request account deletion.', error: e);
     }
   }
 
@@ -202,7 +202,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'Failed to add sample trips: $e');
+      showOdysseyError(context, 'Failed to add sample trips.', error: e);
     } finally {
       if (mounted) setState(() => _isAddingSampleTrips = false);
     }
@@ -244,7 +244,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'Failed to remove sample trips: $e');
+      showOdysseyError(context, 'Failed to remove sample trips.', error: e);
     } finally {
       if (mounted) setState(() => _isRemovingSampleTrips = false);
     }

@@ -11,6 +11,7 @@ import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../settings/presentation/widgets/settings_rows.dart';
 import '../../data/models/notification_preference_model.dart';
 import '../providers/notification_preference_provider.dart';
+import '../../../../common/errors/failure_message.dart';
 
 /// Notification detail — the categories and quiet hours behind the toggles on
 /// the settings screen.
@@ -189,7 +190,7 @@ class _NotificationSettingsScreenState
               const SizedBox(height: AppSizes.space14),
               Text(
                 'These are showing the last values this device saw. '
-                '${state.error}',
+                '${FailureMessage.of(state.error, fallback: 'Your settings could not be refreshed.')}',
                 style: AppTypography.rowMeta.copyWith(color: t.ink3),
               ),
             ],

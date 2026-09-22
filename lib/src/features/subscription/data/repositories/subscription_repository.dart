@@ -8,6 +8,7 @@ import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/subscription_model.dart';
 import '../../../../core/session/account_session.dart';
+import '../../../../common/errors/failure_message.dart';
 
 /// Repository for subscription API calls - read-cache pattern
 class SubscriptionRepository {
@@ -445,7 +446,10 @@ class StorageCheckResult {
 /// Distinct from an ordinary failure so callers can tell "we could not find out"
 /// from "something went wrong". Neither is a reason to assume the free tier, but
 /// only one of them is worth showing the user an error about.
-class SubscriptionStatusUnavailable implements Exception {
+class SubscriptionStatusUnavailable implements UserFacingException {
+  @override
+  String get userMessage => message;
+
   const SubscriptionStatusUnavailable(this.message);
 
   final String message;

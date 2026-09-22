@@ -608,6 +608,16 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (Migrator m, int from, int to) async {
         // Applied in ascending order so an upgrade from any older version walks
         // the same path a stepwise upgrade would have taken.
+        //
+        // Column additions go through [_addColumnIfMissing], never `addColumn`
+        // directly. A table created by an earlier step in this same run is
+        // created from the table's *current* Dart definition - Drift keeps no
+        // history of what it looked like at that schema version - so it already
+        // has every column a later step would add, and adding one again throws
+        // `duplicate column name`. That is not hypothetical: a device coming
+        // from schema 3 created `quarantined_operations` at step 4 complete with
+        // the `reason` column that step 6 then tried to add, and the migration
+        // failed on every launch from then on.
         if (from < 2) {
           // Add new tables
           await m.createTable(localTemplates);
@@ -618,15 +628,31 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(localSubscriptionCache);
 
           // Add missing columns to LocalTripShares
-          await m.addColumn(localTripShares, localTripShares.inviteExpiresAt);
-          await m.addColumn(localTripShares, localTripShares.isDirty);
-          await m.addColumn(localTripShares, localTripShares.isLocalOnly);
-          await m.addColumn(localTripShares, localTripShares.isDeleted);
+          await _addColumnIfMissing(
+            m,
+            localTripShares,
+            localTripShares.inviteExpiresAt,
+          );
+          await _addColumnIfMissing(
+            m,
+            localTripShares,
+            localTripShares.isDirty,
+          );
+          await _addColumnIfMissing(
+            m,
+            localTripShares,
+            localTripShares.isLocalOnly,
+          );
+          await _addColumnIfMissing(
+            m,
+            localTripShares,
+            localTripShares.isDeleted,
+          );
         }
         if (from < 3) {
           // Revision tracking for acknowledgements, and durable conflict records.
-          await m.addColumn(syncQueue, syncQueue.sentRevision);
-          await m.addColumn(syncQueue, syncQueue.sentAt);
+          await _addColumnIfMissing(m, syncQueue, syncQueue.sentRevision);
+          await _addColumnIfMissing(m, syncQueue, syncQueue.sentAt);
           await m.createTable(syncConflicts);
         }
         if (from < 4) {
@@ -642,23 +668,59 @@ class AppDatabase extends _$AppDatabase {
           // Revoked-access recovery is separated from ordinary sign-out work,
           // and unresolved conflicts are preserved in their own right rather
           // than only through the queue row that happened to reference them.
-          await m.addColumn(quarantinedOperations, quarantinedOperations.reason);
-          await m.addColumn(quarantinedRecords, quarantinedRecords.reason);
+          await _addColumnIfMissing(
+            m,
+            quarantinedOperations,
+            quarantinedOperations.reason,
+          );
+          await _addColumnIfMissing(
+            m,
+            quarantinedRecords,
+            quarantinedRecords.reason,
+          );
           await m.createTable(quarantinedConflicts);
         }
         if (from < 7) {
           // Exact server revisions, and ordering that does not depend on a
           // clock with one-second resolution.
-          await m.addColumn(localTrips, localTrips.serverRevision);
-          await m.addColumn(localActivities, localActivities.serverRevision);
-          await m.addColumn(localExpenses, localExpenses.serverRevision);
-          await m.addColumn(localMemories, localMemories.serverRevision);
-          await m.addColumn(localDocuments, localDocuments.serverRevision);
-          await m.addColumn(localPackingItems, localPackingItems.serverRevision);
-          await m.addColumn(localTemplates, localTemplates.serverRevision);
+          await _addColumnIfMissing(m, localTrips, localTrips.serverRevision);
+          await _addColumnIfMissing(
+            m,
+            localActivities,
+            localActivities.serverRevision,
+          );
+          await _addColumnIfMissing(
+            m,
+            localExpenses,
+            localExpenses.serverRevision,
+          );
+          await _addColumnIfMissing(
+            m,
+            localMemories,
+            localMemories.serverRevision,
+          );
+          await _addColumnIfMissing(
+            m,
+            localDocuments,
+            localDocuments.serverRevision,
+          );
+          await _addColumnIfMissing(
+            m,
+            localPackingItems,
+            localPackingItems.serverRevision,
+          );
+          await _addColumnIfMissing(
+            m,
+            localTemplates,
+            localTemplates.serverRevision,
+          );
 
-          await m.addColumn(syncQueue, syncQueue.sequence);
-          await m.addColumn(syncConflicts, syncConflicts.detectedSequence);
+          await _addColumnIfMissing(m, syncQueue, syncQueue.sequence);
+          await _addColumnIfMissing(
+            m,
+            syncConflicts,
+            syncConflicts.detectedSequence,
+          );
 
           // Existing rows get a sequence in their current timestamp order, so
           // an upgrade does not reorder a queue that is already waiting.
@@ -668,6 +730,41 @@ class AppDatabase extends _$AppDatabase {
         }
       },
     );
+  }
+
+  /// Adds [column] to [table] unless the table already has it.
+  ///
+  /// `ALTER TABLE ... ADD COLUMN` has no `IF NOT EXISTS` in SQLite, and a
+  /// duplicate is a hard error that aborts the whole migration. Drift runs the
+  /// migration in a transaction, so the failure rolls back and the app retries
+  /// the identical failing statement on the next launch - the database never
+  /// moves, and the user is locked out permanently rather than once.
+  ///
+  /// Asking the table what it has makes each step idempotent: it fixes the
+  /// upgrade paths where a step creates a table that a later step then tries to
+  /// extend, and it lets a database left half-migrated by an earlier crash
+  /// finish the job instead of failing on the part that already succeeded.
+  @visibleForTesting
+  static Future<void> addColumnIfMissing(
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) => _addColumnIfMissing(m, table, column);
+
+  static Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) async {
+    final rows = await m.database
+        .customSelect(
+          'SELECT name FROM pragma_table_info(?)',
+          variables: [Variable<String>(table.actualTableName)],
+        )
+        .get();
+    final existing = rows.map((r) => r.read<String>('name')).toSet();
+    if (existing.contains(column.name)) return;
+    await m.addColumn(table, column);
   }
 
   /// Empties every table that belongs to the signed-in account.

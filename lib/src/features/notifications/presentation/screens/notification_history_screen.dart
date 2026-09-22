@@ -186,8 +186,9 @@ class _NotificationHistoryScreenState
                 ],
               )
             else if (state.error != null && state.notifications.isEmpty)
-              OdysseyErrorState(
-                message: state.error!,
+              OdysseyErrorState.fromError(
+                state.error,
+                message: 'Your notifications could not be loaded.',
                 onRetry: _handleRefresh,
               )
             else if (state.notifications.isEmpty)

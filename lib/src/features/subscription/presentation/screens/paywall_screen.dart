@@ -124,6 +124,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (purchase.error != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        // Safe by construction: PurchaseNotifier only ever stores prose
+        // it wrote itself, never the billing client's own text.
         showOdysseyMessage(context, purchase.error!);
         ref.read(purchaseProvider.notifier).clearError();
       });

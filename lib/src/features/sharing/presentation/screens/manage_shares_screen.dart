@@ -122,8 +122,9 @@ class ManageSharesScreen extends ConsumerWidget {
                 ],
               )
             else if (state.error != null && state.shares.isEmpty)
-              OdysseyErrorState(
-                message: state.error!,
+              OdysseyErrorState.fromError(
+                state.error,
+                message: 'The people on this trip could not be loaded.',
                 onRetry: () =>
                     ref.read(tripSharesProvider(tripId).notifier).refresh(),
               )

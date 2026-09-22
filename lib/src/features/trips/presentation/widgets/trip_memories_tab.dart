@@ -89,8 +89,9 @@ class TripMemoriesTab extends ConsumerWidget {
     }
 
     if (state.error != null && state.memories.isEmpty) {
-      return OdysseyErrorState(
-        message: state.error!,
+      return OdysseyErrorState.fromError(
+        state.error,
+        message: 'The memories for this trip could not be loaded.',
         onRetry: () => ref.read(tripMemoriesProvider(tripId).notifier).refresh(),
       );
     }

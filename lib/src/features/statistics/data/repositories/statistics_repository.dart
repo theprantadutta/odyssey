@@ -9,9 +9,13 @@ import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/statistics_model.dart';
 import '../../../../core/session/account_session.dart';
+import '../../../../common/errors/failure_message.dart';
 
 /// Exception thrown when a premium feature is accessed by a free user
-class PremiumRequiredException implements Exception {
+class PremiumRequiredException implements UserFacingException {
+  @override
+  String get userMessage => message;
+
   final String message;
   final String featureName;
 

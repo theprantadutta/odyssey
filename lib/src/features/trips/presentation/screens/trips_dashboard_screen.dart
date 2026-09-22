@@ -197,7 +197,7 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'Could not delete that trip: $e');
+      showOdysseyError(context, 'Could not delete that trip.', error: e);
     }
   }
 
@@ -363,8 +363,9 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
 
     if (state.error != null && state.trips.isEmpty) {
       return SliverToBoxAdapter(
-        child: OdysseyErrorState(
-          message: state.error!,
+        child: OdysseyErrorState.fromError(
+          state.error,
+          message: 'Your trips could not be loaded.',
           onRetry: () => ref.read(tripsProvider.notifier).refresh(),
         ),
       );

@@ -100,8 +100,9 @@ class _TripExpensesTabState extends ConsumerState<TripExpensesTab> {
     }
 
     if (state.error != null && state.expenses.isEmpty) {
-      return OdysseyErrorState(
-        message: state.error!,
+      return OdysseyErrorState.fromError(
+        state.error,
+        message: 'The spending for this trip could not be loaded.',
         onRetry: () =>
             ref.read(tripExpensesProvider(widget.tripId).notifier).refresh(),
       );

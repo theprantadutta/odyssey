@@ -82,7 +82,7 @@ class _ReportTemplateSheetState extends ConsumerState<_ReportTemplateSheet> {
       if (!mounted) return;
       setState(() => _submitting = false);
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'That report did not send: $e');
+      showOdysseyError(context, 'That report did not send.', error: e);
     }
   }
 
@@ -207,6 +207,6 @@ Future<void> showBlockAuthorDialog(
   } catch (e) {
     if (!context.mounted) return;
     HapticFeedback.heavyImpact();
-    showOdysseyMessage(context, 'Could not block that author: $e');
+    showOdysseyError(context, 'Could not block that author.', error: e);
   }
 }

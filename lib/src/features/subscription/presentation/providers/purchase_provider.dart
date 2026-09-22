@@ -10,6 +10,7 @@ import '../../data/constants/billing_config.dart';
 import '../../data/services/purchase_mapping.dart';
 import '../../data/services/purchase_service.dart';
 import 'subscription_provider.dart';
+import '../../../../common/errors/failure_message.dart';
 
 part 'purchase_provider.g.dart';
 
@@ -137,7 +138,10 @@ class Purchase extends _$Purchase {
       AppLogger.error('Failed to initialize purchases: $e');
       state = state.copyWith(
         isInitialized: true,
-        error: 'Failed to load store: $e',
+        error: FailureMessage.of(
+          e,
+          fallback: 'The store could not be reached. Try again in a moment.',
+        ),
       );
     }
   }
@@ -181,6 +185,9 @@ class Purchase extends _$Purchase {
   }
 
   void _onPurchaseError(String error) {
+    // The store's own words, from the platform billing client. They are
+    // written for whoever is reading a crash report, not for the person
+    // holding the phone, so they go to the log and no further.
     AppLogger.error('Purchase error: $error');
     _purchaseStartedAt = null;
     unawaited(ref
@@ -188,7 +195,10 @@ class Purchase extends _$Purchase {
         .trackPurchaseFailed(plan: 'unknown', error: error));
     state = state.copyWith(
       isPurchasing: false,
-      error: error,
+      error: FailureMessage.of(
+        error,
+        fallback: 'That purchase did not go through. Nothing was charged.',
+      ),
       clearSuccess: true,
       clearActiveProduct: true,
     );
@@ -290,7 +300,10 @@ class Purchase extends _$Purchase {
     if (!result.success) {
       state = state.copyWith(
         isPurchasing: false,
-        error: result.errorMessage ?? 'Purchase failed',
+        error: FailureMessage.of(
+          result.errorMessage,
+          fallback: 'That purchase did not go through. Nothing was charged.',
+        ),
         clearActiveProduct: true,
       );
     }
@@ -312,7 +325,10 @@ class Purchase extends _$Purchase {
     if (!result.success) {
       state = state.copyWith(
         isPurchasing: false,
-        error: result.errorMessage ?? 'Subscription change failed',
+        error: FailureMessage.of(
+          result.errorMessage,
+          fallback: 'That plan change did not go through.',
+        ),
         clearActiveProduct: true,
       );
     }

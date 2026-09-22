@@ -11,12 +11,16 @@ import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../models/trip_share_model.dart';
 import '../../../../core/session/account_session.dart';
+import '../../../../common/errors/failure_message.dart';
 
 /// Raised when an invitation is attempted with no connection.
 ///
 /// Distinct from a generic network error so the UI can say what is actually
 /// wrong - the invitation was not queued and nothing was sent.
-class OfflineInvitationException implements Exception {
+class OfflineInvitationException implements UserFacingException {
+  @override
+  String get userMessage => message;
+
   const OfflineInvitationException();
 
   String get message =>

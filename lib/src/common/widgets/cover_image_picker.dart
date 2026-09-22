@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/odyssey_tokens.dart';
+import 'odyssey/dialogs.dart';
 import 'odyssey/indicators.dart';
 import '../theme/app_typography.dart';
 import '../../core/network/authenticated_media_fetch.dart';
@@ -139,11 +140,7 @@ class _CoverImagePickerState extends State<CoverImagePicker> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-          ),
-        );
+        showOdysseyError(context, 'That image could not be used.', error: e);
       }
     }
   }

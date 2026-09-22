@@ -166,7 +166,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         _autofillName();
       });
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'Could not take that: $e');
+      if (mounted) showOdysseyError(context, 'Could not take that.', error: e);
     }
   }
 
@@ -214,7 +214,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         _autofillName();
       });
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'Could not open those: $e');
+      if (mounted) showOdysseyError(context, 'Could not open those.', error: e);
     }
   }
 
@@ -273,7 +273,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
         _autofillName();
       });
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'Could not open those: $e');
+      if (mounted) showOdysseyError(context, 'Could not open those.', error: e);
     }
   }
 
@@ -333,7 +333,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             : '${_selectedFiles.length} files added.',
       );
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'That did not upload: $e');
+      if (mounted) showOdysseyError(context, 'That did not upload.', error: e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

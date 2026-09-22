@@ -168,7 +168,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         );
       });
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'Could not open that: $e');
+      if (mounted) showOdysseyError(context, 'Could not open that.', error: e);
     }
   }
 
@@ -299,7 +299,7 @@ class _PhotoUploadScreenState extends ConsumerState<PhotoUploadScreen> {
         );
       }
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'That did not upload: $e');
+      if (mounted) showOdysseyError(context, 'That did not upload.', error: e);
     }
   }
 

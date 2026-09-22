@@ -81,7 +81,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
           .deleteMemory(memory.id);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'Could not delete that: $e');
+      if (mounted) showOdysseyError(context, 'Could not delete that.', error: e);
     }
   }
 

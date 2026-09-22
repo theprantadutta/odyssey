@@ -92,8 +92,9 @@ class YearInReviewScreen extends ConsumerWidget {
               ],
             )
           else if (state.error != null && state.stats == null)
-            OdysseyErrorState(
-              message: state.error!,
+            OdysseyErrorState.fromError(
+              state.error,
+              message: 'Your year in review could not be loaded.',
               onRetry: () => ref.read(yearInReviewProvider.notifier).refresh(),
             )
           else if (state.stats != null)

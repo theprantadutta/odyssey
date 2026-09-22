@@ -82,8 +82,9 @@ class _TripPackingTabState extends ConsumerState<TripPackingTab> {
     }
 
     if (state.error != null && state.items.isEmpty) {
-      return OdysseyErrorState(
-        message: state.error!,
+      return OdysseyErrorState.fromError(
+        state.error,
+        message: 'The packing list for this trip could not be loaded.',
         onRetry: () =>
             ref.read(tripPackingProvider(widget.tripId).notifier).refresh(),
       );

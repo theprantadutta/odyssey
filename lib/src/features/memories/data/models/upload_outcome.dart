@@ -1,3 +1,5 @@
+import '../../../../common/errors/failure_message.dart';
+
 /// Why an upload failed, and whether trying again could possibly help.
 ///
 /// The distinction is what stops the app burning the user's data allowance and
@@ -18,7 +20,10 @@ enum UploadFailureKind {
 }
 
 /// A failed upload, described well enough for the UI to say something true.
-class UploadFailure implements Exception {
+class UploadFailure implements UserFacingException {
+  @override
+  String get userMessage => message;
+
   const UploadFailure({
     required this.kind,
     required this.message,

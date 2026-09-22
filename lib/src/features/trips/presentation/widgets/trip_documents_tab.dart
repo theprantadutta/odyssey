@@ -114,7 +114,7 @@ class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
         showOdysseyMessage(context, 'Nothing on this device can open that.');
       }
     } catch (e) {
-      if (mounted) showOdysseyMessage(context, 'That would not open: $e');
+      if (mounted) showOdysseyError(context, 'That would not open.', error: e);
     }
   }
 
@@ -134,8 +134,9 @@ class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
     }
 
     if (state.error != null && state.documents.isEmpty) {
-      return OdysseyErrorState(
-        message: state.error!,
+      return OdysseyErrorState.fromError(
+        state.error,
+        message: 'The documents for this trip could not be loaded.',
         onRetry: () =>
             ref.read(tripDocumentsProvider(widget.tripId).notifier).refresh(),
       );

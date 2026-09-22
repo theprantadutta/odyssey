@@ -46,6 +46,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen>
         ref.read(purchaseProvider.notifier).clearSuccess();
       }
       if (next.error != null && prev?.error == null) {
+        // Safe by construction - see PurchaseNotifier, which sanitises
+        // everything it puts in `error`.
         showOdysseyMessage(context, next.error!);
         ref.read(purchaseProvider.notifier).clearError();
       }

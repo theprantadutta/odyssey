@@ -293,7 +293,7 @@ Future<void> showAccountLinkingSheet({
   try {
     await ref.read(authProvider.notifier).autoLinkGoogleAccount();
   } catch (e) {
-    if (context.mounted) showOdysseyMessage(context, e.toString());
+    if (context.mounted) showOdysseyError(context, 'That did not work. Please try again.', error: e);
   }
 }
 

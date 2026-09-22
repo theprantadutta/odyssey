@@ -7,9 +7,13 @@ import '../../../../core/services/apple_sign_in_service.dart';
 import '../../../../core/config/api_config.dart';
 import '../models/account_deletion_receipt.dart';
 import '../models/user_model.dart';
+import '../../../../common/errors/failure_message.dart';
 
 /// Exception thrown when account linking is required
-class AccountLinkingRequiredException implements Exception {
+class AccountLinkingRequiredException implements UserFacingException {
+  @override
+  String get userMessage => message;
+
   final String message;
   final String firebaseToken;
 

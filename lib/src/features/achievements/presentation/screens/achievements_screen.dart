@@ -102,8 +102,9 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
                 ],
               )
             else if (state.error != null && state.earned.isEmpty)
-              OdysseyErrorState(
-                message: state.error!,
+              OdysseyErrorState.fromError(
+                state.error,
+                message: 'Your achievements could not be loaded.',
                 onRetry: () => ref.read(achievementsProvider.notifier).refresh(),
               )
             else ...[

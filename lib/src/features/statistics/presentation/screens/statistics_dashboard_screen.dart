@@ -107,8 +107,9 @@ class _StatisticsDashboardScreenState
                 onTap: () => context.push(AppRoutes.subscription),
               )
             else if (state.error != null && state.statistics == null)
-              OdysseyErrorState(
-                message: state.error!,
+              OdysseyErrorState.fromError(
+                state.error,
+                message: 'Your statistics could not be loaded.',
                 onRetry: () => ref.read(statisticsProvider.notifier).refresh(),
               )
             else if (state.statistics != null)

@@ -202,8 +202,9 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
                 ],
               )
             else if (error != null && templates.isEmpty)
-              OdysseyErrorState(
-                message: error,
+              OdysseyErrorState.fromError(
+                error,
+                message: 'The template gallery could not be loaded.',
                 onRetry: () => discovering
                     ? ref.read(templateGalleryProvider.notifier).refresh()
                     : ref.read(myTemplatesProvider.notifier).refresh(),

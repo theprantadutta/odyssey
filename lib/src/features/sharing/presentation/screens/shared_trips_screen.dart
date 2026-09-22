@@ -71,8 +71,9 @@ class SharedTripsScreen extends ConsumerWidget {
                 ],
               )
             else if (state.error != null && state.trips.isEmpty)
-              OdysseyErrorState(
-                message: state.error!,
+              OdysseyErrorState.fromError(
+                state.error,
+                message: 'Trips shared with you could not be loaded.',
                 onRetry: () => ref.read(sharedTripsProvider.notifier).refresh(),
               )
             else if (state.trips.isEmpty)

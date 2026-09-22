@@ -56,7 +56,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       AppLogger.error('Onboarding failed', e);
       if (mounted) {
         HapticFeedback.heavyImpact();
-        showOdysseyMessage(context, 'That did not work: $e');
+        showOdysseyError(context, 'That did not work.', error: e);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

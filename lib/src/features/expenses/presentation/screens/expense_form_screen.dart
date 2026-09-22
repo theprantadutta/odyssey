@@ -159,7 +159,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyMessage(context, 'That did not save: $e');
+      showOdysseyError(context, 'That did not save.', error: e);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

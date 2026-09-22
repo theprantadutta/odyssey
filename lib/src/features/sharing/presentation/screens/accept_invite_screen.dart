@@ -84,7 +84,7 @@ class AcceptInviteScreen extends ConsumerWidget {
               ],
             )
           else if (state.error != null)
-            OdysseyErrorState(message: state.error!)
+            OdysseyErrorState.fromError(state.error, message: 'That invitation could not be opened.')
           else if (invite == null)
             const OdysseyEmptyState(
               icon: Icons.link_off_rounded,

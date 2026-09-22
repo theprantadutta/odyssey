@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../errors/failure_message.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/odyssey_tokens.dart';
@@ -100,6 +101,7 @@ class _StateFrame extends StatelessWidget {
     required this.title,
     required this.message,
     this.eyebrow,
+    this.detail,
     this.primary,
   });
 
@@ -108,6 +110,10 @@ class _StateFrame extends StatelessWidget {
   final String? eyebrow;
   final String title;
   final String? message;
+
+  /// Developer-facing text, rendered only when a caller supplied it -
+  /// which [OdysseyErrorState.fromError] only does outside release builds.
+  final String? detail;
   final Widget? primary;
 
   @override
@@ -144,6 +150,23 @@ class _StateFrame extends StatelessWidget {
                 message!,
                 textAlign: TextAlign.center,
                 style: AppTypography.rowMeta.copyWith(color: t.ink3),
+              ),
+            ),
+          ],
+
+          if (detail != null && detail!.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.space12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppSizes.stateMeasure),
+              child: Text(
+                detail!,
+                textAlign: TextAlign.center,
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.rowMeta.copyWith(
+                  color: t.ink3.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
               ),
             ),
           ],
@@ -224,6 +247,11 @@ class OdysseyEmptyState extends StatelessWidget {
 /// closed, solid plate rather than by an alarm colour. The retry is a real
 /// button: it is the only thing the user can usefully do, and as a text link it
 /// read as a footnote.
+///
+/// The default constructor takes prose somebody wrote. To describe a thrown
+/// object, use [OdysseyErrorState.fromError], which decides what a release
+/// build is allowed to repeat - there is deliberately no constructor that puts
+/// an exception's own words in front of a user.
 class OdysseyErrorState extends StatelessWidget {
   const OdysseyErrorState({
     super.key,
@@ -232,11 +260,32 @@ class OdysseyErrorState extends StatelessWidget {
     this.icon = Icons.cloud_off_rounded,
     this.onRetry,
     this.retryLabel = 'Try again',
-  });
+  }) : detail = null;
 
-  /// What went wrong. Often an exception's own words, so it is set quietly,
-  /// under a headline that says the useful part in plain English.
+  /// Describes [error] without quoting it.
+  ///
+  /// [message] is the fallback used when the failure is not one of the
+  /// recognised, explainable kinds - the caller's own words for what was being
+  /// attempted, which beat anything a general classifier can say.
+  ///
+  /// In a debug build the raw text is shown underneath, so the screen and the
+  /// console agree while developing. In a release build it does not exist.
+  OdysseyErrorState.fromError(
+    Object? error, {
+    super.key,
+    String message = 'Something went wrong. Please try again.',
+    this.title = 'That did not load.',
+    this.icon = Icons.cloud_off_rounded,
+    this.onRetry,
+    this.retryLabel = 'Try again',
+  })  : message = FailureMessage.of(error, fallback: message),
+        detail = FailureMessage.detailFor(error);
+
+  /// What to tell the user. Always prose written for them.
   final String message;
+
+  /// The underlying text, in debug builds only. Null in release, always.
+  final String? detail;
 
   final String title;
   final IconData icon;
@@ -251,6 +300,7 @@ class OdysseyErrorState extends StatelessWidget {
       eyebrow: 'Something went wrong',
       title: title,
       message: message,
+      detail: detail,
       primary: onRetry == null
           ? null
           : PillButton(

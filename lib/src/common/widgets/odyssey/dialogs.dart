@@ -9,6 +9,7 @@ import 'chips.dart';
 import 'inputs.dart';
 import 'pressable.dart';
 import 'surfaces.dart';
+import '../../errors/failure_message.dart';
 
 /// A confirmation sheet in the Odyssey surface language.
 ///
@@ -248,6 +249,30 @@ void showOdysseyMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// Tells the user an action failed, without repeating what was thrown.
+///
+/// Use this instead of interpolating an exception into [showOdysseyMessage].
+/// `'That did not save: $e'` looks harmless while you are writing it and ends
+/// up putting a driver name, a SQL fragment or a file path on a stranger's
+/// screen.
+///
+/// [message] is what was being attempted, in your own words. [error] is only
+/// consulted for the failures that can be explained usefully - offline, timed
+/// out, no access - and, in debug builds, appended so that the toast and the
+/// console agree.
+void showOdysseyError(
+  BuildContext context,
+  String message, {
+  Object? error,
+}) {
+  final text = FailureMessage.of(error, fallback: message);
+  final detail = FailureMessage.detailFor(error);
+  showOdysseyMessage(
+    context,
+    detail == null ? text : [text, detail].join('\n\n'),
+  );
 }
 
 /// One option in a row-style [showOdysseyPicker].
