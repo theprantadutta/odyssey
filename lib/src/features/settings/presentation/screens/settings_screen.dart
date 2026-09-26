@@ -153,6 +153,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return eligibility.asData?.value.canAdd ?? true;
   }
 
+  bool _hasSampleTrips(AsyncValue<DefaultTripsEligibility> eligibility) {
+    // An account can hold demo trips even when the one-time allowance was
+    // never recorded against it, so ask what is actually there rather than
+    // inferring it from the allowance being spent.
+    return eligibility.asData?.value.hasDemoTrips ?? false;
+  }
+
   String _sampleTripsMeta(AsyncValue<DefaultTripsEligibility> eligibility) {
     if (_isAddingSampleTrips) return 'Adding…';
     if (!_canAddSampleTrips(eligibility)) return 'Already added to this account';
@@ -603,7 +610,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ? _handleAddSampleTrips
                     : null,
               ),
-              if (!_canAddSampleTrips(eligibility))
+              if (_hasSampleTrips(eligibility))
                 SettingsNavRow(
                   icon: Icons.delete_outline_rounded,
                   label: 'Remove sample trips',
