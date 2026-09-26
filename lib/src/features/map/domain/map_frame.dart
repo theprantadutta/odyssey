@@ -66,9 +66,23 @@ class MapFrame {
         ? maxZoom
         : _log2(usableHeight / (_tileSize * (latSpan / (2 * math.pi))));
 
-    final zoom = math
-        .min(zoomForWidth, zoomForHeight)
-        .clamp(minZoom, maxZoom)
+    final fit = math.min(zoomForWidth, zoomForHeight);
+
+    // Raising the fit to [minZoom] keeps the world as tall as the viewport, but
+    // it also narrows what is on screen. On a tall, narrow viewport that can
+    // crop the very points being framed: the floor grows with height while the
+    // longitude on screen grows with width, so past about a 2.1:1 viewport a
+    // globe-spanning pair lands just outside the edges and the map opens on
+    // empty ocean. A band of canvas is a blemish; no pins at all is a failure,
+    // so the floor only applies while it still holds every point.
+    //
+    // That is measured against the whole viewport rather than [usableWidth]:
+    // giving up the padding costs a pin its breathing room at the edge, which
+    // is a fair price for the world still covering the screen. Giving up the
+    // pin itself is not.
+    final floored = math.max(fit, minZoom);
+    final zoom = (_holdsLongitude(floored, lonSpan, width) ? floored : fit)
+        .clamp(0.0, maxZoom)
         .toDouble();
 
     return MapFrame(
@@ -83,6 +97,11 @@ class MapFrame {
       zoom: zoom,
     );
   }
+
+  /// Whether a viewport [width] wide still spans [lonSpan] degrees at [zoom].
+  static bool _holdsLongitude(double zoom, double lonSpan, double width) =>
+      lonSpan <= 0 ||
+      360 * width / (_tileSize * math.pow(2, zoom)) >= lonSpan;
 
   /// Pulls a centre latitude back until the viewport sits wholly on the world.
   ///

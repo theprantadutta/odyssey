@@ -58,7 +58,10 @@ void main() {
     expect(frame.zoom, 12);
   });
 
-  test('zoom never exceeds the bounds it is given', () {
+  test('maxZoom is a hard ceiling, minZoom yields rather than crop', () {
+    // Three trips spanning 189 degrees. At minZoom 2 only 137 of them are on
+    // screen, so holding the floor would push a pin off the edge; the fit wins
+    // instead. maxZoom has no such excuse and still binds.
     final spread = MapFrame.of(
       [newYork, bali, london],
       width: width,
@@ -66,7 +69,18 @@ void main() {
       minZoom: 2,
       maxZoom: 8,
     )!;
-    expect(spread.zoom, inInclusiveRange(2, 8));
+    expect(spread.zoom, lessThan(2));
+    expect(spread.zoom, lessThanOrEqualTo(8));
+
+    // A tight pair never reaches the ceiling from below, so it stays clamped.
+    final tight = MapFrame.of(
+      [london, paris],
+      width: width,
+      height: height,
+      minZoom: 2,
+      maxZoom: 8,
+    )!;
+    expect(tight.zoom, inInclusiveRange(2, 8));
   });
 
   test('longitude comes back inside the usual range', () {
@@ -159,5 +173,44 @@ void main() {
     // arc is 2 degrees wide - not 358 centred on Greenwich.
     expect(frame.centre.longitude.abs(), closeTo(180, 0.001));
     expect(frame.zoom, greaterThan(5));
+  });
+
+  test('a tall viewport still frames a globe-spanning pair', () {
+    // iPhone 17 Pro: 2.17:1, where the old zoom floor won out over the fit and
+    // left both pins just off the edges, opening the map on empty ocean.
+    const width = 402.0;
+    const height = 874.0;
+
+    final frame = MapFrame.of(
+      [newYork, bali],
+      width: width,
+      height: height,
+      minZoom: MapFrame.minZoomFor(height),
+    )!;
+
+    // The floor no longer wins when it would crop the pins.
+    expect(frame.zoom, lessThan(MapFrame.minZoomFor(height)));
+
+    final visibleLon = 360 * width / (256 * math.pow(2, frame.zoom));
+    for (final trip in [newYork, bali]) {
+      expect(
+        offsetFrom(frame.centre.longitude, trip.longitude).abs(),
+        lessThan(visibleLon / 2),
+        reason: 'trip at ${trip.longitude} must be on screen',
+      );
+    }
+  });
+
+  test('the floor still wins when it costs no pins', () {
+    // Two trips in one region: the fit is far tighter than the floor, so the
+    // floor applies as before and the world stays as tall as the screen.
+    final frame = MapFrame.of(
+      [london, paris],
+      width: width,
+      height: height,
+      minZoom: MapFrame.minZoomFor(height),
+    )!;
+
+    expect(frame.zoom, greaterThanOrEqualTo(MapFrame.minZoomFor(height)));
   });
 }

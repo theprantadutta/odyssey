@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -76,19 +78,35 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
     // The opening fit is not something the user did, so it does not buzz.
     if (haptic) HapticFeedback.selectionClick();
 
-    // Framed by hand rather than with CameraFit.coordinates, which treats
-    // longitude as a line. See [MapFrame] for why that puts a New York and a
-    // Bali trip on opposite edges of a map centred on Africa.
-    final size = MediaQuery.sizeOf(context);
-    final frame = MapFrame.of(
-      located.map((l) => LatLng(l.latitude!, l.longitude!)).toList(),
-      width: size.width,
-      height: size.height,
-      minZoom: MapFrame.minZoomFor(size.height),
-    );
+    final frame = _frameFor(located, MediaQuery.sizeOf(context));
     if (frame == null) return;
 
     _mapController.move(frame.centre, frame.zoom);
+  }
+
+  /// Where the camera goes to hold [located] all at once.
+  ///
+  /// Framed by hand rather than with CameraFit.coordinates, which treats
+  /// longitude as a line. See [MapFrame] for why that puts a New York and a
+  /// Bali trip on opposite edges of a map centred on Africa.
+  MapFrame? _frameFor(List<TripLocation> located, Size size) => MapFrame.of(
+    located.map((l) => LatLng(l.latitude!, l.longitude!)).toList(),
+    width: size.width,
+    height: size.height,
+    minZoom: MapFrame.minZoomFor(size.height),
+  );
+
+  /// The zoom the canvas may not go below.
+  ///
+  /// Normally the floor, so a pinch cannot open bands of empty canvas. But
+  /// flutter_map clamps the camera to this, so a floor above the zoom that
+  /// frames the trips would silently undo [_fitToTrips] and leave the user
+  /// looking at the ocean between their pins.
+  double _canvasMinZoom(List<TripLocation> located, Size size) {
+    final floor = MapFrame.minZoomFor(size.height);
+    if (located.isEmpty) return floor;
+    final frame = _frameFor(located, size);
+    return frame == null ? floor : math.min(floor, frame.zoom);
   }
 
   @override
@@ -116,7 +134,7 @@ class _WorldMapScreenState extends ConsumerState<WorldMapScreen> {
               controller: _mapController,
               tileUrl: _tileUrl,
               locations: located,
-              minZoom: MapFrame.minZoomFor(MediaQuery.sizeOf(context).height),
+              minZoom: _canvasMinZoom(located, MediaQuery.sizeOf(context)),
               onReady: () {
                 _mapReady = true;
                 _frameOnFirstLoad(located);
@@ -373,14 +391,20 @@ class _MapCanvas extends StatelessWidget {
         options: MapOptions(
           initialCenter: const LatLng(20.0, 0.0),
           initialZoom: 2.0,
-          // Floored where the world still covers the viewport, so zooming out
-          // cannot leave bands of empty canvas above and below it.
+          // Usually floored where the world still covers the viewport, so a
+          // pinch cannot leave bands above and below it. It drops below that
+          // only when framing trips far enough apart needs the room - see
+          // [_canvasMinZoom], and [backgroundColor] for what fills the gap.
           //
           // CameraConstraint.containLatitude() reads like the right tool and is
           // not: it *refuses* a camera that is zoomed out too far rather than
           // correcting it, so the opening fit was being cancelled outright and
           // the map never moved at all.
           minZoom: minZoom,
+          // OpenStreetMap's own water, so that when the world is shorter than
+          // the viewport the strips above and below read as more sea rather
+          // than as the app showing through a hole in the map.
+          backgroundColor: const Color(0xFFAAD3DF),
           maxZoom: 18.0,
           onMapReady: onReady,
           onTap: (_, _) => onClearSelection(),
