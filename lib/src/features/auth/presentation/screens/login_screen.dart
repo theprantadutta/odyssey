@@ -9,6 +9,7 @@ import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/utils/validators.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../guest_prompts.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_scaffold.dart';
 
@@ -57,6 +58,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         showOdysseyError(context, 'That did not work. Please try again.', error: e);
       }
     }
+  }
+
+  Future<void> _handleContinueAsGuest() async {
+    final confirmed = await confirmContinueAsGuest(context);
+    if (!confirmed || !mounted) return;
+    HapticFeedback.mediumImpact();
+    // The router takes it from here: onboarding first, then home.
+    await ref.read(authProvider.notifier).continueAsGuest();
   }
 
   Future<void> _handleGoogleSignIn() async {
@@ -187,6 +196,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       footerPrompt: 'New here? ',
       footerAction: 'Create an account',
       onFooterTap: widget.onRegisterTap,
+      onContinueAsGuest:
+          authState.isGuest || isBusy ? null : _handleContinueAsGuest,
     );
   }
 }

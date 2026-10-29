@@ -9,7 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../../core/sync/local_record_reconciler.dart';
@@ -29,10 +29,10 @@ class ActivityRepository {
   }) async {
     final localActivities = await _db.activitiesDao.getByTrip(tripId);
 
-    if (localActivities.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localActivities.isNotEmpty || !ApiAvailability.canReachApi) {
       final activities = localActivities.map(activityFromLocal).toList();
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(tripId);
       }
 
@@ -48,7 +48,7 @@ class ActivityRepository {
     final scope = AccountSession().capture();
     final local = await _db.activitiesDao.getById(id);
     if (local != null && !local.isDeleted) {
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshActivityFromApi(id);
       }
       return activityFromLocal(local);
@@ -167,39 +167,45 @@ class ActivityRepository {
     unawaited(SyncService().performSync());
   }
 
-  /// Reorder activities (for drag-and-drop) - online only with local update
+  /// Reorder activities (for drag-and-drop) - writes locally, syncs in
+  /// background. Each activity whose position changed is queued as an
+  /// ordinary update of its `sort_order`.
   Future<void> reorderActivities({
     required String tripId,
     required List<ActivityOrder> activityOrders,
   }) async {
-    final scope = AccountSession().capture();
-    // Update sort orders locally
-    for (final order in activityOrders) {
-      await ((_db.update(_db.localActivities))..where((t) => t.id.equals(order.id))).write(
-        LocalActivitiesCompanion(
-          sortOrder: Value(order.sortOrder),
-          updatedAt: Value(DateTime.now().toUtc()),
-          isDirty: const Value(true),
-        ),
-      );
-    }
+    await _db.transaction(() async {
+      for (final order in activityOrders) {
+        final existing = await _db.activitiesDao.getById(order.id);
+        if (existing == null || existing.sortOrder == order.sortOrder) continue;
 
-    if (ConnectivityService().isOnline) {
-      try {
-        final request = ReorderRequest(activityOrders: activityOrders);
-        await _dioClient.put(
-          '${ApiConfig.activities}/reorder',
-          queryParameters: {'trip_id': tripId},
-          data: request.toJson(),
+        await ((_db.update(_db.localActivities))
+              ..where((t) => t.id.equals(order.id)))
+            .write(
+          LocalActivitiesCompanion(
+            sortOrder: Value(order.sortOrder),
+            updatedAt: Value(DateTime.now().toUtc()),
+            isDirty: const Value(true),
+          ),
         );
-        // Clear dirty flags after successful sync
-        for (final order in activityOrders) {
-          await scope.write(() => _db.activitiesDao.clearDirty(order.id));
-        }
-      } catch (e) {
-        AppLogger.warning('Failed to sync activity reorder, will retry: $e');
+        await SyncQueueService().enqueue(
+          entityType: 'activity',
+          entityId: order.id,
+          operation: 'update',
+          payload: {
+            'sort_order': order.sortOrder,
+            '_base_version': baseVersionOf(existing),
+          },
+        );
       }
-    }
+    });
+
+    // One write path, as for a single edit: the sync service makes the
+    // request. These used to call the bulk endpoint directly and queue
+    // nothing, so a change made offline - or one whose request failed - was
+    // never sent, and the dirty rows it left behind were skipped by every pull
+    // after. The phone and the server disagreed for good.
+    unawaited(SyncService().performSync());
   }
 
   // ─── Private Methods ──────────────────────────────────────────

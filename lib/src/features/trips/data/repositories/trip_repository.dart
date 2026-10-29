@@ -11,7 +11,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../../core/sync/local_record_reconciler.dart';
@@ -37,7 +37,7 @@ class TripRepository {
     // Read from local DB first
     final localTrips = await _db.tripsDao.getAll();
 
-    if (localTrips.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localTrips.isNotEmpty || !ApiAvailability.canReachApi) {
       final response = _pageLocalTrips(
         localTrips.map(tripFromLocal).toList(),
         page: page,
@@ -46,7 +46,7 @@ class TripRepository {
       );
 
       // Trigger background refresh if online
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(filters: filters);
       }
 
@@ -63,7 +63,7 @@ class TripRepository {
     final local = await _db.tripsDao.getById(id);
     if (local != null && !local.isDeleted) {
       // Background refresh
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshTripFromApi(id);
       }
       return tripFromLocal(local);
@@ -201,7 +201,7 @@ class TripRepository {
         .toList()
       ..sort();
 
-    if (localTags.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localTags.isNotEmpty || !ApiAvailability.canReachApi) {
       return localTags;
     }
 

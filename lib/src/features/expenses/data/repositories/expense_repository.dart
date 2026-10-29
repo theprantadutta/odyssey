@@ -9,7 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../../core/sync/local_record_reconciler.dart';
@@ -30,7 +30,7 @@ class ExpenseRepository {
   }) async {
     final localExpenses = await _db.expensesDao.getByTrip(tripId);
 
-    if (localExpenses.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localExpenses.isNotEmpty || !ApiAvailability.canReachApi) {
       var expenses = localExpenses.map(expenseFromLocal).toList();
 
       // Apply local category filtering
@@ -40,7 +40,7 @@ class ExpenseRepository {
 
       final totalAmount = expenses.fold<double>(0, (sum, e) => sum + e.amount);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(tripId);
       }
 
@@ -55,7 +55,7 @@ class ExpenseRepository {
   Future<ExpenseSummaryResponse> getExpenseSummary({
     required String tripId,
   }) async {
-    if (ConnectivityService().isOnline) {
+    if (ApiAvailability.canReachApi) {
       try {
         final response = await _dioClient.get(
           '${ApiConfig.expenses}/summary',
@@ -100,7 +100,7 @@ class ExpenseRepository {
     final scope = AccountSession().capture();
     final local = await _db.expensesDao.getById(id);
     if (local != null && !local.isDeleted) {
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshExpenseFromApi(id);
       }
       return expenseFromLocal(local);

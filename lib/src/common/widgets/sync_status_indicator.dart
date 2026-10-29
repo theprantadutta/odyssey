@@ -31,6 +31,7 @@ class SyncStatusIndicator extends ConsumerWidget {
             // priority over kicking off another sync that cannot fix it.
             if (conflicts > 0) {
               Navigator.of(context).push(MaterialPageRoute(
+                settings: const RouteSettings(name: 'sync-conflicts'),
                 builder: (_) => const SyncConflictsScreen(),
               ));
               return;

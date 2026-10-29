@@ -595,6 +595,7 @@ class PaywallUtils {
     return Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
+        settings: const RouteSettings(name: 'paywall'),
         builder: (context) => PaywallScreen(
           featureName: featureName,
           customTitle: customTitle,

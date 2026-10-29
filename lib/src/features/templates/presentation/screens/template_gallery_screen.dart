@@ -10,6 +10,7 @@ import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../ads/native_ad_slots.dart';
+import '../../../auth/presentation/guest_prompts.dart';
 import '../../../ads/presentation/widgets/native_ad_list_tile.dart';
 import '../../data/models/template_model.dart';
 import '../providers/templates_provider.dart';
@@ -40,6 +41,13 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
   }
 
   Future<void> _use(TripTemplateModel template) async {
+    final allowed = await requireAccount(
+      context,
+      ref,
+      feature: 'use_template',
+      reason: 'The template gallery is shared between accounts, so using it needs one.',
+    );
+    if (!allowed || !mounted) return;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => UseTemplateDialog(template: template),
@@ -51,6 +59,13 @@ class _TemplateGalleryScreenState extends ConsumerState<TemplateGalleryScreen> {
   }
 
   Future<void> _fork(TripTemplateModel template) async {
+    final allowed = await requireAccount(
+      context,
+      ref,
+      feature: 'fork_template',
+      reason: 'The template gallery is shared between accounts, so using it needs one.',
+    );
+    if (!allowed || !mounted) return;
     HapticFeedback.lightImpact();
     final confirmed = await showOdysseyConfirm(
       context: context,

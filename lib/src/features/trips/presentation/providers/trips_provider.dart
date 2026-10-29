@@ -281,19 +281,23 @@ class Trips extends _$Trips {
     await updateFilters(const TripFilterModel());
   }
 
-  /// Create trip
-  Future<void> createTrip(TripRequest request) async {
+  /// Create trip. [source] says where it was created from, for analytics.
+  Future<TripModel> createTrip(
+    TripRequest request, {
+    String source = 'manual',
+  }) async {
     AppLogger.action('Creating trip: ${request.title}');
     try {
       final newTrip = await _tripRepository.createTrip(request);
       AppLogger.info('Trip created successfully: ${newTrip.title}');
-      unawaited(ref.read(analyticsServiceProvider).trackTripCreated(source: 'manual'));
+      unawaited(ref.read(analyticsServiceProvider).trackTripCreated(source: source));
       state = state.copyWith(
         trips: [newTrip, ...state.trips],
         total: state.total + 1,
       );
       // Reload available tags
       _loadAvailableTags();
+      return newTrip;
     } catch (e) {
       AppLogger.error('Failed to create trip: $e');
       rethrow;

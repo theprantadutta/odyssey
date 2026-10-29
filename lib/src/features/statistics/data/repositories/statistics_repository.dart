@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/config/api_config.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/statistics_model.dart';
 import '../../../../core/session/account_session.dart';
@@ -40,14 +40,14 @@ class StatisticsRepository {
       final stats = await _computeLocalStatistics();
 
       // Background refresh from API if online (for fields we can't compute locally)
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshStatisticsFromApi();
       }
 
       return stats;
     } catch (e) {
       // If local computation fails and we're online, fall back to API
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         try {
           final response = await _dioClient.get(ApiConfig.statistics);
           return OverallStatistics.fromJson(response.data);
@@ -69,14 +69,14 @@ class StatisticsRepository {
     if (cached != null) {
       final stats = YearInReviewStats.fromJson(jsonDecode(cached) as Map<String, dynamic>);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshYearInReview(year, cacheKey);
       }
 
       return stats;
     }
 
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Year in Review data is not available offline. Please connect to the internet to load it first.';
     }
 
@@ -109,14 +109,14 @@ class StatisticsRepository {
     if (cached != null) {
       final timeline = TravelTimeline.fromJson(jsonDecode(cached) as Map<String, dynamic>);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshTravelTimeline(limit, offset, cacheKey);
       }
 
       return timeline;
     }
 
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Travel Timeline data is not available offline. Please connect to the internet to load it first.';
     }
 

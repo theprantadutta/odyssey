@@ -44,6 +44,20 @@ class AuthInterceptor extends QueuedInterceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
       AppLogger.auth('Token attached to request');
+    } else if (!options.path.contains('/auth/') &&
+        await _storageService.isGuestMode()) {
+      // A guest has no account to send this on behalf of. Repositories check
+      // ApiAvailability first; this catches whatever does not. Sent anyway it
+      // would come back 401, and the handler below treats a 401 with no
+      // refresh token as an expired session.
+      AppLogger.auth('Blocked a request made in guest mode: ${options.path}');
+      return handler.reject(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.cancel,
+          error: 'Not available without an account',
+        ),
+      );
     }
 
     return handler.next(options);

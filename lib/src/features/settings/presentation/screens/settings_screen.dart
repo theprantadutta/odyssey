@@ -15,7 +15,9 @@ import '../../../../core/providers/app_version_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../ads/presentation/providers/ads_providers.dart';
+import '../../../auth/presentation/guest_prompts.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/data/models/notification_preference_model.dart';
 import '../../../notifications/application/notification_permission_policy.dart';
@@ -51,6 +53,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isAddingSampleTrips = false;
   bool _isRemovingSampleTrips = false;
 
+  /// Whether a guest asked not to see the "only on this phone" card again.
+  /// Starts true so the card does not flash in before the answer is read.
+  bool _guestWarningDismissed = true;
+
   /// Whether the operating system will actually deliver anything.
   ///
   /// The toggles below are server-side preferences and say nothing about this.
@@ -63,10 +69,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     // The toggles below are the real server-side preferences, so they need
     // fetching before they can be shown in their true state.
-    Future.microtask(
-      () => ref.read(notificationPreferencesProvider.notifier).loadPreferences(),
-    );
+    // A guest has no server-side preferences to fetch.
+    if (!ref.read(authProvider).isGuest) {
+      Future.microtask(
+        () => ref
+            .read(notificationPreferencesProvider.notifier)
+            .loadPreferences(),
+      );
+    }
     _refreshPermission();
+    _loadGuestWarning();
+  }
+
+  Future<void> _loadGuestWarning() async {
+    final dismissed = await StorageService().isGuestWarningDismissed();
+    if (mounted) setState(() => _guestWarningDismissed = dismissed);
+  }
+
+  void _dismissGuestWarning() {
+    HapticFeedback.lightImpact();
+    setState(() => _guestWarningDismissed = true);
+    StorageService().setGuestWarningDismissed(true);
   }
 
   Future<void> _refreshPermission() async {
@@ -141,7 +164,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
-      showOdysseyError(context, 'Could not request account deletion.', error: e);
+      showOdysseyError(
+        context,
+        'Could not request account deletion.',
+        error: e,
+      );
     }
   }
 
@@ -168,7 +195,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _handleAddSampleTrips() async {
     final hasExistingTrips =
-        ref.read(defaultTripsEligibilityProvider).asData?.value.hasExistingTrips ??
+        ref
+            .read(defaultTripsEligibilityProvider)
+            .asData
+            ?.value
+            .hasExistingTrips ??
         ref.read(tripsProvider).trips.isNotEmpty;
 
     final confirmed = await showOdysseyConfirm(
@@ -235,7 +266,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isRemovingSampleTrips = true);
 
     try {
-      final deleted = await ref.read(tripsProvider.notifier).deleteSampleTrips();
+      final deleted = await ref
+          .read(tripsProvider.notifier)
+          .deleteSampleTrips();
       if (!mounted) return;
 
       // Removing them frees the one-time allowance, so the add row comes back.
@@ -337,8 +370,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final t = context.odyssey;
 
     final authState = ref.watch(authProvider);
+    final isGuest = authState.isGuest;
     final appVersion = ref.watch(appVersionProvider);
-    final eligibility = ref.watch(defaultTripsEligibilityProvider);
+    // Sample-trip eligibility is the server's answer; a guest never asks.
+    final eligibility = isGuest
+        ? const AsyncValue<DefaultTripsEligibility>.loading()
+        : ref.watch(defaultTripsEligibilityProvider);
     final subscription = ref.watch(subscriptionProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     final isOnline = ref.watch(connectivityProvider);
@@ -346,7 +383,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final prefs = prefsState.preferences ?? const NotificationPreferenceModel();
 
     final user = authState.user;
-    final name = _firstName(user?.displayName, user?.email) ?? 'Traveller';
+    final name = isGuest
+        ? 'Guest'
+        : _firstName(user?.displayName, user?.email) ?? 'Traveller';
     final isPremium = subscription.isPremium;
 
     return OdysseyScaffold(
@@ -389,7 +428,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        user?.email ?? 'Not signed in',
+                        isGuest
+                            ? 'No account · trips are on this phone only'
+                            : user?.email ?? 'Not signed in',
                         style: AppTypography.pill.copyWith(color: t.ink3),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -405,6 +446,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: AppSizes.space12),
+
+          // --- guest: what that means, and the way to an account ---
+          // The card can be dismissed for good; the rows below it stay, so
+          // there is always a way to an account.
+          if (isGuest) ...[
+            if (!_guestWarningDismissed) ...[
+              _GuestWarningCard(onDismiss: _dismissGuestWarning),
+              const SizedBox(height: AppSizes.space12),
+            ],
+            GroupedCard(
+              children: [
+                SettingsNavRow(
+                  icon: Icons.person_add_alt_1_outlined,
+                  label: 'Create a free account',
+                  meta: 'Back up your trips and use them anywhere',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.register);
+                  },
+                ),
+                SettingsNavRow(
+                  icon: Icons.login_rounded,
+                  label: 'Sign in',
+                  circleChip: true,
+                  meta: 'Your trips on this phone come with you',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.login);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space12),
+          ],
 
           // --- what Pro is, for an account that does not have it ---
           // Renders nothing for a subscriber, and nothing while the
@@ -445,7 +520,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           //
           // Led by the system's own answer when it is no. A preference that
           // cannot fire is worth saying out loud.
-          if (_permission != null &&
+          if (!isGuest &&
+              _permission != null &&
               _permission != NotificationPermissionState.granted) ...[
             OdysseyCard(
               radius: AppSizes.radiusTile,
@@ -493,62 +569,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: AppSizes.space12),
           ],
 
-          GroupedCard(
-            children: [
-              SettingsToggleRow(
-                icon: Icons.notifications_none_rounded,
-                label: 'Trip reminders',
-                meta: 'Countdowns and departure nudges',
-                value: prefs.tripReminders,
-                onChanged: (v) => _setPreference(
-                  (p) => p.copyWith(tripReminders: v),
+          if (!isGuest) ...[
+            GroupedCard(
+              children: [
+                SettingsToggleRow(
+                  icon: Icons.notifications_none_rounded,
+                  label: 'Trip reminders',
+                  meta: 'Countdowns and departure nudges',
+                  value: prefs.tripReminders,
+                  onChanged: (v) =>
+                      _setPreference((p) => p.copyWith(tripReminders: v)),
                 ),
-              ),
-              SettingsToggleRow(
-                icon: Icons.group_outlined,
-                label: 'Shared trip activity',
-                meta: 'Invites and changes from travel companions',
-                value: prefs.invitesAndSharing,
-                circleChip: true,
-                onChanged: (v) => _setPreference(
-                  (p) => p.copyWith(invitesAndSharing: v),
+                SettingsToggleRow(
+                  icon: Icons.group_outlined,
+                  label: 'Shared trip activity',
+                  meta: 'Invites and changes from travel companions',
+                  value: prefs.invitesAndSharing,
+                  circleChip: true,
+                  onChanged: (v) =>
+                      _setPreference((p) => p.copyWith(invitesAndSharing: v)),
                 ),
-              ),
-              SettingsToggleRow(
-                icon: Icons.photo_camera_outlined,
-                label: 'Memory prompts',
-                meta: 'Nudges to add photos while you travel',
-                value: prefs.contentUpdates,
-                onChanged: (v) => _setPreference(
-                  (p) => p.copyWith(contentUpdates: v),
+                SettingsToggleRow(
+                  icon: Icons.photo_camera_outlined,
+                  label: 'Memory prompts',
+                  meta: 'Nudges to add photos while you travel',
+                  value: prefs.contentUpdates,
+                  onChanged: (v) =>
+                      _setPreference((p) => p.copyWith(contentUpdates: v)),
                 ),
-              ),
-              SettingsToggleRow(
-                icon: Icons.emoji_events_outlined,
-                label: 'Achievements',
-                meta: 'Badges and points you unlock',
-                value: prefs.achievements,
-                circleChip: true,
-                onChanged: (v) => _setPreference(
-                  (p) => p.copyWith(achievements: v),
+                SettingsToggleRow(
+                  icon: Icons.emoji_events_outlined,
+                  label: 'Achievements',
+                  meta: 'Badges and points you unlock',
+                  value: prefs.achievements,
+                  circleChip: true,
+                  onChanged: (v) =>
+                      _setPreference((p) => p.copyWith(achievements: v)),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.space12),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space12),
+          ],
 
           // --- navigation ---
           GroupedCard(
             children: [
-              SettingsNavRow(
-                icon: Icons.tune_rounded,
-                label: 'Notification detail',
-                value: 'Quiet hours',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.push(AppRoutes.notificationSettings);
-                },
-              ),
+              if (!isGuest)
+                SettingsNavRow(
+                  icon: Icons.tune_rounded,
+                  label: 'Notification detail',
+                  value: 'Quiet hours',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.notificationSettings);
+                  },
+                ),
               SettingsNavRow(
                 icon: Icons.workspace_premium_outlined,
                 label: 'Subscription',
@@ -556,19 +631,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 value: subscription.isLoading
                     ? '…'
                     : _tierName(subscription.tier),
-                onTap: () {
+                onTap: () async {
                   HapticFeedback.lightImpact();
+                  final allowed = await requireAccount(
+                    context,
+                    ref,
+                    feature: 'subscription',
+                    reason: 'Odyssey Pro belongs to your account, so it follows you to any phone.',
+                  );
+                  if (!allowed || !context.mounted) return;
                   context.push(AppRoutes.subscription);
                 },
               ),
-              SettingsNavRow(
-                icon: Icons.group_outlined,
-                label: 'Shared trips',
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.push(AppRoutes.sharedTrips);
-                },
-              ),
+              if (!isGuest)
+                SettingsNavRow(
+                  icon: Icons.group_outlined,
+                  label: 'Shared trips',
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.sharedTrips);
+                  },
+                ),
               SettingsNavRow(
                 icon: Icons.emoji_events_outlined,
                 label: 'Achievements',
@@ -602,15 +685,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // --- trips & data ---
           GroupedCard(
             children: [
-              SettingsNavRow(
-                icon: Icons.auto_awesome_outlined,
-                label: 'Add sample trips',
-                meta: _sampleTripsMeta(eligibility),
-                onTap: _canAddSampleTrips(eligibility) && !_isAddingSampleTrips
-                    ? _handleAddSampleTrips
-                    : null,
-              ),
-              if (_hasSampleTrips(eligibility))
+              if (!isGuest)
+                SettingsNavRow(
+                  icon: Icons.auto_awesome_outlined,
+                  label: 'Add sample trips',
+                  meta: _sampleTripsMeta(eligibility),
+                  onTap:
+                      _canAddSampleTrips(eligibility) && !_isAddingSampleTrips
+                      ? _handleAddSampleTrips
+                      : null,
+                ),
+              if (!isGuest && _hasSampleTrips(eligibility))
                 SettingsNavRow(
                   icon: Icons.delete_outline_rounded,
                   label: 'Remove sample trips',
@@ -618,7 +703,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   meta: _isRemovingSampleTrips
                       ? 'Removing…'
                       : 'Delete the demo trips when you are done',
-                  onTap: _isRemovingSampleTrips ? null : _handleDeleteSampleTrips,
+                  onTap: _isRemovingSampleTrips
+                      ? null
+                      : _handleDeleteSampleTrips,
                 ),
               SettingsNavRow(
                 icon: Icons.replay_rounded,
@@ -649,7 +736,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               SettingsNavRow(
                 icon: Icons.privacy_tip_outlined,
                 label: 'Privacy policy',
-                onTap: () => _openLegal('Privacy Policy', 'assets/legal/privacy.md'),
+                onTap: () =>
+                    _openLegal('Privacy Policy', 'assets/legal/privacy.md'),
               ),
               SettingsNavRow(
                 icon: Icons.gavel_outlined,
@@ -679,12 +767,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 value: appVersion.asData?.value ?? _versionPlaceholder,
                 onTap: _handleShowAbout,
               ),
-              SettingsNavRow(
-                icon: Icons.person_remove_outlined,
-                label: 'Delete account',
-                meta: 'Permanently delete your account and data',
-                onTap: _handleDeleteAccount,
-              ),
+              if (!isGuest)
+                SettingsNavRow(
+                  icon: Icons.person_remove_outlined,
+                  label: 'Delete account',
+                  meta: 'Permanently delete your account and data',
+                  onTap: _handleDeleteAccount,
+                ),
             ],
           ),
 
@@ -710,13 +799,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
 
           const SizedBox(height: AppSizes.space24),
-          PillButton(
-            label: 'Sign out',
-            style: PillStyle.outline,
-            isLoading: authState.isLoading,
-            onPressed: _handleSignOut,
-            padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
-          ),
+          if (!isGuest)
+            PillButton(
+              label: 'Sign out',
+              style: PillStyle.outline,
+              isLoading: authState.isLoading,
+              onPressed: _handleSignOut,
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space16),
+            ),
           const SizedBox(height: AppSizes.space18),
           Center(
             child: Text(
@@ -725,6 +815,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: AppTypography.monoDivider.copyWith(
                 color: t.ink3,
                 fontSize: 9.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What being a guest means, said once more where the account lives. The
+/// copy is the same the guest agreed to before starting.
+class _GuestWarningCard extends StatelessWidget {
+  const _GuestWarningCard({required this.onDismiss});
+
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+
+    return OdysseyCard(
+      radius: AppSizes.radiusPanel,
+      padding: const EdgeInsets.all(AppSizes.space18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const IconChip(icon: Icons.phone_android_outlined),
+              const SizedBox(width: AppSizes.space12),
+              Expanded(
+                child: Text(
+                  'Your trips are only on this phone',
+                  style: AppTypography.rowLabel.copyWith(color: t.ink),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space10),
+          for (final paragraph in guestWarningBody) ...[
+            Text(
+              paragraph,
+              style: AppTypography.badgeDesc.copyWith(color: t.ink3),
+            ),
+            const SizedBox(height: AppSizes.space8),
+          ],
+          Pressable(
+            onTap: onDismiss,
+            borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space6),
+              child: Text(
+                "Don't show this again",
+                style: AppTypography.caption.copyWith(color: t.ink2),
               ),
             ),
           ),

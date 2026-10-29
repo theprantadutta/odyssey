@@ -14,6 +14,8 @@ import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../common/widgets/odyssey/range_calendar.dart';
 import '../../../../core/services/file_upload_service.dart';
+import '../../../auth/presentation/guest_prompts.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/presentation/utils/limit_checker.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/trip_creation_walkthrough_steps.dart';
@@ -217,6 +219,24 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
   }
 
   // ------------------------------------------------------------------
+  /// A cover is uploaded before the trip is saved, which a guest cannot do.
+  /// The picker still shows, so the form looks the same; tapping it offers an
+  /// account instead of opening the gallery.
+  Widget _guardCover(Widget picker) {
+    if (!ref.watch(authProvider.select((s) => s.isGuest))) return picker;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => requireAccount(
+        context,
+        ref,
+        feature: 'cover_image',
+        reason: 'Cover photos are stored with your account, so they are '
+            'safe even if you lose your phone.',
+      ),
+      child: AbsorbPointer(child: picker),
+    );
+  }
+
   // Submit
   // ------------------------------------------------------------------
 
@@ -371,11 +391,13 @@ class _TripFormScreenState extends ConsumerState<TripFormScreen> {
                   // --- cover ---
                   KeyedSubtree(
                     key: _coverImageKey,
-                    child: CoverImagePicker(
-                      initialUrl: widget.trip?.coverImageUrl,
-                      enabled: !_isLoading,
-                      onChanged: (result) =>
-                          setState(() => _coverImageResult = result),
+                    child: _guardCover(
+                      CoverImagePicker(
+                        initialUrl: widget.trip?.coverImageUrl,
+                        enabled: !_isLoading,
+                        onChanged: (result) =>
+                            setState(() => _coverImageResult = result),
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSizes.space12),

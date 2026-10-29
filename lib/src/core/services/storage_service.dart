@@ -98,6 +98,40 @@ class StorageService implements NotificationPrimingStore {
     return value == 'true';
   }
 
+  // Guest mode
+  //
+  // Using the app without an account. Everything the guest makes lives only in
+  // the local database until they sign up or sign in, when it is pushed to that
+  // account. Device-wide, like the intro: there is no account to scope it to.
+  static const String _guestModeKey = 'guest_mode';
+  static const String _guestWarningDismissedKey = 'guest_warning_dismissed';
+
+  /// The key guest onboarding is recorded under, in place of a user id.
+  static const String guestOnboardingId = 'guest';
+
+  Future<void> setGuestMode(bool enabled) async {
+    if (enabled) {
+      await _storage.write(key: _guestModeKey, value: 'true');
+    } else {
+      await _storage.delete(key: _guestModeKey);
+    }
+  }
+
+  Future<bool> isGuestMode() async =>
+      await _storage.read(key: _guestModeKey) == 'true';
+
+  /// Whether the guest asked not to be reminded that their data is only on
+  /// this phone.
+  Future<void> setGuestWarningDismissed(bool dismissed) async {
+    await _storage.write(
+      key: _guestWarningDismissedKey,
+      value: dismissed.toString(),
+    );
+  }
+
+  Future<bool> isGuestWarningDismissed() async =>
+      await _storage.read(key: _guestWarningDismissedKey) == 'true';
+
   // Notification permission priming
   //
   // How many times the explanation sheet has been shown, and when it last was.

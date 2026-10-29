@@ -9,7 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../../core/sync/local_record_reconciler.dart';
@@ -30,7 +30,7 @@ class PackingRepository {
   }) async {
     final localItems = await _db.packingDao.getByTrip(tripId);
 
-    if (localItems.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localItems.isNotEmpty || !ApiAvailability.canReachApi) {
       var items = localItems.map(packingItemFromLocal).toList();
 
       if (category != null) {
@@ -39,7 +39,7 @@ class PackingRepository {
 
       final packedCount = items.where((i) => i.isPacked).length;
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(tripId);
       }
 
@@ -59,7 +59,7 @@ class PackingRepository {
   Future<PackingProgressResponse> getPackingProgress({
     required String tripId,
   }) async {
-    if (ConnectivityService().isOnline) {
+    if (ApiAvailability.canReachApi) {
       try {
         final response = await _dioClient.get(
           '${ApiConfig.packing}/progress',
@@ -234,42 +234,46 @@ class PackingRepository {
     }
   }
 
-  /// Bulk toggle packed status - local-first with sync
+  /// Bulk toggle packed status - writes locally, syncs in background. Each
+  /// item that actually changes is queued as an ordinary update, the same as a
+  /// single toggle.
   Future<void> bulkTogglePacked({
     required String tripId,
     required List<String> itemIds,
     required bool isPacked,
   }) async {
-    final scope = AccountSession().capture();
-    // Update locally first
-    for (final itemId in itemIds) {
-      await ((_db.update(_db.localPackingItems))..where((t) => t.id.equals(itemId))).write(
-        LocalPackingItemsCompanion(
-          isPacked: Value(isPacked),
-          updatedAt: Value(DateTime.now().toUtc()),
-          isDirty: const Value(true),
-        ),
-      );
-    }
+    await _db.transaction(() async {
+      for (final itemId in itemIds) {
+        final existing = await _db.packingDao.getById(itemId);
+        if (existing == null || existing.isPacked == isPacked) continue;
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.post(
-          '${ApiConfig.packing}/bulk-toggle',
-          queryParameters: {'trip_id': tripId},
-          data: {
-            'item_ids': itemIds,
+        await ((_db.update(_db.localPackingItems))
+              ..where((t) => t.id.equals(itemId)))
+            .write(
+          LocalPackingItemsCompanion(
+            isPacked: Value(isPacked),
+            updatedAt: Value(DateTime.now().toUtc()),
+            isDirty: const Value(true),
+          ),
+        );
+        await SyncQueueService().enqueue(
+          entityType: 'packing_item',
+          entityId: itemId,
+          operation: 'update',
+          payload: {
             'is_packed': isPacked,
+            '_base_version': baseVersionOf(existing),
           },
         );
-        // Clear dirty flags
-        for (final itemId in itemIds) {
-          await scope.write(() => _db.packingDao.clearDirty(itemId));
-        }
-      } catch (e) {
-        AppLogger.warning('Failed to sync bulk toggle, will retry: $e');
       }
-    }
+    });
+
+    // One write path, as for a single edit: the sync service makes the
+    // request. These used to call the bulk endpoint directly and queue
+    // nothing, so a change made offline - or one whose request failed - was
+    // never sent, and the dirty rows it left behind were skipped by every pull
+    // after. The phone and the server disagreed for good.
+    unawaited(SyncService().performSync());
   }
 
   /// Delete packing item - soft deletes locally, syncs in background
@@ -300,38 +304,45 @@ class PackingRepository {
     unawaited(SyncService().performSync());
   }
 
-  /// Reorder packing items - local update with sync
+  /// Reorder packing items - writes locally, syncs in background. Each item
+  /// whose position changed is queued as an ordinary update of its
+  /// `sort_order`.
   Future<void> reorderPackingItems({
     required String tripId,
     required List<ItemOrderData> itemOrders,
   }) async {
-    final scope = AccountSession().capture();
-    for (final order in itemOrders) {
-      await ((_db.update(_db.localPackingItems))..where((t) => t.id.equals(order.id))).write(
-        LocalPackingItemsCompanion(
-          sortOrder: Value(order.sortOrder),
-          updatedAt: Value(DateTime.now().toUtc()),
-          isDirty: const Value(true),
-        ),
-      );
-    }
+    await _db.transaction(() async {
+      for (final order in itemOrders) {
+        final existing = await _db.packingDao.getById(order.id);
+        if (existing == null || existing.sortOrder == order.sortOrder) continue;
 
-    if (ConnectivityService().isOnline) {
-      try {
-        await _dioClient.put(
-          '${ApiConfig.packing}/reorder',
-          queryParameters: {'trip_id': tripId},
-          data: {
-            'item_orders': itemOrders.map((e) => e.toJson()).toList(),
+        await ((_db.update(_db.localPackingItems))
+              ..where((t) => t.id.equals(order.id)))
+            .write(
+          LocalPackingItemsCompanion(
+            sortOrder: Value(order.sortOrder),
+            updatedAt: Value(DateTime.now().toUtc()),
+            isDirty: const Value(true),
+          ),
+        );
+        await SyncQueueService().enqueue(
+          entityType: 'packing_item',
+          entityId: order.id,
+          operation: 'update',
+          payload: {
+            'sort_order': order.sortOrder,
+            '_base_version': baseVersionOf(existing),
           },
         );
-        for (final order in itemOrders) {
-          await scope.write(() => _db.packingDao.clearDirty(order.id));
-        }
-      } catch (e) {
-        AppLogger.warning('Failed to sync packing reorder, will retry: $e');
       }
-    }
+    });
+
+    // One write path, as for a single edit: the sync service makes the
+    // request. These used to call the bulk endpoint directly and queue
+    // nothing, so a change made offline - or one whose request failed - was
+    // never sent, and the dirty rows it left behind were skipped by every pull
+    // after. The phone and the server disagreed for good.
+    unawaited(SyncService().performSync());
   }
 
   // ─── Private Methods ──────────────────────────────────────────

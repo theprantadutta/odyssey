@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/subscription_model.dart';
 import '../../../../core/session/account_session.dart';
@@ -103,14 +103,14 @@ class SubscriptionRepository {
     if (cached != null) {
       final status = SubscriptionStatus.fromJson(jsonDecode(cached) as Map<String, dynamic>);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshStatus();
       }
 
       return SubscriptionStatusAnswer.fromCache(status);
     }
 
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       // Deliberately *not* a fabricated free status.
       //
       // Returning one here was a quiet downgrade: a subscriber who opens the app
@@ -133,14 +133,14 @@ class SubscriptionRepository {
     if (cached != null) {
       final usage = UsageInfo.fromJson(jsonDecode(cached) as Map<String, dynamic>);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshUsage();
       }
 
       return usage;
     }
 
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Usage information is not available offline. Please connect to the internet.';
     }
 
@@ -154,14 +154,14 @@ class SubscriptionRepository {
     if (cached != null) {
       final limits = SubscriptionLimits.fromJson(jsonDecode(cached) as Map<String, dynamic>);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshLimits();
       }
 
       return limits;
     }
 
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Subscription limits are not available offline. Please connect to the internet.';
     }
 
@@ -171,7 +171,7 @@ class SubscriptionRepository {
   /// Get pricing information - API-only with cache fallback
   Future<PricingInfo> getPricing() async {
     final scope = AccountSession().capture();
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       final cached = await _db.subscriptionCacheDao.get('pricing');
       if (cached != null) {
         return PricingInfo.fromJson(jsonDecode(cached) as Map<String, dynamic>);
@@ -190,7 +190,7 @@ class SubscriptionRepository {
 
   /// Check if user can access a specific feature
   Future<bool> canAccessFeature(String featureName) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       // Check cached status
       final cached = await _db.subscriptionCacheDao.getSubscriptionStatus();
       if (cached != null) {

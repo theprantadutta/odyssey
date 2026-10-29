@@ -4,7 +4,7 @@ import '../../../../core/config/api_config.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../models/achievement_model.dart';
 import '../../../../core/session/account_session.dart';
@@ -18,10 +18,10 @@ class AchievementRepository {
   Future<List<Achievement>> getAllAchievements() async {
     final localAchievements = await _db.achievementsDao.getAllAchievements();
 
-    if (localAchievements.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localAchievements.isNotEmpty || !ApiAvailability.canReachApi) {
       final achievements = localAchievements.map(achievementFromLocal).toList();
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshAllAchievementsFromApi();
       }
 
@@ -37,7 +37,7 @@ class AchievementRepository {
     final localAchievements = await _db.achievementsDao.getAllAchievements();
 
     if ((localUserAchievements.isNotEmpty || localAchievements.isNotEmpty) ||
-        !ConnectivityService().isOnline) {
+        !ApiAvailability.canReachApi) {
       final userAchievements = localUserAchievements.map(userAchievementFromLocal).toList();
       final allAchievements = localAchievements.map(achievementFromLocal).toList();
 
@@ -64,7 +64,7 @@ class AchievementRepository {
 
       final totalPoints = earned.fold<int>(0, (sum, ua) => sum + ua.achievement.points);
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshMyAchievementsFromApi();
       }
 
@@ -82,7 +82,7 @@ class AchievementRepository {
 
   /// Check achievements - API-only
   Future<List<AchievementUnlock>> checkAchievements() async {
-    if (!ConnectivityService().isOnline) return [];
+    if (!ApiAvailability.canReachApi) return [];
     try {
       final response = await _dioClient.post(ApiConfig.achievementsCheck);
       return (response.data as List)
@@ -98,7 +98,7 @@ class AchievementRepository {
     final scope = AccountSession().capture();
     final localUnseen = await _db.achievementsDao.getUnseen();
 
-    if (localUnseen.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localUnseen.isNotEmpty || !ApiAvailability.canReachApi) {
       return localUnseen.map(userAchievementFromLocal).toList();
     }
 
@@ -129,7 +129,7 @@ class AchievementRepository {
       }
     }
 
-    if (ConnectivityService().isOnline) {
+    if (ApiAvailability.canReachApi) {
       try {
         await _dioClient.post(ApiConfig.achievementSeen(achievementId));
       } catch (e) {
@@ -140,7 +140,7 @@ class AchievementRepository {
 
   /// Get leaderboard - API-only
   Future<LeaderboardResponse> getLeaderboard({int limit = 10}) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       return const LeaderboardResponse(entries: []);
     }
     try {

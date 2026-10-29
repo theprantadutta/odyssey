@@ -72,6 +72,12 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_color" />
+
+        <!-- Screen views are reported from Dart (ScreenTracker) under real screen
+             names. The SDK's own reporting would only ever see MainActivity. -->
+        <meta-data
+            android:name="google_analytics_automatic_screen_reporting_enabled"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

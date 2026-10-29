@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<!-- Screen views are reported from Dart (ScreenTracker) under real screen
+	     names. The SDK's own reporting would only ever see FlutterViewController. -->
+		<key>FirebaseAutomaticScreenReportingEnabled</key>
+		<false/>
 		<!-- Google Sign-In. Without the reversed client ID registered as a URL scheme the
 	     OAuth callback cannot return to the app, so "Continue with Google" errors the
 	     instant it is tapped. GIDClientID lets the SDK resolve the iOS OAuth client.

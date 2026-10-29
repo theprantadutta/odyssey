@@ -9,7 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../../core/sync/local_record_reconciler.dart';
@@ -31,7 +31,7 @@ class TemplateRepository {
   }) async {
     final localTemplates = await _db.templatesDao.getAll();
 
-    if (localTemplates.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localTemplates.isNotEmpty || !ApiAvailability.canReachApi) {
       var templates = localTemplates.map(templateFromLocal).toList();
 
       if (category != null) {
@@ -43,7 +43,7 @@ class TemplateRepository {
       final end = (start + pageSize).clamp(0, total);
       final paged = start < total ? templates.sublist(start, end) : <TripTemplateModel>[];
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshMyTemplatesFromApi(category: category);
       }
 
@@ -62,7 +62,7 @@ class TemplateRepository {
   }) async {
     final localPublic = await _db.templatesDao.getAllPublic();
 
-    if (localPublic.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localPublic.isNotEmpty || !ApiAvailability.canReachApi) {
       var templates = localPublic.map(templateFromPublicCache).toList();
 
       if (category != null) {
@@ -78,7 +78,7 @@ class TemplateRepository {
       final end = (start + pageSize).clamp(0, total);
       final paged = start < total ? templates.sublist(start, end) : <TripTemplateModel>[];
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshPublicTemplatesFromApi(category: category, search: search);
       }
 
@@ -93,7 +93,7 @@ class TemplateRepository {
     final scope = AccountSession().capture();
     final local = await _db.templatesDao.getById(templateId);
     if (local != null && !local.isDeleted) {
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshTemplateFromApi(templateId);
       }
       return templateFromLocal(local);
@@ -102,7 +102,7 @@ class TemplateRepository {
     // Check public cache
     final publicLocal = await _db.templatesDao.getPublicById(templateId);
     if (publicLocal != null) {
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshTemplateFromApi(templateId);
       }
       return templateFromPublicCache(publicLocal);
@@ -231,7 +231,7 @@ class TemplateRepository {
     TemplateFromTripRequest request,
   ) async {
     final scope = AccountSession().capture();
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Creating templates from trips requires an internet connection';
     }
     try {
@@ -275,7 +275,7 @@ class TemplateRepository {
 
   Future<TripTemplateModel> forkTemplate(String templateId) async {
     final scope = AccountSession().capture();
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Forking templates requires an internet connection';
     }
     try {
@@ -293,7 +293,7 @@ class TemplateRepository {
     String templateId,
     TripFromTemplateRequest request,
   ) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Using templates requires an internet connection';
     }
     try {

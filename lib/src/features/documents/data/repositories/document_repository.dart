@@ -13,7 +13,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../../../memories/data/models/upload_outcome.dart';
@@ -88,14 +88,14 @@ class DocumentRepository {
   }) async {
     final localDocs = await _db.documentsDao.getByTrip(tripId);
 
-    if (localDocs.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localDocs.isNotEmpty || !ApiAvailability.canReachApi) {
       var documents = localDocs.map(documentFromLocal).toList();
 
       if (type != null) {
         documents = documents.where((d) => d.type == type).toList();
       }
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(tripId);
       }
 
@@ -113,7 +113,7 @@ class DocumentRepository {
     final scope = AccountSession().capture();
     final localDocs = await _db.documentsDao.getByTrip(tripId);
 
-    if (localDocs.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localDocs.isNotEmpty || !ApiAvailability.canReachApi) {
       final documents = localDocs.map(documentFromLocal).toList();
 
       // Group by type locally
@@ -122,7 +122,7 @@ class DocumentRepository {
         typeMap.putIfAbsent(doc.type, () => []).add(doc);
       }
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshFromApi(tripId);
       }
 
@@ -161,7 +161,7 @@ class DocumentRepository {
     final scope = AccountSession().capture();
     final local = await _db.documentsDao.getById(id);
     if (local != null && !local.isDeleted) {
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshDocumentFromApi(id);
       }
       return documentFromLocal(local);

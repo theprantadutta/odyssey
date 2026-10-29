@@ -8,14 +8,20 @@ import 'package:odyssey/src/core/services/logger_service.dart';
 // ─────────────────────────────────────────────────────────────────
 
 abstract class AnalyticsClient {
+  // Navigation
+  Future<void> trackScreenView({required String screenName});
+
   // Auth
   Future<void> trackIntroSeen();
   Future<void> trackTermsAccepted();
   Future<void> trackSignUp({required String method});
   Future<void> trackLogin({required String method});
-  Future<void> trackOnboardingCompleted({required bool addedDemoTrips});
+  Future<void> trackOnboardingCompleted({required String choice});
   Future<void> trackAccountLinked();
   Future<void> trackLogout();
+  Future<void> trackGuestStarted();
+  Future<void> trackGuestConverted();
+  Future<void> trackAccountPromptShown({required String feature});
 
   // Trips
   Future<void> trackTripCreated({required String source});
@@ -23,6 +29,7 @@ abstract class AnalyticsClient {
   Future<void> trackTripDeleted();
   Future<void> trackTripSearch({required bool hasResults});
   Future<void> trackTripFilterApplied({required String filterType});
+  Future<void> trackTripSectionViewed({required String section});
 
   // Content
   Future<void> trackActivityCreated({required String category});
@@ -112,6 +119,17 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     }
   }
 
+  // Navigation
+  // screen_class carries the name too. Left unset it falls back to the native
+  // host (MainActivity / FlutterViewController), and every screen in the
+  // default report collapses into one row.
+  @override
+  Future<void> trackScreenView({required String screenName}) =>
+      _safeLog(() => _analytics.logScreenView(
+        screenName: screenName,
+        screenClass: screenName,
+      ));
+
   // Auth
   @override
   Future<void> trackIntroSeen() =>
@@ -130,10 +148,10 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
       _safeLog(() => _analytics.logLogin(loginMethod: method));
 
   @override
-  Future<void> trackOnboardingCompleted({required bool addedDemoTrips}) =>
+  Future<void> trackOnboardingCompleted({required String choice}) =>
       _safeLog(() => _analytics.logEvent(
         name: 'onboarding_completed',
-        parameters: {'added_demo_trips': addedDemoTrips},
+        parameters: {'choice': choice},
       ));
 
   @override
@@ -143,6 +161,21 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   @override
   Future<void> trackLogout() =>
       _safeLog(() => _analytics.logEvent(name: 'logout'));
+
+  @override
+  Future<void> trackGuestStarted() =>
+      _safeLog(() => _analytics.logEvent(name: 'guest_started'));
+
+  @override
+  Future<void> trackGuestConverted() =>
+      _safeLog(() => _analytics.logEvent(name: 'guest_converted'));
+
+  @override
+  Future<void> trackAccountPromptShown({required String feature}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'account_prompt_shown',
+        parameters: {'feature': feature},
+      ));
 
   // Trips
   @override
@@ -172,6 +205,13 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
       _safeLog(() => _analytics.logEvent(
         name: 'trip_filter_applied',
         parameters: {'filter_type': filterType},
+      ));
+
+  @override
+  Future<void> trackTripSectionViewed({required String section}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'trip_section_viewed',
+        parameters: {'section': section},
       ));
 
   // Content
@@ -418,6 +458,11 @@ class LoggerAnalyticsClient implements AnalyticsClient {
     AppLogger.info('ANALYTICS: $event$paramStr');
   }
 
+  // Navigation
+  @override
+  Future<void> trackScreenView({required String screenName}) async =>
+      _log('screen_view', {'screen_name': screenName});
+
   // Auth
   @override
   Future<void> trackIntroSeen() async => _log('intro_seen');
@@ -434,14 +479,24 @@ class LoggerAnalyticsClient implements AnalyticsClient {
       _log('login', {'method': method});
 
   @override
-  Future<void> trackOnboardingCompleted({required bool addedDemoTrips}) async =>
-      _log('onboarding_completed', {'added_demo_trips': addedDemoTrips});
+  Future<void> trackOnboardingCompleted({required String choice}) async =>
+      _log('onboarding_completed', {'choice': choice});
 
   @override
   Future<void> trackAccountLinked() async => _log('account_linked');
 
   @override
   Future<void> trackLogout() async => _log('logout');
+
+  @override
+  Future<void> trackGuestStarted() async => _log('guest_started');
+
+  @override
+  Future<void> trackGuestConverted() async => _log('guest_converted');
+
+  @override
+  Future<void> trackAccountPromptShown({required String feature}) async =>
+      _log('account_prompt_shown', {'feature': feature});
 
   // Trips
   @override
@@ -461,6 +516,10 @@ class LoggerAnalyticsClient implements AnalyticsClient {
   @override
   Future<void> trackTripFilterApplied({required String filterType}) async =>
       _log('trip_filter_applied', {'filter_type': filterType});
+
+  @override
+  Future<void> trackTripSectionViewed({required String section}) async =>
+      _log('trip_section_viewed', {'section': section});
 
   // Content
   @override
@@ -650,6 +709,11 @@ class AnalyticsFacade implements AnalyticsClient {
     }
   }
 
+  // Navigation
+  @override
+  Future<void> trackScreenView({required String screenName}) async =>
+      _dispatch((c) => c.trackScreenView(screenName: screenName));
+
   // Auth
   @override
   Future<void> trackIntroSeen() async =>
@@ -668,8 +732,8 @@ class AnalyticsFacade implements AnalyticsClient {
       _dispatch((c) => c.trackLogin(method: method));
 
   @override
-  Future<void> trackOnboardingCompleted({required bool addedDemoTrips}) async =>
-      _dispatch((c) => c.trackOnboardingCompleted(addedDemoTrips: addedDemoTrips));
+  Future<void> trackOnboardingCompleted({required String choice}) async =>
+      _dispatch((c) => c.trackOnboardingCompleted(choice: choice));
 
   @override
   Future<void> trackAccountLinked() async =>
@@ -678,6 +742,18 @@ class AnalyticsFacade implements AnalyticsClient {
   @override
   Future<void> trackLogout() async =>
       _dispatch((c) => c.trackLogout());
+
+  @override
+  Future<void> trackGuestStarted() async =>
+      _dispatch((c) => c.trackGuestStarted());
+
+  @override
+  Future<void> trackGuestConverted() async =>
+      _dispatch((c) => c.trackGuestConverted());
+
+  @override
+  Future<void> trackAccountPromptShown({required String feature}) async =>
+      _dispatch((c) => c.trackAccountPromptShown(feature: feature));
 
   // Trips
   @override
@@ -699,6 +775,10 @@ class AnalyticsFacade implements AnalyticsClient {
   @override
   Future<void> trackTripFilterApplied({required String filterType}) async =>
       _dispatch((c) => c.trackTripFilterApplied(filterType: filterType));
+
+  @override
+  Future<void> trackTripSectionViewed({required String section}) async =>
+      _dispatch((c) => c.trackTripSectionViewed(section: section));
 
   // Content
   @override

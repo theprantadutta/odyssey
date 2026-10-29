@@ -10,9 +10,11 @@ import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/utils/trip_format.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../activities/presentation/providers/activities_provider.dart';
+import '../../../auth/presentation/guest_prompts.dart';
 import '../../../packing/presentation/providers/packing_provider.dart';
 import '../../../sharing/presentation/widgets/collaboration_indicator.dart';
 import '../../../sharing/presentation/widgets/share_trip_dialog.dart';
@@ -123,8 +125,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         .then((_) => ref.invalidate(tripProvider(trip.id)));
   }
 
-  void _handleShare(TripModel trip) {
+  Future<void> _handleShare(TripModel trip) async {
     HapticFeedback.lightImpact();
+    final canShare = await requireAccount(
+      context,
+      ref,
+      feature: 'share_trip',
+      reason: 'Sharing a trip sends it to our servers so the people you invite can see it.',
+    );
+    if (!canShare || !mounted) return;
     showDialog<void>(
       context: context,
       builder: (context) =>
@@ -132,7 +141,14 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     );
   }
 
-  void _openShares(TripModel trip) {
+  Future<void> _openShares(TripModel trip) async {
+    final canShare = await requireAccount(
+      context,
+      ref,
+      feature: 'manage_sharing',
+      reason: 'Sharing a trip sends it to our servers so the people you invite can see it.',
+    );
+    if (!canShare || !mounted) return;
     context.push(
       '${AppRoutes.tripDetail}/${trip.id}/shares'
       '?title=${Uri.encodeComponent(trip.title)}',
@@ -159,8 +175,16 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       case 'Edit trip':
         _handleEdit(trip);
       case 'Manage sharing':
-        _openShares(trip);
+        await _openShares(trip);
       case 'Save as template':
+        final canSave = await requireAccount(
+          context,
+          ref,
+          feature: 'save_template',
+          reason: 'Templates are kept with your account, so you can start '
+              'new trips from them on any phone.',
+        );
+        if (!canSave || !mounted) return;
         showDialog<void>(
           context: context,
           builder: (context) =>
@@ -471,6 +495,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               selected: _tab,
               onSelected: (value) {
                 HapticFeedback.selectionClick();
+                if (value != _tab) {
+                  ref
+                      .read(analyticsServiceProvider)
+                      .trackTripSectionViewed(section: value.toLowerCase());
+                }
                 setState(() => _tab = value);
               },
             ),

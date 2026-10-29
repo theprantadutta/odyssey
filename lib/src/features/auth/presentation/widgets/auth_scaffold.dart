@@ -28,6 +28,7 @@ class AuthScaffold extends StatelessWidget {
     this.footerPrompt,
     this.footerAction,
     this.onFooterTap,
+    this.onContinueAsGuest,
     this.onBack,
     this.extra,
     this.busy = false,
@@ -49,6 +50,10 @@ class AuthScaffold extends StatelessWidget {
   final String? footerPrompt;
   final String? footerAction;
   final VoidCallback? onFooterTap;
+
+  /// Shows "Continue without an account" under the footer. Null hides it,
+  /// which is how a guest who came here to sign up sees the screen.
+  final VoidCallback? onContinueAsGuest;
   final VoidCallback? onBack;
 
   /// Anything that belongs between the form and the divider — the register
@@ -188,6 +193,31 @@ class AuthScaffold extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
+              if (onContinueAsGuest != null) ...[
+                const SizedBox(height: AppSizes.space6),
+                Center(
+                  child: Pressable(
+                    onTap: onContinueAsGuest,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.space12,
+                        vertical: AppSizes.space6,
+                      ),
+                      child: Text(
+                        'Continue without an account',
+                        style: AppTypography.pill.copyWith(
+                          fontSize: 12.5,
+                          color: t.ink3,
+                          decoration: TextDecoration.underline,
+                          decorationColor: t.ink3,
                         ),
                       ),
                     ),

@@ -9,6 +9,7 @@ import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/utils/validators.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../guest_prompts.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_scaffold.dart';
 
@@ -69,6 +70,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  Future<void> _handleContinueAsGuest() async {
+    final confirmed = await confirmContinueAsGuest(context);
+    if (!confirmed || !mounted) return;
+    HapticFeedback.mediumImpact();
+    // The router takes it from here: onboarding first, then home.
+    await ref.read(authProvider.notifier).continueAsGuest();
+  }
+
   Future<void> _handleGoogleSignIn() async {
     try {
       final needsLinking = await ref
@@ -122,7 +131,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return AuthScaffold(
       headline: 'Start the\njournal.',
-      subtitle: 'One account holds every trip you take.',
+      subtitle: authState.isGuest
+          ? 'Everything you have added on this phone moves to your new '
+              'account.'
+          : 'One account holds every trip you take.',
       // Creating the account server-side takes a couple of seconds after
       // the Google sheet closes, with nothing on the form to show for it.
       busy: isBusy,
@@ -205,6 +217,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       footerPrompt: 'Already have one? ',
       footerAction: 'Sign in',
       onFooterTap: widget.onLoginTap,
+      onContinueAsGuest:
+          authState.isGuest || isBusy ? null : _handleContinueAsGuest,
     );
   }
 }

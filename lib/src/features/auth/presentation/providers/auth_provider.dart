@@ -38,6 +38,10 @@ class AuthState {
   final bool isAppleLoading;
   final String? error;
   final bool isAuthenticated;
+
+  /// Using the app without an account: everything stays local, nothing syncs.
+  /// Never true at the same time as [isAuthenticated].
+  final bool isGuest;
   final bool hasSeenIntro;
   final bool hasAcceptedTerms;
   final bool needsOnboarding;
@@ -51,6 +55,7 @@ class AuthState {
     this.isAppleLoading = false,
     this.error,
     this.isAuthenticated = false,
+    this.isGuest = false,
     this.hasSeenIntro = true, // Default to true to avoid flash
     this.hasAcceptedTerms = true, // Default to true to avoid flash
     this.needsOnboarding = false,
@@ -65,6 +70,7 @@ class AuthState {
     bool? isAppleLoading,
     String? error,
     bool? isAuthenticated,
+    bool? isGuest,
     bool? hasSeenIntro,
     bool? hasAcceptedTerms,
     bool? needsOnboarding,
@@ -78,6 +84,7 @@ class AuthState {
       isAppleLoading: isAppleLoading ?? this.isAppleLoading,
       error: error,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      isGuest: isGuest ?? this.isGuest,
       hasSeenIntro: hasSeenIntro ?? this.hasSeenIntro,
       hasAcceptedTerms: hasAcceptedTerms ?? this.hasAcceptedTerms,
       needsOnboarding: needsOnboarding ?? this.needsOnboarding,
@@ -193,6 +200,7 @@ class Auth extends _$Auth {
       state = state.copyWith(
         user: cachedUser,
         isAuthenticated: true,
+        isGuest: false,
         isLoading: false,
         hasSeenIntro: hasSeenIntro,
         hasAcceptedTerms: hasAcceptedTerms,
@@ -232,13 +240,21 @@ class Auth extends _$Auth {
       final hasRefreshToken = await storageService.getRefreshToken() != null;
 
       if (!hasAccessToken && !hasRefreshToken) {
-        // No tokens at all - user needs to login
-        AppLogger.auth('No tokens found, user needs to login');
+        // No tokens: either a guest coming back, or someone who needs to sign
+        // in.
+        final isGuest = await storageService.isGuestMode();
+        AppLogger.auth(isGuest
+            ? 'No tokens found, continuing as guest'
+            : 'No tokens found, user needs to login');
         state = state.copyWith(
           isAuthenticated: false,
+          isGuest: isGuest,
           isLoading: false,
           hasSeenIntro: hasSeenIntro,
           hasAcceptedTerms: hasAcceptedTerms,
+          needsOnboarding: isGuest &&
+              !await storageService
+                  .isOnboardingCompleted(StorageService.guestOnboardingId),
         );
         return;
       }
@@ -286,6 +302,7 @@ class Auth extends _$Auth {
           state = state.copyWith(
             user: user,
             isAuthenticated: true,
+            isGuest: false,
             isLoading: false,
             hasSeenIntro: hasSeenIntro,
             hasAcceptedTerms: hasAcceptedTerms,
@@ -352,13 +369,18 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Registration successful: ${user.email}');
 
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isLoading: false,
-        needsOnboarding: true, // New user needs onboarding
+        // A brand new account needs onboarding, unless it is a guest's who
+        // already went through it.
+        needsOnboarding:
+            !await StorageService().isOnboardingCompleted(user.id),
       );
 
       final analytics = ref.read(analyticsServiceProvider);
@@ -388,6 +410,7 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Login successful: ${user.email}');
 
       // Asked here as everywhere else: signing in with an email and password
@@ -400,6 +423,7 @@ class Auth extends _$Auth {
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isLoading: false,
         needsOnboarding: !hasCompletedOnboarding,
       );
@@ -512,14 +536,70 @@ class Auth extends _$Auth {
     ref.invalidate(notificationPreferencesProvider);
   }
 
+  /// Starts using the app without an account.
+  ///
+  /// Whatever is in the local database is cleared first. It can only belong
+  /// to an account whose session ended without the usual reset, and a guest's
+  /// trips are pushed to whichever account they later sign in to - left in
+  /// place, that previous account's data would go with them.
+  Future<void> continueAsGuest() async {
+    AppLogger.auth('Continuing as guest');
+    await AccountStateReset().reset(userId: null, preserveUnsyncedWork: false);
+    _resetUserScopedProviders();
+
+    final storage = StorageService();
+    await storage.setGuestMode(true);
+    final onboarded =
+        await storage.isOnboardingCompleted(StorageService.guestOnboardingId);
+
+    state = state.copyWith(
+      isGuest: true,
+      isAuthenticated: false,
+      needsOnboarding: !onboarded,
+      error: null,
+    );
+
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackGuestStarted());
+    unawaited(analytics.setUserProperty(name: 'account_type', value: 'guest'));
+  }
+
+  /// Hands a guest's local session to the account that just signed in.
+  ///
+  /// The trips themselves need nothing: sign-in never clears the database, so
+  /// they and their queued operations are still there, and the session's first
+  /// sync pushes them under the new account. What carries over by hand is the
+  /// onboarding the guest already did, so they are not sent through it again.
+  Future<void> _adoptGuestSession(String userId) async {
+    if (!state.isGuest) return;
+
+    final storage = StorageService();
+    await storage.setGuestMode(false);
+    if (await storage
+        .isOnboardingCompleted(StorageService.guestOnboardingId)) {
+      await storage.setOnboardingCompleted(userId, true);
+    }
+    await storage.setOnboardingCompleted(
+        StorageService.guestOnboardingId, false);
+
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackGuestConverted());
+    unawaited(
+        analytics.setUserProperty(name: 'account_type', value: 'registered'));
+  }
+
   /// Clear error
   void clearError() {
     state = state.copyWith(error: null);
   }
 
   /// Complete onboarding (mark as done and update state)
-  Future<void> completeOnboarding({bool addedDemoTrips = false}) async {
-    final userId = state.user?.id;
+  /// [choice] is how the user left onboarding — `first_trip`, `sample_trips`
+  /// or `skipped` — and is reported as-is.
+  Future<void> completeOnboarding({required String choice}) async {
+    final userId = state.isGuest
+        ? StorageService.guestOnboardingId
+        : state.user?.id;
     // Without a user there is no one to record this against, and writing it
     // device-wide is the bug this is scoped to avoid.
     if (userId == null) {
@@ -532,7 +612,7 @@ class Auth extends _$Auth {
     await StorageService().setOnboardingCompleted(userId, true);
     state = state.copyWith(needsOnboarding: false);
     final analytics = ref.read(analyticsServiceProvider);
-    unawaited(analytics.trackOnboardingCompleted(addedDemoTrips: addedDemoTrips));
+    unawaited(analytics.trackOnboardingCompleted(choice: choice));
     unawaited(analytics.setUserProperty(name: 'has_completed_onboarding', value: 'true'));
   }
 
@@ -556,6 +636,7 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Google Sign-In successful: ${user.email}');
 
       // Check if onboarding was completed
@@ -565,6 +646,7 @@ class Auth extends _$Auth {
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isGoogleLoading: false,
         needsOnboarding:
             !hasCompletedOnboarding, // Show onboarding if not completed
@@ -617,6 +699,7 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Sign in with Apple successful: ${user.email}');
 
       // Check if onboarding was completed
@@ -626,6 +709,7 @@ class Auth extends _$Auth {
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isAppleLoading: false,
         needsOnboarding: !hasCompletedOnboarding,
       );
@@ -675,11 +759,13 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Account linking successful: ${user.email}');
 
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isLoading: false,
         needsAccountLinking: false,
         pendingFirebaseToken: null,
@@ -719,6 +805,7 @@ class Auth extends _$Auth {
       // Fetch user details
       final user = await _authRepository.getCurrentUser();
       await StorageService().saveUserData(jsonEncode(user.toJson()));
+      await _adoptGuestSession(user.id);
       AppLogger.auth('Auto-link successful: ${user.email}');
 
       // Check if onboarding was completed
@@ -728,6 +815,7 @@ class Auth extends _$Auth {
       state = state.copyWith(
         user: user,
         isAuthenticated: true,
+        isGuest: false,
         isLoading: false,
         needsAccountLinking: false,
         pendingFirebaseToken: null,
@@ -787,6 +875,10 @@ class Auth extends _$Auth {
           await AccountStateReset().beginSession(userId);
         }
         await SyncService().performInitialSync();
+        // Initial sync only pulls, and a push asked for while it ran was
+        // dropped. Anything already queued - a guest's trips above all - would
+        // otherwise wait for the next timer tick or local edit to go up.
+        await SyncService().performSync();
         AppLogger.auth('Initial sync completed');
       } catch (e) {
         AppLogger.auth('Initial sync failed: $e', isError: true);

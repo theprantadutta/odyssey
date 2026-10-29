@@ -6,7 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_service.dart';
 import '../../../../core/database/model_converters.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/network/api_availability.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/sync/sync_queue_service.dart';
 import '../models/trip_share_model.dart';
@@ -51,7 +51,7 @@ class SharingRepository {
     TripShareRequest request,
   ) async {
     final scope = AccountSession().capture();
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw const OfflineInvitationException();
     }
 
@@ -74,10 +74,10 @@ class SharingRepository {
   Future<TripSharesResponse> getTripShares(String tripId) async {
     final localShares = await _db.sharesDao.getByTrip(tripId);
 
-    if (localShares.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localShares.isNotEmpty || !ApiAvailability.canReachApi) {
       final shares = localShares.map(tripShareFromLocal).toList();
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshTripSharesFromApi(tripId);
       }
 
@@ -111,7 +111,7 @@ class SharingRepository {
       payload: {'trip_id': tripId, 'permission': permission.name},
     );
 
-    if (ConnectivityService().isOnline) {
+    if (ApiAvailability.canReachApi) {
       try {
         final response = await _dioClient.patch(
           '${ApiConfig.tripShares(tripId)}/$shareId',
@@ -142,7 +142,7 @@ class SharingRepository {
       payload: {'trip_id': tripId},
     );
 
-    if (ConnectivityService().isOnline) {
+    if (ApiAvailability.canReachApi) {
       try {
         await _dioClient.delete('${ApiConfig.tripShares(tripId)}/$shareId');
         await scope.write(() => _db.sharesDao.hardDelete(shareId));
@@ -155,7 +155,7 @@ class SharingRepository {
 
   /// Get invite details by code - API-only
   Future<InviteDetailsModel> getInviteDetails(String inviteCode) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Viewing invite details requires an internet connection';
     }
     try {
@@ -168,7 +168,7 @@ class SharingRepository {
 
   /// Accept an invite - API-only
   Future<AcceptInviteResponse> acceptInvite(String inviteCode) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Accepting invites requires an internet connection';
     }
     try {
@@ -181,7 +181,7 @@ class SharingRepository {
 
   /// Decline an invite - API-only
   Future<void> declineInvite(String inviteCode) async {
-    if (!ConnectivityService().isOnline) {
+    if (!ApiAvailability.canReachApi) {
       throw 'Declining invites requires an internet connection';
     }
     try {
@@ -195,10 +195,10 @@ class SharingRepository {
   Future<SharedTripsResponse> getSharedTrips() async {
     final localShared = await _db.sharesDao.getAllShared();
 
-    if (localShared.isNotEmpty || !ConnectivityService().isOnline) {
+    if (localShared.isNotEmpty || !ApiAvailability.canReachApi) {
       final trips = localShared.map(sharedTripFromLocal).toList();
 
-      if (ConnectivityService().isOnline) {
+      if (ApiAvailability.canReachApi) {
         _refreshSharedTripsFromApi();
       }
 

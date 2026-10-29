@@ -8,6 +8,8 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../auth/presentation/guest_prompts.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../subscription/presentation/widgets/limit_meter.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../memories/data/models/memory_model.dart';
@@ -24,8 +26,15 @@ class TripMemoriesTab extends ConsumerWidget {
 
   final String tripId;
 
-  void _upload(BuildContext context) {
+  Future<void> _upload(BuildContext context, WidgetRef ref) async {
     HapticFeedback.lightImpact();
+    final canUpload = await requireAccount(
+      context,
+      ref,
+      feature: 'photo_upload',
+      reason: 'Photos are stored with your account, so they are safe even if you lose your phone.',
+    );
+    if (!canUpload || !context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: TaskRoutes.settings(TaskRoutes.photoUpload),
@@ -76,6 +85,18 @@ class TripMemoriesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.odyssey;
+
+    // Memories are read from and uploaded to the server; a guest has neither.
+    if (ref.watch(authProvider.select((s) => s.isGuest))) {
+      return OdysseyEmptyState(
+        icon: Icons.photo_camera_outlined,
+        message: 'Photos need a free account. They are stored with it, so '
+            'they are safe even if you lose your phone.',
+        actionLabel: 'Create a free account',
+        onAction: () => _upload(context, ref),
+      );
+    }
+
     final state = ref.watch(tripMemoriesProvider(tripId));
 
     if (state.isLoading && state.memories.isEmpty) {
@@ -101,7 +122,7 @@ class TripMemoriesTab extends ConsumerWidget {
         icon: Icons.photo_camera_outlined,
         message: 'No photos yet. The journal fills itself as you go.',
         actionLabel: 'Add a photo',
-        onAction: () => _upload(context),
+        onAction: () => _upload(context, ref),
       );
     }
 
@@ -159,7 +180,7 @@ class TripMemoriesTab extends ConsumerWidget {
               if (index == memories.length - 1) {
                 return DashedBox(
                   radius: AppSizes.radiusTile,
-                  onTap: () => _upload(context),
+                  onTap: () => _upload(context, ref),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -196,7 +217,7 @@ class TripMemoriesTab extends ConsumerWidget {
           PillButton(
             label: 'Add a photo',
             style: PillStyle.dashed,
-            onPressed: () => _upload(context),
+            onPressed: () => _upload(context, ref),
             padding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ],

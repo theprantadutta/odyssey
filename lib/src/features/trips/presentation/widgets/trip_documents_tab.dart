@@ -9,6 +9,7 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../auth/presentation/guest_prompts.dart';
 import '../../../subscription/presentation/widgets/limit_meter.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../documents/data/models/document_model.dart';
@@ -38,8 +39,16 @@ class _TripDocumentsTabState extends ConsumerState<TripDocumentsTab> {
       .firstWhere((t) => t.name == raw, orElse: () => DocumentType.other)
       .displayName;
 
-  void _upload() {
+  Future<void> _upload() async {
     HapticFeedback.lightImpact();
+    final canUpload = await requireAccount(
+      context,
+      ref,
+      feature: 'document_upload',
+      reason: 'Documents are stored with your account, so your tickets and '
+          'bookings are safe even if you lose your phone.',
+    );
+    if (!canUpload || !mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: TaskRoutes.settings(TaskRoutes.documentUpload),

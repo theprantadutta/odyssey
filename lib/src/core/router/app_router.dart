@@ -1,7 +1,7 @@
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/analytics_provider.dart';
 import '../services/logger_service.dart';
 import '../../features/ads/presentation/observers/interstitial_route_observer.dart';
 import '../../features/ads/presentation/providers/ads_providers.dart';
@@ -30,6 +30,7 @@ import '../../features/subscription/presentation/screens/subscription_screen.dar
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import 'app_shell.dart';
+import 'screen_tracker.dart';
 
 /// Route paths
 class AppRoutes {
@@ -65,6 +66,7 @@ class AuthChangeNotifier extends ChangeNotifier {
       // Only notify if relevant auth fields changed
       if (previous?.isAuthenticated != next.isAuthenticated ||
           previous?.isLoading != next.isLoading ||
+          previous?.isGuest != next.isGuest ||
           previous?.hasSeenIntro != next.hasSeenIntro ||
           previous?.hasAcceptedTerms != next.hasAcceptedTerms ||
           previous?.needsOnboarding != next.needsOnboarding) {
@@ -103,12 +105,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = AuthChangeNotifier(ref);
   ref.onDispose(() => authNotifier.dispose());
 
-  return GoRouter(
+  final screenTracker = ScreenTracker(ref.read(analyticsServiceProvider));
+
+  final router = GoRouter(
     debugLogDiagnostics: true,
     initialLocation: AppRoutes.splash,
     refreshListenable: authNotifier,
     observers: [
-      FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      screenTracker.observer,
       // Surfaces an interstitial ad on every Nth navigation (free users only;
       // the manager itself enforces cadence, cooldown and premium gating).
       InterstitialRouteObserver(
@@ -119,6 +123,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Read current auth state (don't watch - we use refreshListenable instead)
       final authState = ref.read(authProvider);
       final isAuthenticated = authState.isAuthenticated;
+      final isGuest = authState.isGuest;
       final isLoading = authState.isLoading;
       final hasSeenIntro = authState.hasSeenIntro;
       final hasAcceptedTerms = authState.hasAcceptedTerms;
@@ -155,7 +160,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Gated on hasAcceptedTerms so the legal screen always outranks onboarding:
       // without it, an authenticated user with stale terms bounces between /legal
       // (which this rule leaves) and /onboarding (which the legal rule leaves).
-      if (isAuthenticated && needsOnboarding && hasSeenIntro && hasAcceptedTerms && !isOnOnboarding) {
+      if ((isAuthenticated || isGuest) && needsOnboarding && hasSeenIntro && hasAcceptedTerms && !isOnOnboarding) {
         AppLogger.navigation('Redirecting to onboarding (new user)');
         return AppRoutes.onboarding;
       }
@@ -184,8 +189,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
+      // A guest is in the app without an account. Unlike the rule above, the
+      // sign-in screens are left alone: that is how a guest gets an account.
+      if (!isLoading &&
+          isGuest &&
+          !needsOnboarding &&
+          (isOnSplash ||
+              isOnOnboarding ||
+              (isOnIntro && hasSeenIntro) ||
+              (isOnLegalAgreement && hasAcceptedTerms))) {
+        AppLogger.navigation('Redirecting to home (guest)');
+        return AppRoutes.home;
+      }
+
       // Redirect to login if not authenticated (but has seen intro and accepted terms)
-      if (!isAuthenticated && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
+      if (!isAuthenticated && !isGuest && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
         // 'Create account' on the intro means the register screen, even though
         // the legal gate stood in the way. Absent a choice, sign in.
         final destination = _pendingAuthDestination ?? AppRoutes.login;
@@ -376,4 +394,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  screenTracker.attach(router);
+  ref.onDispose(screenTracker.detach);
+
+  return router;
 });
