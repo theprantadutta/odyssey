@@ -10,6 +10,7 @@ import '../../../../common/utils/trip_format.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../notifications/presentation/providers/notification_history_provider.dart';
 import '../../../trips/data/models/trip_model.dart';
 import '../../../trips/presentation/providers/trips_provider.dart';
 
@@ -109,13 +110,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     onTap: () => context.go(AppRoutes.trips),
                   ),
                   const Spacer(),
-                  CircleButton(
-                    icon: Icons.notifications_none_rounded,
-                    size: AppSizes.circleNotification,
-                    onPressed: () => context.push(AppRoutes.notifications),
-                    semanticLabel: 'Notifications',
-                  ),
-                  const SizedBox(width: AppSizes.space10),
+                  // Notifications are delivered to an account; a guest has
+                  // none, and the screen behind the bell could only fail.
+                  if (!authState.isGuest) ...[
+                    const _NotificationBell(),
+                    const SizedBox(width: AppSizes.space10),
+                  ],
                   AvatarCircle(
                     name: firstName ?? user?.email,
                     imageUrl: user?.photoUrl,
@@ -453,6 +453,48 @@ class _TripThumbSkeleton extends StatelessWidget {
           Skeleton(width: 68, height: 11),
         ],
       ),
+    );
+  }
+}
+
+/// The bell, with a dot while anything is unread. The count provider existed
+/// but nothing showed it, so unread notifications were invisible until the
+/// screen was opened.
+class _NotificationBell extends ConsumerWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNotificationCountProvider) ?? 0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CircleButton(
+          icon: Icons.notifications_none_rounded,
+          size: AppSizes.circleNotification,
+          onPressed: () => context.push(AppRoutes.notifications),
+          semanticLabel: unread > 0
+              ? 'Notifications, $unread unread'
+              : 'Notifications',
+        ),
+        if (unread > 0)
+          Positioned(
+            top: 1,
+            right: 1,
+            child: IgnorePointer(
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: context.odyssey.canvas, width: 2),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

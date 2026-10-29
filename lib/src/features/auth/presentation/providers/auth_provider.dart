@@ -156,6 +156,11 @@ class Auth extends _$Auth {
         unawaited(AccountStateReset()
             .reset(userId: expiredUserId)
             .then((_) => _resetUserScopedProviders()));
+
+        // There is no credential left to unregister this device with, so it
+        // forgets its token instead: FCM then refuses it and the server drops
+        // it. Left alone, the expired account's pushes kept arriving here.
+        unawaited(ref.read(notificationsProvider.notifier).forgetDevice());
       }
     }
   }
@@ -210,6 +215,11 @@ class Auth extends _$Auth {
       // Restored offline, so there is no initial sync to run - but the session
       // still has to be open, or nothing syncs when connectivity returns.
       unawaited(AccountStateReset().beginSession(cachedUser.id));
+
+      // The same push set-up an online start gets: tap routing and the token
+      // listener. Without it a launch that began offline never routed a tap,
+      // and a token that rotated during it was never sent to the server.
+      _registerDeviceForNotifications();
     } else {
       AppLogger.auth('No cached user data available');
       state = state.copyWith(

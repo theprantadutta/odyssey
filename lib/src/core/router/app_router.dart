@@ -202,6 +202,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
+      // Notifications belong to an account. A guest reaching them - a stale
+      // deep link, a notification tapped from before signing out - goes home.
+      if (isGuest &&
+          (currentLocation == AppRoutes.notifications ||
+              currentLocation == AppRoutes.notificationSettings)) {
+        return AppRoutes.home;
+      }
+
       // Redirect to login if not authenticated (but has seen intro and accepted terms)
       if (!isAuthenticated && !isGuest && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
         // 'Create account' on the intro means the register screen, even though

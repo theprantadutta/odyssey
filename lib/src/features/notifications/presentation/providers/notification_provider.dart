@@ -25,17 +25,21 @@ class NotificationState {
     this.error,
   });
 
+  /// [clearFcmToken] sets the token to null, which passing `fcmToken: null`
+  /// cannot: that means "unchanged". Signing out used to pass null and keep
+  /// the token it had just deleted, and the next sign-in registered it again.
   NotificationState copyWith({
     bool? isInitialized,
     bool? hasPermission,
     String? fcmToken,
+    bool clearFcmToken = false,
     bool? isRegistering,
     String? error,
   }) {
     return NotificationState(
       isInitialized: isInitialized ?? this.isInitialized,
       hasPermission: hasPermission ?? this.hasPermission,
-      fcmToken: fcmToken ?? this.fcmToken,
+      fcmToken: clearFcmToken ? null : fcmToken ?? this.fcmToken,
       isRegistering: isRegistering ?? this.isRegistering,
       error: error,
     );
@@ -71,11 +75,26 @@ class Notifications extends _$Notifications {
   }
 
   /// Initialize notifications
+  ///
+  /// Called on every sign-in and session start. The first call sets up the
+  /// token listener; every call attaches the handlers and makes sure there is
+  /// a current token - after a sign-out deleted the last one, this is where
+  /// the next is fetched.
   Future<void> initialize({
     void Function(Map<String, dynamic>)? onTap,
     void Function()? onForegroundMessage,
   }) async {
-    if (state.isInitialized) return;
+    if (state.isInitialized) {
+      _notificationService.attachHandlers(
+        onNotificationTap: onTap,
+        onForegroundMessage: onForegroundMessage,
+      );
+      if (state.fcmToken == null && await _notificationService.hasPermission()) {
+        final token = await _notificationService.getToken();
+        state = state.copyWith(hasPermission: true, fcmToken: token);
+      }
+      return;
+    }
 
     try {
       // Initialize notification service
@@ -155,18 +174,24 @@ class Notifications extends _$Notifications {
 
     try {
       final success = await _deviceRepository.unregisterDevice(token);
-
-      // Delete the FCM token
-      await _notificationService.deleteToken();
-
-      // Clear the token from state
-      state = state.copyWith(fcmToken: null);
-
+      await forgetDevice();
       return success;
     } catch (e) {
       AppLogger.error('Failed to unregister device', e);
       return false;
     }
+  }
+
+  /// Stops this device receiving pushes without telling the server.
+  ///
+  /// For a session that has already ended - expired, or revoked - where there
+  /// is no longer a credential to unregister with. Deleting the token makes FCM
+  /// reject it, and the server drops a rejected token the next time it sends.
+  /// Until now nothing happened at all, and the previous account's pushes kept
+  /// arriving.
+  Future<void> forgetDevice() async {
+    await _notificationService.deleteToken();
+    state = state.copyWith(clearFcmToken: true);
   }
 
   /// Handle token refresh
@@ -176,7 +201,8 @@ class Notifications extends _$Notifications {
     final oldToken = state.fcmToken;
     state = state.copyWith(fcmToken: newToken);
 
-    // Check if user is authenticated before re-registering
+    // Check if user is authenticated before re-registering. A guest has no
+    // account to register a device to.
     final isAuthenticated = await _storageService.isAuthenticated();
     if (isAuthenticated) {
       // Unregister old token if exists
@@ -222,6 +248,10 @@ class Notifications extends _$Notifications {
     if (token == null) return;
 
     state = state.copyWith(fcmToken: token);
+
+    // A guest can allow notifications too; the device is registered when they
+    // sign in. Sent now, it would go out without credentials and be refused.
+    if (!await _storageService.isAuthenticated()) return;
 
     try {
       await _deviceRepository.registerDevice(fcmToken: token);

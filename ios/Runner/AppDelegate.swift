@@ -18,8 +18,11 @@ import FirebaseMessaging
     // Register for remote notifications
     application.registerForRemoteNotifications()
 
-    // Set Firebase Messaging delegate
-    Messaging.messaging().delegate = self
+    // No Messaging delegate of our own. FlutterFire's plugin installs itself as
+    // the delegate when it registers, and that is how onTokenRefresh reaches
+    // Dart; one set here only printed the token, and whichever was assigned
+    // last won - under the UIScene lifecycle the plugin registers later, but
+    // nothing guaranteed it.
 
     // Plugin registration moved to didInitializeImplicitFlutterEngine
     // for the UIScene lifecycle (see flutter.dev/to/uiscene-migration).
@@ -41,13 +44,3 @@ import FirebaseMessaging
   }
 }
 
-// MARK: - MessagingDelegate
-extension AppDelegate: MessagingDelegate {
-  func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    // FCM token is received/refreshed
-    // The flutter_firebase_messaging plugin handles this automatically
-    if let token = fcmToken {
-      print("FCM Token: \(token)")
-    }
-  }
-}

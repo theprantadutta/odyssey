@@ -13,6 +13,7 @@ import '../../../../common/widgets/sync_status_indicator.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/router/task_routes.dart';
 import '../../../notifications/presentation/widgets/notification_permission_prompt.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../walkthrough/presentation/providers/walkthrough_provider.dart';
 import '../../../walkthrough/presentation/steps/dashboard_walkthrough_steps.dart';
 import '../../../walkthrough/presentation/widgets/walkthrough_overlay.dart';
@@ -102,6 +103,10 @@ class _TripsDashboardScreenState extends ConsumerState<TripsDashboardScreen> {
     try {
       await Future<void>.delayed(delay);
       if (!mounted) return;
+
+      // A guest has no account to deliver pushes to. Asking now would spend
+      // the one-shot system dialog on something that cannot work yet.
+      if (ref.read(authProvider).isGuest) return;
 
       final trips = ref.read(tripsProvider).trips;
       if (trips.isEmpty) return;

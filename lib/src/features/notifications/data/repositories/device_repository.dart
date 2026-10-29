@@ -26,6 +26,10 @@ class DeviceRepository {
           'fcm_token': fcmToken,
           'device_name': deviceName,
           'platform': platform,
+          // Lets the server send trip reminders at a sensible local hour. Sent
+          // on every registration, so a daylight-saving change is picked up on
+          // the next app start.
+          'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
         },
       );
 

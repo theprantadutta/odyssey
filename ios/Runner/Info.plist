@@ -53,6 +53,12 @@
 		<string>Main</string>
 		<!-- UIScene lifecycle support (required for upcoming iOS versions).
 	     Uses Flutter's built-in FlutterSceneDelegate; see flutter.dev/to/uiscene-migration. -->
+		<!-- Lets a push with content-available wake the app, so the background
+	     message handler runs on iOS as it does on Android. -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+		</array>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

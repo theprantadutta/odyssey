@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:geolocator/geolocator.dart';
@@ -31,6 +32,15 @@ class NotificationService {
   ForegroundMessageCallback? _onForegroundMessage;
   bool _initialized = false;
 
+  /// A tap that arrived before anything could route it - above all the one
+  /// that launched the app, which is read in main() long before the router and
+  /// the signed-in session exist. Delivered when [attachHandlers] is called.
+  Map<String, dynamic>? _pendingTap;
+
+  /// The status-bar icon: white on transparent, as Android requires. The
+  /// launcher icon used before is full colour and rendered as a white blob.
+  static const String _smallIcon = '@drawable/ic_stat_notification';
+
   /// Android notification channel
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'odyssey_notifications',
@@ -42,14 +52,24 @@ class NotificationService {
   );
 
   /// Initialize the notification service
+  ///
+  /// Called once from main(), before there is anywhere to send a tap. The
+  /// handlers come later through [attachHandlers]. Passing them here still
+  /// works, on the first call or any later one.
   Future<void> initialize({
     NotificationTapCallback? onNotificationTap,
     ForegroundMessageCallback? onForegroundMessage,
   }) async {
+    // A second call used to return here before storing its callbacks. main()
+    // makes the first call with none, so the handlers the signed-in session
+    // passed were dropped and no tap was ever routed anywhere.
+    if (onNotificationTap != null || onForegroundMessage != null) {
+      attachHandlers(
+        onNotificationTap: onNotificationTap,
+        onForegroundMessage: onForegroundMessage,
+      );
+    }
     if (_initialized) return;
-
-    _onNotificationTap = onNotificationTap;
-    _onForegroundMessage = onForegroundMessage;
 
     // Set up background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -75,20 +95,51 @@ class NotificationService {
     // Handle notification taps when app is in background/terminated
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-    // Check if app was opened from a notification
+    // Check if app was opened from a notification - a push, or one of ours
+    // shown while the app was in the foreground.
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationTap(initialMessage);
+    } else {
+      final launch = await _localNotifications.getNotificationAppLaunchDetails();
+      final payload = launch?.notificationResponse?.payload;
+      if ((launch?.didNotificationLaunchApp ?? false) && payload != null) {
+        _deliverTap(decodePayload(payload));
+      }
     }
 
     _initialized = true;
     AppLogger.info('NotificationService initialized');
   }
 
+  /// Sets where taps and foreground arrivals go, and delivers a tap that was
+  /// waiting for somewhere to go.
+  void attachHandlers({
+    NotificationTapCallback? onNotificationTap,
+    ForegroundMessageCallback? onForegroundMessage,
+  }) {
+    if (onNotificationTap != null) _onNotificationTap = onNotificationTap;
+    if (onForegroundMessage != null) _onForegroundMessage = onForegroundMessage;
+
+    final pending = _pendingTap;
+    if (pending != null && _onNotificationTap != null) {
+      _pendingTap = null;
+      _onNotificationTap!(pending);
+    }
+  }
+
+  void _deliverTap(Map<String, dynamic> data) {
+    final handler = _onNotificationTap;
+    if (handler == null) {
+      _pendingTap = data;
+      return;
+    }
+    handler(data);
+  }
+
   /// Initialize local notifications plugin
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(_smallIcon);
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -194,26 +245,26 @@ class NotificationService {
   void _handleForegroundMessage(RemoteMessage message) {
     AppLogger.info('Received foreground message: ${message.messageId}');
 
+    // Notify listener that a foreground message arrived (for badge update).
+    // Every message adds a history row on the server, data-only ones included.
+    _onForegroundMessage?.call();
+
     final notification = message.notification;
     if (notification == null) return;
 
-    // Show local notification
+    // The system shows nothing for a push while the app is open; show it
+    // ourselves.
     _showLocalNotification(
       title: notification.title ?? 'Odyssey',
       body: notification.body ?? '',
-      imageUrl: notification.android?.imageUrl ?? notification.apple?.imageUrl,
       data: message.data,
     );
-
-    // Notify listener that a foreground message arrived (for badge update)
-    _onForegroundMessage?.call();
   }
 
   /// Show a local notification
   Future<void> _showLocalNotification({
     required String title,
     required String body,
-    String? imageUrl,
     Map<String, dynamic>? data,
   }) async {
     // Build notification details
@@ -224,10 +275,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
-      icon: '@mipmap/ic_launcher',
-      largeIcon: imageUrl != null
-          ? const DrawableResourceAndroidBitmap('@mipmap/ic_launcher')
-          : null,
+      icon: _smallIcon,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -245,7 +293,7 @@ class NotificationService {
     final id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
 
     // Encode data as payload
-    final payload = data != null ? _encodePayload(data) : null;
+    final payload = data != null ? jsonEncode(data) : null;
 
     await _localNotifications.show(
       id: id,
@@ -259,33 +307,34 @@ class NotificationService {
   /// Handle notification tap from FCM
   void _handleNotificationTap(RemoteMessage message) {
     AppLogger.info('Notification tapped: ${message.messageId}');
-    if (_onNotificationTap != null) {
-      _onNotificationTap!(message.data);
-    }
+    _deliverTap(message.data);
   }
 
   /// Handle local notification tap
   void _onLocalNotificationTap(NotificationResponse response) {
-    AppLogger.info('Local notification tapped: ${response.payload}');
-    if (_onNotificationTap != null && response.payload != null) {
-      final data = _decodePayload(response.payload!);
-      _onNotificationTap!(data);
+    AppLogger.info('Local notification tapped');
+    final payload = response.payload;
+    if (payload != null) _deliverTap(decodePayload(payload));
+  }
+
+  /// Decodes a local notification's payload.
+  ///
+  /// JSON now. It was `key=value&key=value`, which dropped any pair whose
+  /// value contained `=` and split values containing `&`. A notification shown
+  /// by the previous version can still be tapped after an update, so that
+  /// format is still read.
+  static Map<String, dynamic> decodePayload(String payload) {
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } on FormatException {
+      // Fall through to the old format.
     }
-  }
 
-  /// Encode payload for local notifications
-  String _encodePayload(Map<String, dynamic> data) {
-    return data.entries.map((e) => '${e.key}=${e.value}').join('&');
-  }
-
-  /// Decode payload from local notifications
-  Map<String, dynamic> _decodePayload(String payload) {
     final map = <String, dynamic>{};
     for (final pair in payload.split('&')) {
-      final parts = pair.split('=');
-      if (parts.length == 2) {
-        map[parts[0]] = parts[1];
-      }
+      final index = pair.indexOf('=');
+      if (index > 0) map[pair.substring(0, index)] = pair.substring(index + 1);
     }
     return map;
   }

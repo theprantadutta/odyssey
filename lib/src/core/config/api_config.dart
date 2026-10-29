@@ -112,7 +112,8 @@ class ApiConfig {
   // Device endpoints (push notifications)
   static const String devices = '/devices';
   static const String deviceRegister = '$devices/register';
-  static String deviceUnregister(String token) => '$devices/$token';
+  static String deviceUnregister(String token) =>
+      '$devices/${Uri.encodeComponent(token)}';
 
   // Notification history endpoints
   static const String notifications = '/notifications';
