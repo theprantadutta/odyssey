@@ -67,6 +67,8 @@ abstract class AnalyticsClient {
     required String error,
   });
   Future<void> trackRestoreInitiated();
+  Future<void> trackRestoreCompleted({required int restored});
+  Future<void> trackRestoreFailed({required String error});
 
   // Achievements
   Future<void> trackAchievementEarned({
@@ -110,6 +112,11 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   FirebaseAnalyticsClient(this._analytics);
 
   final FirebaseAnalytics _analytics;
+
+  /// Analytics drops a string parameter longer than 100 characters, and a
+  /// store error can run to several sentences.
+  static String _paramValue(String value) =>
+      value.length <= 100 ? value : value.substring(0, 100);
 
   Future<void> _safeLog(Future<void> Function() action) async {
     try {
@@ -348,12 +355,26 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   }) =>
       _safeLog(() => _analytics.logEvent(
         name: 'purchase_failed',
-        parameters: {'plan': plan, 'error': error},
+        parameters: {'plan': plan, 'error': _paramValue(error)},
       ));
 
   @override
   Future<void> trackRestoreInitiated() =>
       _safeLog(() => _analytics.logEvent(name: 'restore_initiated'));
+
+  @override
+  Future<void> trackRestoreCompleted({required int restored}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'restore_completed',
+        parameters: {'restored': restored},
+      ));
+
+  @override
+  Future<void> trackRestoreFailed({required String error}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'restore_failed',
+        parameters: {'error': _paramValue(error)},
+      ));
 
   // Achievements
   @override
@@ -611,6 +632,14 @@ class LoggerAnalyticsClient implements AnalyticsClient {
 
   @override
   Future<void> trackRestoreInitiated() async => _log('restore_initiated');
+
+  @override
+  Future<void> trackRestoreCompleted({required int restored}) async =>
+      _log('restore_completed', {'restored': restored});
+
+  @override
+  Future<void> trackRestoreFailed({required String error}) async =>
+      _log('restore_failed', {'error': error});
 
   // Achievements
   @override
@@ -880,6 +909,14 @@ class AnalyticsFacade implements AnalyticsClient {
   @override
   Future<void> trackRestoreInitiated() async =>
       _dispatch((c) => c.trackRestoreInitiated());
+
+  @override
+  Future<void> trackRestoreCompleted({required int restored}) async =>
+      _dispatch((c) => c.trackRestoreCompleted(restored: restored));
+
+  @override
+  Future<void> trackRestoreFailed({required String error}) async =>
+      _dispatch((c) => c.trackRestoreFailed(error: error));
 
   // Achievements
   @override

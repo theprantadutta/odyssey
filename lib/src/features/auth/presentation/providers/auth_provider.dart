@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/config/internal_testers.dart';
 import '../../../../core/providers/analytics_provider.dart';
+import '../../../../core/services/analytics_service.dart';
 import '../../../../core/services/auth_event_service.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/logger_service.dart';
@@ -395,7 +397,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackSignUp(method: 'email'));
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
       unawaited(analytics.setUserProperty(name: 'has_completed_onboarding', value: 'false'));
 
       // Register device for push notifications
@@ -440,7 +442,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackLogin(method: 'email'));
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
 
       // Register device for push notifications
       _registerDeviceForNotifications();
@@ -544,6 +546,16 @@ class Auth extends _$Auth {
     ref.invalidate(notificationHistoryProvider);
     ref.invalidate(unreadNotificationCountProvider);
     ref.invalidate(notificationPreferencesProvider);
+  }
+
+  /// Ties analytics to the signed-in account, and marks the accounts used for
+  /// testing so reports can leave them out.
+  void _identifyForAnalytics(AnalyticsFacade analytics, UserModel user) {
+    unawaited(analytics.setUserId(user.id));
+    unawaited(analytics.setUserProperty(
+      name: 'internal_tester',
+      value: isInternalTester(user.email) ? 'true' : null,
+    ));
   }
 
   /// Starts using the app without an account.
@@ -664,7 +676,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackLogin(method: 'google'));
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
 
       // Register device for push notifications
       _registerDeviceForNotifications();
@@ -726,7 +738,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackLogin(method: 'apple'));
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
 
       // Register device for push notifications
       _registerDeviceForNotifications();
@@ -783,7 +795,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackAccountLinked());
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
 
       // Register device for push notifications
       _registerDeviceForNotifications();
@@ -834,7 +846,7 @@ class Auth extends _$Auth {
 
       final analytics = ref.read(analyticsServiceProvider);
       unawaited(analytics.trackAccountLinked());
-      unawaited(analytics.setUserId(user.id));
+      _identifyForAnalytics(analytics, user);
 
       // Register device for push notifications
       _registerDeviceForNotifications();

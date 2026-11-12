@@ -94,6 +94,14 @@ class Purchase extends _$Purchase {
 
   DateTime? _purchaseStartedAt;
 
+  /// Set while a restore runs. The store reports a restore's errors and
+  /// results through the same callbacks as a purchase's; without this a failed
+  /// restore was recorded as a failed purchase, which is how analytics came to
+  /// show more failed purchases than purchases started.
+  bool _restoring = false;
+  bool _restoreFailed = false;
+  int _restoredCount = 0;
+
   @override
   PurchaseState build() {
     _purchaseService = PurchaseService();
@@ -173,6 +181,7 @@ class Purchase extends _$Purchase {
 
   void _onPurchaseRestored(PurchaseResult result) {
     AppLogger.info('Purchase restored: ${result.productId}');
+    if (_restoring) _restoredCount++;
     _purchaseStartedAt = null;
     state = state.copyWith(
       isPurchasing: false,
@@ -190,9 +199,16 @@ class Purchase extends _$Purchase {
     // holding the phone, so they go to the log and no further.
     AppLogger.error('Purchase error: $error');
     _purchaseStartedAt = null;
-    unawaited(ref
-        .read(analyticsServiceProvider)
-        .trackPurchaseFailed(plan: 'unknown', error: error));
+    final analytics = ref.read(analyticsServiceProvider);
+    if (_restoring) {
+      _restoreFailed = true;
+      unawaited(analytics.trackRestoreFailed(error: error));
+    } else {
+      unawaited(analytics.trackPurchaseFailed(
+        plan: _planFromProductId(state.activeProductId),
+        error: error,
+      ));
+    }
     state = state.copyWith(
       isPurchasing: false,
       error: FailureMessage.of(
@@ -342,12 +358,33 @@ class Purchase extends _$Purchase {
   Future<void> restorePurchases() async {
     if (state.isPurchasing) return;
 
-    unawaited(ref.read(analyticsServiceProvider).trackRestoreInitiated());
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackRestoreInitiated());
     state = state.copyWith(isPurchasing: true, clearError: true);
 
-    await _purchaseService.restorePurchases();
+    _restoring = true;
+    _restoreFailed = false;
+    _restoredCount = 0;
+    try {
+      await _purchaseService.restorePurchases();
+    } finally {
+      _restoring = false;
+    }
 
-    state = state.copyWith(isPurchasing: false);
+    if (_restoreFailed) {
+      // The error callback already stopped the spinner and said why.
+    } else if (_restoredCount == 0) {
+      // Nothing owned on this store account. The spinner used to stop with no
+      // word at all, which reads as the button not working.
+      unawaited(analytics.trackRestoreCompleted(restored: 0));
+      state = state.copyWith(
+        isPurchasing: false,
+        error: 'No previous purchases were found for this store account.',
+      );
+    } else {
+      unawaited(analytics.trackRestoreCompleted(restored: _restoredCount));
+      state = state.copyWith(isPurchasing: false);
+    }
 
     // Force refresh from server to get updated status immediately
     ref.read(subscriptionProvider.notifier).forceRefresh();
