@@ -20,7 +20,18 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.example.odyssey"
     // compileSdk = flutter.compileSdkVersion
-    compileSdk = 36
+    // 37: flutter_local_notifications 23 and current AndroidX compile against it.
+    // Only the APIs visible at compile time change; targetSdk and minSdk do not.
+    compileSdk = 37
+
+    // Package dot-files such as .env. Android's default asset ignore list
+    // includes ".*", and builds from Flutter 3.50 no longer override it: .env
+    // was left out of the APK and AAB, flutter_dotenv threw before runApp, and
+    // the app sat on the native splash with no crash. This is the default list
+    // without that entry.
+    androidResources {
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
     // ndkVersion = flutter.ndkVersion
     // ndkVersion = "29.0.13113456"
     ndkVersion = "29.0.14206865"
