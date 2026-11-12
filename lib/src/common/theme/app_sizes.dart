@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Odyssey 2.0 metrics — spacing, radii, and the handful of fixed dimensions
 /// the design pins exactly.

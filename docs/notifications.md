@@ -118,6 +118,26 @@ cannot receive remote pushes from FCM on most setups.
    entitlements show `aps-environment = production`
    (`codesign -d --entitlements :- Runner.app`).
 
+## FCM tokens and FIDs
+
+firebase_messaging 17 deprecates `getToken()`, `onTokenRefresh` and
+`deleteToken()` in favour of `register()`, `onRegistered` and `unregister()`.
+The new calls do not return an FCM token: they return the app instance's
+Firebase Installation ID (FID), which FCM can use as a direct-send target.
+
+The app still uses the deprecated calls, on purpose, because the backend
+stores and sends to FCM tokens (`user_devices.fcm_token`, FirebaseAdmin's
+`MulticastMessage.Tokens`). Moving over takes both sides at once:
+
+1. Confirm FirebaseAdmin for .NET can address a message to an FID (or send
+   to FIDs over the HTTP v1 API directly).
+2. Store the FID alongside or instead of the token, and send to it.
+3. Switch the app to `register()` / `onRegistered` / `unregister()`, and
+   remove the `// ignore: deprecated_member_use` lines in
+   `notification_service.dart`.
+
+Do it before firebase_messaging removes the deprecated calls.
+
 ## Backend checks after any deploy
 
 - Startup log must not contain `FATAL: Firebase could not be initialized`.

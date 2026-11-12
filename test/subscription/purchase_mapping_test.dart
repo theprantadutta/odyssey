@@ -19,6 +19,7 @@ PurchaseAndroid _android({
     purchaseToken: purchaseToken,
     quantity: 1,
     store: IapStore.Google,
+    storeId: 'play',
     transactionDate: 1700000000000,
     transactionId: transactionId,
     isAcknowledgedAndroid: isAcknowledged,
@@ -39,6 +40,7 @@ PurchaseIOS _ios({
     purchaseToken: purchaseToken,
     quantity: 1,
     store: IapStore.Apple,
+    storeId: 'apple',
     transactionDate: 1700000000000,
     transactionId: transactionId,
   );

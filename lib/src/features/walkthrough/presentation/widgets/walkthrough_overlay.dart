@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../../../common/theme/app_sizes.dart';
 import '../../data/models/walkthrough_step_model.dart';
 import 'spotlight_painter.dart';

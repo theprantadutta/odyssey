@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// CustomPainter that draws a dark overlay with a rounded cutout (spotlight)
 /// around the target widget, plus an animated accent-color glow border.

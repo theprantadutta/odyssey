@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Position preference for the tooltip relative to the target widget
 enum TooltipPosition { above, below }

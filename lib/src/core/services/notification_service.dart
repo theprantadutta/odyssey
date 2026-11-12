@@ -229,6 +229,11 @@ class NotificationService {
   /// Get the current FCM token
   Future<String?> getToken() async {
     try {
+    // Deprecated in firebase_messaging 17 for register()/onRegistered, which
+    // yield a Firebase Installation ID rather than an FCM token. The backend
+    // sends to FCM tokens, so moving needs a server change first; see
+    // docs/notifications.md, "FCM tokens and FIDs".
+      // ignore: deprecated_member_use
       final token = await _messaging.getToken();
       AppLogger.info('FCM Token obtained: ${token?.substring(0, 20)}...');
       return token;
@@ -239,6 +244,8 @@ class NotificationService {
   }
 
   /// Listen for token refresh events
+  // Deprecated with getToken; see the note there.
+  // ignore: deprecated_member_use
   Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
 
   /// Handle foreground messages
@@ -362,6 +369,8 @@ class NotificationService {
   /// Delete the FCM token (used on logout)
   Future<void> deleteToken() async {
     try {
+      // Deprecated with getToken; see the note there.
+      // ignore: deprecated_member_use
       await _messaging.deleteToken();
       AppLogger.info('FCM token deleted');
     } catch (e) {

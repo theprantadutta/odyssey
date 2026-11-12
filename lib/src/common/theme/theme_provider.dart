@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:material_ui/material_ui.dart' show ThemeMode;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/providers/analytics_provider.dart';
 import '../../core/services/storage_service.dart';
