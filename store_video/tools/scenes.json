@@ -1,0 +1,11 @@
+{"segments": [
+  {"src": "rec1.mp4", "a": 2.4,  "b": 8.2,  "chip": "HOME",      "title": "Where to next?",       "sub": "Your next trip and recent ones, right on the home screen."},
+  {"src": "rec1.mp4", "a": 13.0, "b": 19.0, "chip": "TRIPS",     "title": "All your trips", "sub": "Planned, ongoing and completed trips, searchable by city."},
+  {"src": "rec1.mp4", "a": 23.0, "b": 30.0, "chip": "OVERVIEW",  "title": "The whole trip at a glance", "sub": "Dates, plans, packing and notes on one page."},
+  {"src": "rec1.mp4", "a": 34.6, "b": 40.0, "chip": "PLAN",      "title": "Plan it day by day",   "sub": "A timeline of everything you want to do."},
+  {"src": "rec2.mp4", "a": 13.6, "b": 19.6, "chip": "PACKING",   "title": "Pack without forgetting", "sub": "A checklist that shows how ready you are."},
+  {"src": "rec2.mp4", "a": 31.4, "b": 37.4, "chip": "SPEND",     "title": "Know where money went", "sub": "Expenses by category, with totals that add up."},
+  {"src": "rec2.mp4", "a": 49.8, "b": 54.8, "chip": "DOCUMENTS", "title": "Tickets in your pocket", "sub": "Bookings and itineraries, available offline."},
+  {"src": "rec2.mp4", "a": 75.0, "b": 81.0, "chip": "MEMORIES",  "title": "Keep the moments",     "sub": "Photos and notes from the trip, all together."},
+  {"src": "rec2.mp4", "a": 83.6, "b": 89.6, "chip": "MAP",       "title": "See it on the map",    "sub": "Your plans and photos, pinned where they happened."}
+]}

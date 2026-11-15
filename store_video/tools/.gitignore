@@ -1,0 +1,5 @@
+# Raw recordings, their timing notes and render previews stay local
+*.png
+*.mp4
+rec*_marks.txt
+__pycache__/
