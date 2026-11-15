@@ -65,7 +65,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!confirmed || !mounted) return;
     HapticFeedback.mediumImpact();
     // The router takes it from here: onboarding first, then home.
-    await ref.read(authProvider.notifier).continueAsGuest();
+    await ref
+        .read(authProvider.notifier)
+        .continueAsGuest(source: 'login');
   }
 
   Future<void> _handleGoogleSignIn() async {

@@ -97,7 +97,35 @@ String? _pendingAuthDestination;
 
 /// Records which way in the user chose on the intro. See
 /// [_pendingAuthDestination].
-void setPendingAuthDestination(String route) => _pendingAuthDestination = route;
+void setPendingAuthDestination(String route) {
+  _pendingAuthDestination = route;
+  _pendingGuestStart = false;
+}
+
+/// Whether 'Start planning' on the intro is waiting for the legal gate.
+///
+/// The same problem as [_pendingAuthDestination], with a different answer on
+/// the far side: guest mode is not a route but a state change, and the router
+/// cannot start it. The legal screen spends this when terms are accepted,
+/// asking the guest warning and starting guest mode before the acceptance
+/// itself lands, so the redirect that follows already sees a guest and goes
+/// to onboarding rather than to the sign-in screen. Not persisted, for the
+/// same reason.
+bool _pendingGuestStart = false;
+
+/// Records that the user chose to start without an account on the intro. See
+/// [_pendingGuestStart].
+void setPendingGuestStart() {
+  _pendingGuestStart = true;
+  _pendingAuthDestination = null;
+}
+
+/// Spends the intro's guest choice: true once, if one is waiting.
+bool takePendingGuestStart() {
+  final pending = _pendingGuestStart;
+  _pendingGuestStart = false;
+  return pending;
+}
 
 /// GoRouter provider - creates router once, uses refreshListenable for auth changes
 final routerProvider = Provider<GoRouter>((ref) {
@@ -119,114 +147,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         () => ref.read(interstitialAdManagerProvider).onNavigation(),
       ),
     ],
-    redirect: (context, state) {
-      // Read current auth state (don't watch - we use refreshListenable instead)
-      final authState = ref.read(authProvider);
-      final isAuthenticated = authState.isAuthenticated;
-      final isGuest = authState.isGuest;
-      final isLoading = authState.isLoading;
-      final hasSeenIntro = authState.hasSeenIntro;
-      final hasAcceptedTerms = authState.hasAcceptedTerms;
-      final needsOnboarding = authState.needsOnboarding;
-
-      final currentLocation = state.matchedLocation;
-      final isOnSplash = currentLocation == AppRoutes.splash;
-      final isOnIntro = currentLocation == AppRoutes.intro;
-      final isOnLegalAgreement = currentLocation == AppRoutes.legalAgreement;
-      final isOnLogin = currentLocation == AppRoutes.login;
-      final isOnRegister = currentLocation == AppRoutes.register;
-      final isOnOnboarding = currentLocation == AppRoutes.onboarding;
-      final isOnAuthScreen = isOnLogin || isOnRegister;
-
-      // Show splash only during initial auth check (isLoading + not yet authenticated)
-      // Don't redirect to splash during logout (isLoading + still authenticated)
-      if (isLoading && !isAuthenticated && !isOnSplash && !isOnAuthScreen && !isOnIntro && !isOnLegalAgreement) {
-        return AppRoutes.splash;
-      }
-
-      // Show intro for first-time users (before authentication)
-      if (!isLoading && !hasSeenIntro && !isOnIntro) {
-        AppLogger.navigation('Redirecting to intro (first-time user)');
-        return AppRoutes.intro;
-      }
-
-      // Show legal agreement if intro seen but terms not accepted
-      if (!isLoading && hasSeenIntro && !hasAcceptedTerms && !isOnLegalAgreement) {
-        AppLogger.navigation('Redirecting to legal agreement (terms not accepted)');
-        return AppRoutes.legalAgreement;
-      }
-
-      // Redirect to post-auth onboarding if user just registered/logged in.
-      // Gated on hasAcceptedTerms so the legal screen always outranks onboarding:
-      // without it, an authenticated user with stale terms bounces between /legal
-      // (which this rule leaves) and /onboarding (which the legal rule leaves).
-      if ((isAuthenticated || isGuest) && needsOnboarding && hasSeenIntro && hasAcceptedTerms && !isOnOnboarding) {
-        AppLogger.navigation('Redirecting to onboarding (new user)');
-        return AppRoutes.onboarding;
-      }
-
-      // Redirect to home if authenticated and onboarding complete
-      // Don't redirect during loading (e.g., logout in progress)
-      // The gate screens rank above home: intro, then legal, then onboarding. Each
-      // condition below leaves a screen only once that screen's job is done -
-      // hasSeenIntro for the intro, hasAcceptedTerms for the legal agreement.
-      // Without them the two rules fight: this one sends the user home, the rule
-      // above sends them straight back.
-      //
-      // Stale terms surface it on a legal version bump. The intro case surfaces on
-      // reinstall: the Keychain keeps the auth token while hasSeenIntro, which lives
-      // in shared preferences, is wiped.
-      if (!isLoading &&
-          isAuthenticated &&
-          !needsOnboarding &&
-          (isOnLogin ||
-              isOnRegister ||
-              isOnSplash ||
-              isOnOnboarding ||
-              (isOnIntro && hasSeenIntro) ||
-              (isOnLegalAgreement && hasAcceptedTerms))) {
-        AppLogger.navigation('Redirecting to home (authenticated)');
-        return AppRoutes.home;
-      }
-
-      // A guest is in the app without an account. Unlike the rule above, the
-      // sign-in screens are left alone: that is how a guest gets an account.
-      if (!isLoading &&
-          isGuest &&
-          !needsOnboarding &&
-          (isOnSplash ||
-              isOnOnboarding ||
-              (isOnIntro && hasSeenIntro) ||
-              (isOnLegalAgreement && hasAcceptedTerms))) {
-        AppLogger.navigation('Redirecting to home (guest)');
-        return AppRoutes.home;
-      }
-
-      // Notifications belong to an account. A guest reaching them - a stale
-      // deep link, a notification tapped from before signing out - goes home.
-      if (isGuest &&
-          (currentLocation == AppRoutes.notifications ||
-              currentLocation == AppRoutes.notificationSettings)) {
-        return AppRoutes.home;
-      }
-
-      // Redirect to login if not authenticated (but has seen intro and accepted terms)
-      if (!isAuthenticated && !isGuest && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
-        // 'Create account' on the intro means the register screen, even though
-        // the legal gate stood in the way. Absent a choice, sign in.
-        final destination = _pendingAuthDestination ?? AppRoutes.login;
-        AppLogger.navigation('Redirecting to $destination (not authenticated)');
-        return destination;
-      }
-
-      // Spent only once the user is actually standing on an auth screen and no
-      // rule above has moved them off it. Clearing on arrival is too early:
-      // `go('/register')` is evaluated once before the terms gate bounces it to
-      // /legal, and that pass would throw the choice away before it is used.
-      if (isOnAuthScreen) _pendingAuthDestination = null;
-
-      return null;
-    },
+    redirect: (context, state) =>
+        resolveAuthRedirect(ref.read(authProvider), state.matchedLocation),
     routes: [
       // --- Full-screen routes, outside the tab shell -------------------
       // Auth, onboarding and anything that takes over the screen. These have
@@ -408,3 +330,115 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return router;
 });
+
+/// The sign-in gates, in order: splash, intro, legal, onboarding, then the app.
+///
+/// Returns where [currentLocation] should go instead, or null to stay. Pulled
+/// out of the router so the gate order can be tested without building every
+/// screen. The router reads auth state rather than watching it; it
+/// re-evaluates this through refreshListenable.
+String? resolveAuthRedirect(AuthState authState, String currentLocation) {
+  final isAuthenticated = authState.isAuthenticated;
+  final isGuest = authState.isGuest;
+  final isLoading = authState.isLoading;
+  final hasSeenIntro = authState.hasSeenIntro;
+  final hasAcceptedTerms = authState.hasAcceptedTerms;
+  final needsOnboarding = authState.needsOnboarding;
+
+  final isOnSplash = currentLocation == AppRoutes.splash;
+  final isOnIntro = currentLocation == AppRoutes.intro;
+  final isOnLegalAgreement = currentLocation == AppRoutes.legalAgreement;
+  final isOnLogin = currentLocation == AppRoutes.login;
+  final isOnRegister = currentLocation == AppRoutes.register;
+  final isOnOnboarding = currentLocation == AppRoutes.onboarding;
+  final isOnAuthScreen = isOnLogin || isOnRegister;
+
+  // Show splash only during initial auth check (isLoading + not yet authenticated)
+  // Don't redirect to splash during logout (isLoading + still authenticated)
+  if (isLoading && !isAuthenticated && !isOnSplash && !isOnAuthScreen && !isOnIntro && !isOnLegalAgreement) {
+    return AppRoutes.splash;
+  }
+
+  // Show intro for first-time users (before authentication)
+  if (!isLoading && !hasSeenIntro && !isOnIntro) {
+    AppLogger.navigation('Redirecting to intro (first-time user)');
+    return AppRoutes.intro;
+  }
+
+  // Show legal agreement if intro seen but terms not accepted
+  if (!isLoading && hasSeenIntro && !hasAcceptedTerms && !isOnLegalAgreement) {
+    AppLogger.navigation('Redirecting to legal agreement (terms not accepted)');
+    return AppRoutes.legalAgreement;
+  }
+
+  // Redirect to post-auth onboarding if user just registered/logged in.
+  // Gated on hasAcceptedTerms so the legal screen always outranks onboarding:
+  // without it, an authenticated user with stale terms bounces between /legal
+  // (which this rule leaves) and /onboarding (which the legal rule leaves).
+  if ((isAuthenticated || isGuest) && needsOnboarding && hasSeenIntro && hasAcceptedTerms && !isOnOnboarding) {
+    AppLogger.navigation('Redirecting to onboarding (new user)');
+    return AppRoutes.onboarding;
+  }
+
+  // Redirect to home if authenticated and onboarding complete
+  // Don't redirect during loading (e.g., logout in progress)
+  // The gate screens rank above home: intro, then legal, then onboarding. Each
+  // condition below leaves a screen only once that screen's job is done -
+  // hasSeenIntro for the intro, hasAcceptedTerms for the legal agreement.
+  // Without them the two rules fight: this one sends the user home, the rule
+  // above sends them straight back.
+  //
+  // Stale terms surface it on a legal version bump. The intro case surfaces on
+  // reinstall: the Keychain keeps the auth token while hasSeenIntro, which lives
+  // in shared preferences, is wiped.
+  if (!isLoading &&
+      isAuthenticated &&
+      !needsOnboarding &&
+      (isOnLogin ||
+          isOnRegister ||
+          isOnSplash ||
+          isOnOnboarding ||
+          (isOnIntro && hasSeenIntro) ||
+          (isOnLegalAgreement && hasAcceptedTerms))) {
+    AppLogger.navigation('Redirecting to home (authenticated)');
+    return AppRoutes.home;
+  }
+
+  // A guest is in the app without an account. Unlike the rule above, the
+  // sign-in screens are left alone: that is how a guest gets an account.
+  if (!isLoading &&
+      isGuest &&
+      !needsOnboarding &&
+      (isOnSplash ||
+          isOnOnboarding ||
+          (isOnIntro && hasSeenIntro) ||
+          (isOnLegalAgreement && hasAcceptedTerms))) {
+    AppLogger.navigation('Redirecting to home (guest)');
+    return AppRoutes.home;
+  }
+
+  // Notifications belong to an account. A guest reaching them - a stale
+  // deep link, a notification tapped from before signing out - goes home.
+  if (isGuest &&
+      (currentLocation == AppRoutes.notifications ||
+          currentLocation == AppRoutes.notificationSettings)) {
+    return AppRoutes.home;
+  }
+
+  // Redirect to login if not authenticated (but has seen intro and accepted terms)
+  if (!isAuthenticated && !isGuest && hasSeenIntro && hasAcceptedTerms && !isOnLogin && !isOnRegister && !isLoading && !isOnIntro) {
+    // 'Create account' on the intro means the register screen, even though
+    // the legal gate stood in the way. Absent a choice, sign in.
+    final destination = _pendingAuthDestination ?? AppRoutes.login;
+    AppLogger.navigation('Redirecting to $destination (not authenticated)');
+    return destination;
+  }
+
+  // Spent only once the user is actually standing on an auth screen and no
+  // rule above has moved them off it. Clearing on arrival is too early:
+  // `go('/register')` is evaluated once before the terms gate bounces it to
+  // /legal, and that pass would throw the choice away before it is used.
+  if (isOnAuthScreen) _pendingAuthDestination = null;
+
+  return null;
+}

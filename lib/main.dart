@@ -19,6 +19,7 @@ import 'src/core/network/dio_client.dart';
 import 'src/core/router/app_router.dart';
 import 'src/core/services/app_update_service.dart';
 import 'src/core/services/connectivity_service.dart';
+import 'src/core/services/install_source_tagger.dart';
 import 'src/core/services/logger_service.dart';
 import 'src/core/services/notification_service.dart';
 import 'src/features/subscription/presentation/providers/purchase_provider.dart';
@@ -64,6 +65,9 @@ Future<void> main() async {
       };
     }
     AppLogger.info('Firebase initialized successfully');
+    // Tag where this install came from (Play vs sideload/debug) so reports can
+    // leave out test devices. Fire-and-forget; it never throws.
+    unawaited(tagInstallSource());
   } catch (e) {
     AppLogger.error('Failed to initialize Firebase', e);
   }

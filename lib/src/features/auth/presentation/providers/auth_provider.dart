@@ -550,12 +550,18 @@ class Auth extends _$Auth {
 
   /// Ties analytics to the signed-in account, and marks the accounts used for
   /// testing so reports can leave them out.
+  ///
+  /// Only ever sets the tag, never clears it: install_source_tagger.dart also
+  /// marks sideloaded and debug installs, and an ordinary account signing in
+  /// on a test device must not undo that.
   void _identifyForAnalytics(AnalyticsFacade analytics, UserModel user) {
     unawaited(analytics.setUserId(user.id));
-    unawaited(analytics.setUserProperty(
-      name: 'internal_tester',
-      value: isInternalTester(user.email) ? 'true' : null,
-    ));
+    if (isInternalTester(user.email)) {
+      unawaited(analytics.setUserProperty(
+        name: 'internal_tester',
+        value: 'true',
+      ));
+    }
   }
 
   /// Starts using the app without an account.
@@ -564,7 +570,10 @@ class Auth extends _$Auth {
   /// to an account whose session ended without the usual reset, and a guest's
   /// trips are pushed to whichever account they later sign in to - left in
   /// place, that previous account's data would go with them.
-  Future<void> continueAsGuest() async {
+  ///
+  /// [source] is the screen the guest started from - `intro`, `login` or
+  /// `register` - and is reported as-is.
+  Future<void> continueAsGuest({required String source}) async {
     AppLogger.auth('Continuing as guest');
     await AccountStateReset().reset(userId: null, preserveUnsyncedWork: false);
     _resetUserScopedProviders();
@@ -582,7 +591,7 @@ class Auth extends _$Auth {
     );
 
     final analytics = ref.read(analyticsServiceProvider);
-    unawaited(analytics.trackGuestStarted());
+    unawaited(analytics.trackGuestStarted(source: source));
     unawaited(analytics.setUserProperty(name: 'account_type', value: 'guest'));
   }
 

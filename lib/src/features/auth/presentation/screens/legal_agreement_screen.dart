@@ -8,6 +8,8 @@ import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/markdown_style.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../core/router/app_router.dart';
+import '../guest_prompts.dart';
 import '../providers/auth_provider.dart';
 
 /// The terms gate, shown once before the first sign-in.
@@ -51,7 +53,26 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
 
   Future<void> _continue() async {
     HapticFeedback.mediumImpact();
-    await ref.read(authProvider.notifier).setTermsAccepted();
+    final notifier = ref.read(authProvider.notifier);
+
+    // 'Start planning' on the intro: the user chose to go without an account
+    // before reaching this gate. They are warned here, once the terms are
+    // agreed, and guest mode starts before the acceptance lands so the
+    // redirect it triggers already sees a guest and heads for onboarding.
+    // Turning the warning down still accepts the terms; with no choice left,
+    // the router goes to sign-in, which offers every way in, guest included.
+    if (takePendingGuestStart()) {
+      final auth = ref.read(authProvider);
+      // Someone already signed in, or already a guest, has nothing to start,
+      // and starting would wipe their local data.
+      if (!auth.isAuthenticated && !auth.isGuest) {
+        final confirmed = await confirmContinueAsGuest(context);
+        if (!mounted) return;
+        if (confirmed) await notifier.continueAsGuest(source: 'intro');
+      }
+    }
+
+    await notifier.setTermsAccepted();
   }
 
   @override

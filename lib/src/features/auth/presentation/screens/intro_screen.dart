@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +10,9 @@ import '../../../../common/theme/app_sizes.dart';
 import '../../../../common/theme/app_typography.dart';
 import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
+import '../../../../core/providers/analytics_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../guest_prompts.dart';
 import '../providers/auth_provider.dart';
 
 /// One slide of the intro.
@@ -31,7 +35,10 @@ class _IntroSlide {
 /// Onboarding — screen 3a.
 ///
 /// A 520px full-bleed photo that dissolves into the canvas, then the pitch and
-/// the two ways in. The photo has no radius and bleeds to every edge; its
+/// the ways in. The main one needs no account: 'Start planning' (and Skip)
+/// lead through the legal gate and onboarding into the app as a guest.
+/// Making an account, or signing in to one, are the quieter links beneath.
+/// The photo has no radius and bleeds to every edge; its
 /// scrim ends on the theme canvas, which is what makes the image melt into the
 /// page rather than stopping at a line.
 class IntroScreen extends ConsumerStatefulWidget {
@@ -69,6 +76,18 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
     ),
   ];
 
+  /// Set once a way out has been chosen, so a second tap during the await
+  /// cannot record a second choice or start guest mode twice.
+  bool _leaving = false;
+
+  bool get _onLastSlide => _page == _slides.length - 1;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ref.read(analyticsServiceProvider).trackIntroShown());
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -78,27 +97,98 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   void _onPageChanged(int page) {
     setState(() => _page = page);
     HapticFeedback.selectionClick();
+    unawaited(
+      ref.read(analyticsServiceProvider).trackIntroSlideViewed(slide: page),
+    );
   }
 
-  Future<void> _finish({required String destination}) async {
+  /// Reports how the user left, then marks the intro seen, which is what lets
+  /// the router move them on.
+  Future<void> _markSeen(String choice) async {
+    unawaited(
+      ref.read(analyticsServiceProvider).trackIntroChoice(choice: choice),
+    );
+    await ref.read(authProvider.notifier).setIntroSeen();
+  }
+
+  /// Leaves for one of the account screens.
+  Future<void> _finish({
+    required String destination,
+    required String choice,
+  }) async {
+    if (_leaving) return;
+    _leaving = true;
     HapticFeedback.mediumImpact();
     // The legal gate stands between this button and where it points, and a
     // redirect cannot carry intent, so the choice is recorded for the router to
     // honour once the gate is cleared.
     setPendingAuthDestination(destination);
-    await ref.read(authProvider.notifier).setIntroSeen();
+    await _markSeen(choice);
     if (mounted) context.go(destination);
   }
 
+  /// Leaves to use the app without an account.
+  ///
+  /// Usually the legal gate is still ahead, so the choice is parked for the
+  /// legal screen, which shows the guest warning once terms are agreed and
+  /// then starts guest mode; the router carries on to onboarding and home.
+  /// The warning waits until then so nothing stands between this button and
+  /// the terms but the terms themselves.
+  Future<void> _startAsGuest({required String choice}) async {
+    if (_leaving) return;
+    _leaving = true;
+    HapticFeedback.mediumImpact();
+    final auth = ref.read(authProvider);
+    final notifier = ref.read(authProvider.notifier);
+
+    if (auth.isAuthenticated || auth.isGuest) {
+      // Already signed in - a reinstall that kept its Keychain token - or
+      // already a guest. There is nothing to start, and starting guest mode
+      // would wipe their local data. The router takes them on as before.
+      await _markSeen(choice);
+      return;
+    }
+
+    if (auth.hasAcceptedTerms) {
+      // No legal gate this time, so the warning is shown here instead.
+      final confirmed = await confirmContinueAsGuest(context);
+      if (!confirmed || !mounted) {
+        _leaving = false;
+        return;
+      }
+      // Guest first, then the intro: the redirect that follows must already
+      // see a guest, or it sends them to sign in.
+      await notifier.continueAsGuest(source: 'intro');
+      await _markSeen(choice);
+      return;
+    }
+
+    setPendingGuestStart();
+    await _markSeen(choice);
+  }
+
   void _advance() {
-    if (_page < _slides.length - 1) {
+    if (!_onLastSlide) {
       _pageController.nextPage(
         duration: AppSizes.durationNormal,
         curve: Curves.easeOutCubic,
       );
     } else {
-      _finish(destination: AppRoutes.register);
+      _startAsGuest(choice: 'guest');
     }
+  }
+
+  /// Room the pitch below the photo needs at the current text size: dots,
+  /// a two-line headline, three lines of body, the button row, the
+  /// 'No account needed' line, the links, padding and the gesture bar.
+  static const double _pitchHeight = 410;
+
+  double _photoHeight(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final scale = media.textScaler.scale(16) / 16;
+    final pitch = _pitchHeight * scale.clamp(1.0, 1.6) + media.padding.bottom;
+    return (media.size.height - pitch)
+        .clamp(200.0, AppSizes.introPhotoHeight);
   }
 
   @override
@@ -119,8 +209,12 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
         body: Column(
           children: [
             // --- full-bleed photo ---
+            // The photo gives way to the pitch, not the other way round: at a
+            // fixed 520 the buttons sat below the fold on most phones (about
+            // 960dp needed, most are 780-870dp tall), and half of new users
+            // left on this screen.
             SizedBox(
-              height: AppSizes.introPhotoHeight,
+              height: _photoHeight(context),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -135,7 +229,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
                     right: AppSizes.screenPadding,
                     top: 58,
                     child: Pressable(
-                      onTap: () => _finish(destination: AppRoutes.login),
+                      onTap: () => _startAsGuest(choice: 'skip'),
                       borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -165,11 +259,12 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
             // --- pitch ---
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
+                // Clear of the gesture bar, which the photo above ignores.
+                padding: EdgeInsets.fromLTRB(
                   AppSizes.authPadding,
-                  30,
+                  26,
                   AppSizes.authPadding,
-                  32,
+                  20 + MediaQuery.of(context).padding.bottom,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,9 +295,7 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
                         // not an ordinary primary button.
                         Expanded(
                           child: PillButton(
-                            label: _page == _slides.length - 1
-                                ? 'Create account'
-                                : 'Next',
+                            label: _onLastSlide ? 'Start planning' : 'Next',
                             style: PillStyle.brand,
                             onPressed: _advance,
                           ),
@@ -213,31 +306,50 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
                           size: AppSizes.circleIntroArrow,
                           glyphSize: 20,
                           onPressed: _advance,
-                          semanticLabel: 'Next',
+                          semanticLabel:
+                              _onLastSlide ? 'Start planning' : 'Next',
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSizes.space16),
-                    Center(
-                      child: Pressable(
-                        onTap: () => _finish(destination: AppRoutes.login),
-                        borderRadius: BorderRadius.circular(
-                          AppSizes.radiusChipXs,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSizes.space12,
-                            vertical: AppSizes.space6,
-                          ),
-                          child: Text(
-                            'I already have an account',
-                            style: AppTypography.pill.copyWith(
-                              fontSize: 12.5,
-                              color: t.ink3,
-                            ),
-                          ),
+                    const SizedBox(height: AppSizes.space10),
+                    // The space is held on every slide so nothing below jumps
+                    // when the last one fades this in under 'Start planning'.
+                    AnimatedOpacity(
+                      opacity: _onLastSlide ? 1 : 0,
+                      duration: AppSizes.durationNormal,
+                      child: Center(
+                        child: Text(
+                          'No account needed',
+                          style: AppTypography.caption.copyWith(color: t.ink2),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: AppSizes.space8),
+                    // A Wrap, not a Row: at large text sizes the pair runs
+                    // onto two lines instead of overflowing.
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _IntroLink(
+                          label: 'Create account',
+                          onTap: () => _finish(
+                            destination: AppRoutes.register,
+                            choice: 'register',
+                          ),
+                        ),
+                        Text(
+                          '·',
+                          style: AppTypography.pill.copyWith(color: t.ink3),
+                        ),
+                        _IntroLink(
+                          label: 'I already have an account',
+                          onTap: () => _finish(
+                            destination: AppRoutes.login,
+                            choice: 'login',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -250,7 +362,36 @@ class _IntroScreenState extends ConsumerState<IntroScreen> {
   }
 }
 
-/// The photo block. Its scrim resolves to the theme canvas at the bottom, so
+/// One of the quiet text links under the main call to action.
+class _IntroLink extends StatelessWidget {
+  const _IntroLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusChipXs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.space8,
+          vertical: AppSizes.space6,
+        ),
+        child: Text(
+          label,
+          style: AppTypography.pill.copyWith(
+            fontSize: 12.5,
+            color: context.odyssey.ink3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The photo block.Its scrim resolves to the theme canvas at the bottom, so
 /// the image dissolves into the page instead of ending at an edge.
 class _IntroPhoto extends StatelessWidget {
   const _IntroPhoto({required this.slide, required this.canvas});

@@ -75,7 +75,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!confirmed || !mounted) return;
     HapticFeedback.mediumImpact();
     // The router takes it from here: onboarding first, then home.
-    await ref.read(authProvider.notifier).continueAsGuest();
+    await ref
+        .read(authProvider.notifier)
+        .continueAsGuest(source: 'register');
   }
 
   Future<void> _handleGoogleSignIn() async {

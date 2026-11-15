@@ -12,6 +12,9 @@ abstract class AnalyticsClient {
   Future<void> trackScreenView({required String screenName});
 
   // Auth
+  Future<void> trackIntroShown();
+  Future<void> trackIntroSlideViewed({required int slide});
+  Future<void> trackIntroChoice({required String choice});
   Future<void> trackIntroSeen();
   Future<void> trackTermsAccepted();
   Future<void> trackSignUp({required String method});
@@ -19,7 +22,7 @@ abstract class AnalyticsClient {
   Future<void> trackOnboardingCompleted({required String choice});
   Future<void> trackAccountLinked();
   Future<void> trackLogout();
-  Future<void> trackGuestStarted();
+  Future<void> trackGuestStarted({required String source});
   Future<void> trackGuestConverted();
   Future<void> trackAccountPromptShown({required String feature});
 
@@ -139,6 +142,24 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
 
   // Auth
   @override
+  Future<void> trackIntroShown() =>
+      _safeLog(() => _analytics.logEvent(name: 'intro_shown'));
+
+  @override
+  Future<void> trackIntroSlideViewed({required int slide}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'intro_slide_viewed',
+        parameters: {'slide': slide},
+      ));
+
+  @override
+  Future<void> trackIntroChoice({required String choice}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'intro_choice',
+        parameters: {'choice': choice},
+      ));
+
+  @override
   Future<void> trackIntroSeen() =>
       _safeLog(() => _analytics.logEvent(name: 'intro_seen'));
 
@@ -170,8 +191,11 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
       _safeLog(() => _analytics.logEvent(name: 'logout'));
 
   @override
-  Future<void> trackGuestStarted() =>
-      _safeLog(() => _analytics.logEvent(name: 'guest_started'));
+  Future<void> trackGuestStarted({required String source}) =>
+      _safeLog(() => _analytics.logEvent(
+        name: 'guest_started',
+        parameters: {'source': source},
+      ));
 
   @override
   Future<void> trackGuestConverted() =>
@@ -486,6 +510,17 @@ class LoggerAnalyticsClient implements AnalyticsClient {
 
   // Auth
   @override
+  Future<void> trackIntroShown() async => _log('intro_shown');
+
+  @override
+  Future<void> trackIntroSlideViewed({required int slide}) async =>
+      _log('intro_slide_viewed', {'slide': slide});
+
+  @override
+  Future<void> trackIntroChoice({required String choice}) async =>
+      _log('intro_choice', {'choice': choice});
+
+  @override
   Future<void> trackIntroSeen() async => _log('intro_seen');
 
   @override
@@ -510,7 +545,8 @@ class LoggerAnalyticsClient implements AnalyticsClient {
   Future<void> trackLogout() async => _log('logout');
 
   @override
-  Future<void> trackGuestStarted() async => _log('guest_started');
+  Future<void> trackGuestStarted({required String source}) async =>
+      _log('guest_started', {'source': source});
 
   @override
   Future<void> trackGuestConverted() async => _log('guest_converted');
@@ -745,6 +781,18 @@ class AnalyticsFacade implements AnalyticsClient {
 
   // Auth
   @override
+  Future<void> trackIntroShown() async =>
+      _dispatch((c) => c.trackIntroShown());
+
+  @override
+  Future<void> trackIntroSlideViewed({required int slide}) async =>
+      _dispatch((c) => c.trackIntroSlideViewed(slide: slide));
+
+  @override
+  Future<void> trackIntroChoice({required String choice}) async =>
+      _dispatch((c) => c.trackIntroChoice(choice: choice));
+
+  @override
   Future<void> trackIntroSeen() async =>
       _dispatch((c) => c.trackIntroSeen());
 
@@ -773,8 +821,8 @@ class AnalyticsFacade implements AnalyticsClient {
       _dispatch((c) => c.trackLogout());
 
   @override
-  Future<void> trackGuestStarted() async =>
-      _dispatch((c) => c.trackGuestStarted());
+  Future<void> trackGuestStarted({required String source}) async =>
+      _dispatch((c) => c.trackGuestStarted(source: source));
 
   @override
   Future<void> trackGuestConverted() async =>
