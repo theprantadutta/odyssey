@@ -54,6 +54,12 @@ class PurchaseState {
   static String? _priceOf(ProductCommon? product) =>
       product == null ? null : displayPriceFor(product);
 
+  /// The free trial on the yearly plan, when the store offers this user one.
+  ///
+  /// Null for ineligible users, on iOS, and when no products loaded - see
+  /// [freeTrialFor].
+  FreeTrialOffer? get yearlyTrial => freeTrialFor(yearlyProduct);
+
   PurchaseState copyWith({
     bool? isInitialized,
     bool? isAvailable,
@@ -253,8 +259,10 @@ class Purchase extends _$Purchase {
       state = state.copyWith(error: 'Yearly subscription not available');
       return;
     }
-    unawaited(
-        ref.read(analyticsServiceProvider).trackPurchaseInitiated(plan: 'yearly'));
+    unawaited(ref.read(analyticsServiceProvider).trackPurchaseInitiated(
+          plan: 'yearly',
+          hasTrial: state.yearlyTrial != null,
+        ));
     await _purchase(product);
   }
 

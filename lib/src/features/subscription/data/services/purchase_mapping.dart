@@ -125,7 +125,8 @@ SubscriptionOffer? selectAndroidOffer(List<SubscriptionOffer> offers) {
 
   for (final offer in offers) {
     if (offer.offerTokenAndroid == null) continue;
-    if (offer.basePlanIdAndroid != null && offer.id == offer.basePlanIdAndroid) {
+    if (offer.basePlanIdAndroid != null &&
+        offer.id == offer.basePlanIdAndroid) {
       return offer;
     }
   }
@@ -167,6 +168,168 @@ String displayPriceFor(ProductCommon product) {
   }
 
   return product.displayPrice;
+}
+
+/// The unit of an ISO-8601 duration as the stores use them (`P7D`, `P1W`,
+/// `P1M`, `P1Y`).
+enum PeriodUnit { day, week, month, year }
+
+/// A single-unit ISO-8601 duration, e.g. `P7D` -> (count: 7, unit: day).
+typedef StorePeriod = ({int count, PeriodUnit unit});
+
+final RegExp _isoPeriodPattern = RegExp(
+  r'^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$',
+);
+
+/// Parses a store billing period such as `P7D`, `P1W`, `P3M` or `P1Y`.
+///
+/// Weeks and days together (`P1W3D`) fold into days. Any other mix of units, a
+/// zero or empty duration, or a malformed string returns null - callers treat
+/// that as "cannot describe this honestly" and show nothing trial-related.
+StorePeriod? parseStorePeriod(String iso) {
+  final match = _isoPeriodPattern.firstMatch(iso.trim().toUpperCase());
+  if (match == null) return null;
+
+  int? part(int group) {
+    final raw = match.group(group);
+    return raw == null ? null : int.tryParse(raw);
+  }
+
+  final years = part(1);
+  final months = part(2);
+  final weeks = part(3);
+  final days = part(4);
+
+  final dayLike = weeks != null || days != null;
+  final unitsUsed = [
+    years != null,
+    months != null,
+    dayLike,
+  ].where((used) => used).length;
+  if (unitsUsed != 1) return null;
+
+  final StorePeriod period;
+  if (years != null) {
+    period = (count: years, unit: PeriodUnit.year);
+  } else if (months != null) {
+    period = (count: months, unit: PeriodUnit.month);
+  } else if (days == null) {
+    period = (count: weeks!, unit: PeriodUnit.week);
+  } else {
+    period = (count: (weeks ?? 0) * 7 + days, unit: PeriodUnit.day);
+  }
+
+  return period.count > 0 ? period : null;
+}
+
+/// [period] repeated [times] times, e.g. two cycles of `P1W` -> 2 weeks.
+StorePeriod _times(StorePeriod period, int times) =>
+    times <= 1 ? period : (count: period.count * times, unit: period.unit);
+
+String _unitName(PeriodUnit unit) => switch (unit) {
+  PeriodUnit.day => 'day',
+  PeriodUnit.week => 'week',
+  PeriodUnit.month => 'month',
+  PeriodUnit.year => 'year',
+};
+
+/// Weeks read as days in a trial ("7 days free", not "1 week free") - that is
+/// how Play and most paywalls phrase it, and it is unambiguous.
+StorePeriod _trialUnits(StorePeriod period) => period.unit == PeriodUnit.week
+    ? (count: period.count * 7, unit: PeriodUnit.day)
+    : period;
+
+/// "7 days", "1 month", "1 year" - the trial length as a noun phrase.
+String trialDurationLabel(StorePeriod period) {
+  final p = _trialUnits(period);
+  final unit = _unitName(p.unit);
+  return '${p.count} ${p.count == 1 ? unit : '${unit}s'}';
+}
+
+/// "7-day", "1-month" - the trial length as an adjective ("7-day free trial").
+String trialDurationAdjective(StorePeriod period) {
+  final p = _trialUnits(period);
+  return '${p.count}-${_unitName(p.unit)}';
+}
+
+/// "$24.99/year", or "$59.99 every 6 months" for multi-unit periods.
+String pricePerPeriodLabel(String price, StorePeriod period) {
+  final unit = _unitName(period.unit);
+  return period.count == 1
+      ? '$price/$unit'
+      : '$price every ${period.count} ${unit}s';
+}
+
+/// A free trial the store is offering *this* user on a subscription.
+class FreeTrialOffer {
+  const FreeTrialOffer({
+    required this.trialPeriod,
+    required this.recurringPrice,
+    required this.recurringPeriod,
+  });
+
+  /// Total length of the free phase.
+  final StorePeriod trialPeriod;
+
+  /// The price charged once the trial ends, as [displayPriceFor] formats it.
+  final String recurringPrice;
+
+  /// How often [recurringPrice] is charged.
+  final StorePeriod recurringPeriod;
+
+  /// "7 days"
+  String get durationLabel => trialDurationLabel(trialPeriod);
+
+  /// "7-day"
+  String get durationAdjective => trialDurationAdjective(trialPeriod);
+
+  /// "$24.99/year"
+  String get recurringPriceLabel =>
+      pricePerPeriodLabel(recurringPrice, recurringPeriod);
+}
+
+/// The free trial to advertise for [product], or null when there is none.
+///
+/// Android only. Play returns a trial offer only to users who are eligible for
+/// it, so its presence among the product's offers *is* the eligibility check;
+/// this looks at the same offer [selectAndroidOffer] will buy, so the paywall
+/// never promises a trial the purchase would not carry.
+///
+/// iOS returns null on purpose: StoreKit reports a product's introductory offer
+/// whether or not this Apple ID can still redeem it (that needs a separate
+/// async eligibility query), so the product info alone cannot justify showing
+/// a trial.
+///
+/// Null too when either the trial or the recurring billing period cannot be
+/// parsed - better no trial copy than wrong trial copy.
+FreeTrialOffer? freeTrialFor(ProductCommon? product) {
+  if (product is! ProductSubscriptionAndroid) return null;
+
+  final offer = selectAndroidOffer(product.subscriptionOffers);
+  if (offer == null || !offerHasFreeTrial(offer)) return null;
+
+  final phases = offer.pricingPhasesAndroid!.pricingPhaseList;
+  final trial = phases.first;
+  final trialPeriod = parseStorePeriod(trial.billingPeriod);
+  if (trialPeriod == null) return null;
+
+  PricingPhaseAndroid? recurring;
+  for (final phase in phases.reversed) {
+    if (phase.priceAmountMicros != '0') {
+      recurring = phase;
+      break;
+    }
+  }
+  if (recurring == null) return null;
+
+  final recurringPeriod = parseStorePeriod(recurring.billingPeriod);
+  if (recurringPeriod == null) return null;
+
+  return FreeTrialOffer(
+    trialPeriod: _times(trialPeriod, trial.billingCycleCount),
+    recurringPrice: displayPriceFor(product),
+    recurringPeriod: recurringPeriod,
+  );
 }
 
 /// The `appAccountToken` to send to Apple, or null when the id is unusable.
@@ -212,7 +375,8 @@ RequestPurchaseProps buildPurchaseProps({
     ));
   }
 
-  final isReplacement = oldPurchaseToken != null &&
+  final isReplacement =
+      oldPurchaseToken != null &&
       oldPurchaseToken.isNotEmpty &&
       oldProductId != null &&
       oldProductId.isNotEmpty &&
@@ -252,14 +416,16 @@ String purchaseErrorMessage(PurchaseError error) {
     ErrorCode.UserCancelled => 'Purchase was canceled',
     ErrorCode.AlreadyOwned =>
       'You already own this plan. Try Restore Purchases.',
-    ErrorCode.ItemUnavailable || ErrorCode.SkuNotFound =>
-      'This plan is not available right now',
-    ErrorCode.NetworkError || ErrorCode.ServiceError || ErrorCode.ServiceTimeout =>
+    ErrorCode.ItemUnavailable ||
+    ErrorCode.SkuNotFound => 'This plan is not available right now',
+    ErrorCode.NetworkError ||
+    ErrorCode.ServiceError ||
+    ErrorCode.ServiceTimeout =>
       'Could not reach the store. Check your connection and try again.',
     ErrorCode.BillingUnavailable || ErrorCode.IapNotAvailable =>
       'In-app purchases are not available on this device',
-    ErrorCode.DeferredPayment || ErrorCode.Pending =>
-      'Your payment is pending approval',
+    ErrorCode.DeferredPayment ||
+    ErrorCode.Pending => 'Your payment is pending approval',
     _ => error.message.isEmpty ? 'Purchase failed' : error.message,
   };
 }

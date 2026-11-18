@@ -275,6 +275,201 @@ void main() {
     });
   });
 
+  group('parseStorePeriod', () {
+    test('parses single-unit periods', () {
+      expect(parseStorePeriod('P7D'), (count: 7, unit: PeriodUnit.day));
+      expect(parseStorePeriod('P1W'), (count: 1, unit: PeriodUnit.week));
+      expect(parseStorePeriod('P3M'), (count: 3, unit: PeriodUnit.month));
+      expect(parseStorePeriod('P1Y'), (count: 1, unit: PeriodUnit.year));
+    });
+
+    test('folds weeks and days into days', () {
+      expect(parseStorePeriod('P1W3D'), (count: 10, unit: PeriodUnit.day));
+    });
+
+    test('rejects malformed, empty, zero and mixed periods', () {
+      expect(parseStorePeriod(''), isNull);
+      expect(parseStorePeriod('P'), isNull);
+      expect(parseStorePeriod('7D'), isNull);
+      expect(parseStorePeriod('P0D'), isNull);
+      expect(parseStorePeriod('P1M2D'), isNull);
+      expect(parseStorePeriod('P1Y1M'), isNull);
+      expect(parseStorePeriod('PT12H'), isNull);
+    });
+  });
+
+  group('trial labels', () {
+    test('describes the trial length, weeks as days', () {
+      expect(trialDurationLabel(parseStorePeriod('P7D')!), '7 days');
+      expect(trialDurationLabel(parseStorePeriod('P1W')!), '7 days');
+      expect(trialDurationLabel(parseStorePeriod('P2W')!), '14 days');
+      expect(trialDurationLabel(parseStorePeriod('P1D')!), '1 day');
+      expect(trialDurationLabel(parseStorePeriod('P1M')!), '1 month');
+      expect(trialDurationLabel(parseStorePeriod('P3M')!), '3 months');
+    });
+
+    test('adjective form for the call to action', () {
+      expect(trialDurationAdjective(parseStorePeriod('P7D')!), '7-day');
+      expect(trialDurationAdjective(parseStorePeriod('P1W')!), '7-day');
+      expect(trialDurationAdjective(parseStorePeriod('P1M')!), '1-month');
+    });
+
+    test('price per billing period', () {
+      expect(
+        pricePerPeriodLabel(r'$24.99', parseStorePeriod('P1Y')!),
+        r'$24.99/year',
+      );
+      expect(
+        pricePerPeriodLabel(r'$2.99', parseStorePeriod('P1M')!),
+        r'$2.99/month',
+      );
+      expect(
+        pricePerPeriodLabel(r'$12.99', parseStorePeriod('P6M')!),
+        r'$12.99 every 6 months',
+      );
+    });
+  });
+
+  group('freeTrialFor', () {
+    ProductSubscriptionAndroid yearly(List<SubscriptionOffer> offers) =>
+        _subscriptionProduct(displayPrice: 'Free', offers: offers);
+
+    final base = _offer(
+      id: 'odyssey-premium-yearly',
+      basePlanId: 'odyssey-premium-yearly',
+      phases: [
+        _phase(
+          micros: '24990000',
+          formatted: r'$24.99',
+          recurrenceMode: 1,
+          period: 'P1Y',
+        ),
+      ],
+    );
+    final trialOffer = _offer(
+      id: 'yearly-7day-trial',
+      basePlanId: 'odyssey-premium-yearly',
+      phases: [
+        _phase(micros: '0', formatted: 'Free', recurrenceMode: 3, period: 'P7D'),
+        _phase(
+          micros: '24990000',
+          formatted: r'$24.99',
+          recurrenceMode: 1,
+          period: 'P1Y',
+        ),
+      ],
+    );
+
+    test('describes an eligible user\'s trial from the pricing phases', () {
+      final trial = freeTrialFor(yearly([base, trialOffer]));
+
+      expect(trial, isNotNull);
+      expect(trial!.durationLabel, '7 days');
+      expect(trial.durationAdjective, '7-day');
+      expect(trial.recurringPrice, r'$24.99');
+      expect(trial.recurringPriceLabel, r'$24.99/year');
+    });
+
+    test('a P1W trial reads as 7 days', () {
+      final weekTrial = _offer(
+        id: 'trial',
+        phases: [
+          _phase(micros: '0', formatted: 'Free', period: 'P1W'),
+          _phase(
+            micros: '24990000',
+            formatted: r'$24.99',
+            recurrenceMode: 1,
+            period: 'P1Y',
+          ),
+        ],
+      );
+      expect(freeTrialFor(yearly([weekTrial]))!.durationLabel, '7 days');
+    });
+
+    test('multiplies a finite free phase by its cycle count', () {
+      final twoWeeks = _offer(
+        id: 'trial',
+        phases: [
+          _phase(micros: '0', formatted: 'Free', period: 'P1W', cycles: 2),
+          _phase(
+            micros: '24990000',
+            formatted: r'$24.99',
+            recurrenceMode: 1,
+            period: 'P1Y',
+          ),
+        ],
+      );
+      expect(freeTrialFor(yearly([twoWeeks]))!.durationLabel, '14 days');
+    });
+
+    test('null for an ineligible user (Play returns only the base plan)', () {
+      expect(freeTrialFor(yearly([base])), isNull);
+    });
+
+    test('null when the trial offer cannot be bought (no offer token)', () {
+      final noToken = _offer(
+        id: 'yearly-7day-trial',
+        basePlanId: 'odyssey-premium-yearly',
+        offerToken: null,
+        phases: trialOffer.pricingPhasesAndroid!.pricingPhaseList,
+      );
+      expect(freeTrialFor(yearly([base, noToken])), isNull);
+    });
+
+    test('null when a period cannot be described', () {
+      final odd = _offer(
+        id: 'trial',
+        phases: [
+          _phase(micros: '0', formatted: 'Free', period: 'P1M2D'),
+          _phase(
+            micros: '24990000',
+            formatted: r'$24.99',
+            recurrenceMode: 1,
+            period: 'P1Y',
+          ),
+        ],
+      );
+      expect(freeTrialFor(yearly([odd])), isNull);
+    });
+
+    test('null for a product that is missing or not a subscription', () {
+      expect(freeTrialFor(null), isNull);
+      expect(
+        freeTrialFor(
+          ProductAndroid(
+            currency: 'USD',
+            description: 'Lifetime',
+            displayPrice: r'$49.99',
+            id: ProductIds.lifetimePurchase,
+            nameAndroid: 'Lifetime',
+            title: 'Lifetime',
+            type: ProductType.InApp,
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('null on iOS even when an introductory free trial is listed', () {
+      // StoreKit lists the intro offer regardless of eligibility.
+      final ios = ProductSubscriptionIOS(
+        currency: 'USD',
+        description: 'Odyssey Premium Yearly',
+        displayNameIOS: 'Yearly',
+        displayPrice: r'$24.99',
+        id: ProductIds.yearlySubscription,
+        introductoryPricePaymentModeIOS: PaymentModeIOS.FreeTrial,
+        introductoryPriceSubscriptionPeriodIOS: SubscriptionPeriodIOS.Week,
+        introductoryPriceNumberOfPeriodsIOS: '1',
+        isFamilyShareableIOS: false,
+        jsonRepresentationIOS: '{}',
+        title: 'Yearly',
+        typeIOS: ProductTypeIOS.AutoRenewableSubscription,
+      );
+      expect(freeTrialFor(ios), isNull);
+    });
+  });
+
   group('account tokens', () {
     const uuid = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
 

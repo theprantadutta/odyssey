@@ -62,8 +62,17 @@ abstract class AnalyticsClient {
   Future<void> trackInviteDeclined();
 
   // Subscription
-  Future<void> trackPaywallShown({required String featureName});
-  Future<void> trackPurchaseInitiated({required String plan});
+  /// [hasTrial]: the store offered this user a free trial on a plan shown.
+  Future<void> trackPaywallShown({
+    required String featureName,
+    bool hasTrial = false,
+  });
+
+  /// [hasTrial]: the plan being bought starts with a free trial.
+  Future<void> trackPurchaseInitiated({
+    required String plan,
+    bool hasTrial = false,
+  });
   Future<void> trackPurchaseCompleted({required String plan});
   Future<void> trackPurchaseFailed({
     required String plan,
@@ -121,6 +130,22 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   static String _paramValue(String value) =>
       value.length <= 100 ? value : value.substring(0, 100);
 
+  /// Logs through Firebase with parameters it can actually store.
+  ///
+  /// Analytics keeps only string and number parameter values. A bool passes
+  /// the native bridge as a boolean, which Analytics silently discards (and
+  /// trips an assert in debug), so every bool is sent as 1 or 0 instead.
+  Future<void> _logEvent({
+    required String name,
+    Map<String, Object>? parameters,
+  }) =>
+      _analytics.logEvent(
+        name: name,
+        parameters: parameters?.map(
+          (key, value) => MapEntry(key, value is bool ? (value ? 1 : 0) : value),
+        ),
+      );
+
   Future<void> _safeLog(Future<void> Function() action) async {
     try {
       await action();
@@ -143,29 +168,29 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Auth
   @override
   Future<void> trackIntroShown() =>
-      _safeLog(() => _analytics.logEvent(name: 'intro_shown'));
+      _safeLog(() => _logEvent(name: 'intro_shown'));
 
   @override
   Future<void> trackIntroSlideViewed({required int slide}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'intro_slide_viewed',
         parameters: {'slide': slide},
       ));
 
   @override
   Future<void> trackIntroChoice({required String choice}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'intro_choice',
         parameters: {'choice': choice},
       ));
 
   @override
   Future<void> trackIntroSeen() =>
-      _safeLog(() => _analytics.logEvent(name: 'intro_seen'));
+      _safeLog(() => _logEvent(name: 'intro_seen'));
 
   @override
   Future<void> trackTermsAccepted() =>
-      _safeLog(() => _analytics.logEvent(name: 'terms_accepted'));
+      _safeLog(() => _logEvent(name: 'terms_accepted'));
 
   @override
   Future<void> trackSignUp({required String method}) =>
@@ -177,33 +202,33 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
 
   @override
   Future<void> trackOnboardingCompleted({required String choice}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'onboarding_completed',
         parameters: {'choice': choice},
       ));
 
   @override
   Future<void> trackAccountLinked() =>
-      _safeLog(() => _analytics.logEvent(name: 'account_linked'));
+      _safeLog(() => _logEvent(name: 'account_linked'));
 
   @override
   Future<void> trackLogout() =>
-      _safeLog(() => _analytics.logEvent(name: 'logout'));
+      _safeLog(() => _logEvent(name: 'logout'));
 
   @override
   Future<void> trackGuestStarted({required String source}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'guest_started',
         parameters: {'source': source},
       ));
 
   @override
   Future<void> trackGuestConverted() =>
-      _safeLog(() => _analytics.logEvent(name: 'guest_converted'));
+      _safeLog(() => _logEvent(name: 'guest_converted'));
 
   @override
   Future<void> trackAccountPromptShown({required String feature}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'account_prompt_shown',
         parameters: {'feature': feature},
       ));
@@ -211,36 +236,36 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Trips
   @override
   Future<void> trackTripCreated({required String source}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'trip_created',
         parameters: {'source': source},
       ));
 
   @override
   Future<void> trackTripUpdated() =>
-      _safeLog(() => _analytics.logEvent(name: 'trip_updated'));
+      _safeLog(() => _logEvent(name: 'trip_updated'));
 
   @override
   Future<void> trackTripDeleted() =>
-      _safeLog(() => _analytics.logEvent(name: 'trip_deleted'));
+      _safeLog(() => _logEvent(name: 'trip_deleted'));
 
   @override
   Future<void> trackTripSearch({required bool hasResults}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'trip_search',
         parameters: {'has_results': hasResults},
       ));
 
   @override
   Future<void> trackTripFilterApplied({required String filterType}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'trip_filter_applied',
         parameters: {'filter_type': filterType},
       ));
 
   @override
   Future<void> trackTripSectionViewed({required String section}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'trip_section_viewed',
         parameters: {'section': section},
       ));
@@ -248,7 +273,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Content
   @override
   Future<void> trackActivityCreated({required String category}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'activity_created',
         parameters: {'category': category},
       ));
@@ -258,35 +283,35 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String category,
     required String currency,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'expense_created',
         parameters: {'category': category, 'currency': currency},
       ));
 
   @override
   Future<void> trackMemoryUploaded({required String mediaType}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'memory_uploaded',
         parameters: {'media_type': mediaType},
       ));
 
   @override
   Future<void> trackDocumentUploaded({required String type}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'document_uploaded',
         parameters: {'type': type},
       ));
 
   @override
   Future<void> trackPackingItemCreated({required String category}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'packing_item_created',
         parameters: {'category': category},
       ));
 
   @override
   Future<void> trackPackingItemToggled({required bool packed}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'packing_item_toggled',
         parameters: {'packed': packed},
       ));
@@ -294,7 +319,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Templates
   @override
   Future<void> trackTemplateCreated({required String source}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'template_created',
         parameters: {'source': source},
       ));
@@ -304,21 +329,21 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String templateId,
     required bool isPublic,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'template_used',
         parameters: {'template_id': templateId, 'is_public': isPublic},
       ));
 
   @override
   Future<void> trackTemplateForked({required String templateId}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'template_forked',
         parameters: {'template_id': templateId},
       ));
 
   @override
   Future<void> trackTemplateGallerySearched({required String category}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'template_gallery_searched',
         parameters: {'category': category},
       ));
@@ -326,48 +351,55 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Sharing
   @override
   Future<void> trackTripShared({required String permission}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'trip_shared',
         parameters: {'permission': permission},
       ));
 
   @override
   Future<void> trackSharePermissionChanged({required String newPermission}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'share_permission_changed',
         parameters: {'new_permission': newPermission},
       ));
 
   @override
   Future<void> trackShareRevoked() =>
-      _safeLog(() => _analytics.logEvent(name: 'share_revoked'));
+      _safeLog(() => _logEvent(name: 'share_revoked'));
 
   @override
   Future<void> trackInviteAccepted() =>
-      _safeLog(() => _analytics.logEvent(name: 'invite_accepted'));
+      _safeLog(() => _logEvent(name: 'invite_accepted'));
 
   @override
   Future<void> trackInviteDeclined() =>
-      _safeLog(() => _analytics.logEvent(name: 'invite_declined'));
+      _safeLog(() => _logEvent(name: 'invite_declined'));
 
   // Subscription
   @override
-  Future<void> trackPaywallShown({required String featureName}) =>
-      _safeLog(() => _analytics.logEvent(
+  Future<void> trackPaywallShown({
+    required String featureName,
+    bool hasTrial = false,
+  }) =>
+      // Firebase accepts only string and number values, so the flag goes as 1/0.
+      _safeLog(() => _logEvent(
         name: 'paywall_shown',
-        parameters: {'feature_name': featureName},
+        parameters: {'feature_name': featureName, 'has_trial': hasTrial ? 1 : 0},
       ));
 
   @override
-  Future<void> trackPurchaseInitiated({required String plan}) =>
-      _safeLog(() => _analytics.logEvent(
+  Future<void> trackPurchaseInitiated({
+    required String plan,
+    bool hasTrial = false,
+  }) =>
+      _safeLog(() => _logEvent(
         name: 'purchase_initiated',
-        parameters: {'plan': plan},
+        parameters: {'plan': plan, 'has_trial': hasTrial ? 1 : 0},
       ));
 
   @override
   Future<void> trackPurchaseCompleted({required String plan}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'purchase_completed',
         parameters: {'plan': plan},
       ));
@@ -377,25 +409,25 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String plan,
     required String error,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'purchase_failed',
         parameters: {'plan': plan, 'error': _paramValue(error)},
       ));
 
   @override
   Future<void> trackRestoreInitiated() =>
-      _safeLog(() => _analytics.logEvent(name: 'restore_initiated'));
+      _safeLog(() => _logEvent(name: 'restore_initiated'));
 
   @override
   Future<void> trackRestoreCompleted({required int restored}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'restore_completed',
         parameters: {'restored': restored},
       ));
 
   @override
   Future<void> trackRestoreFailed({required String error}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'restore_failed',
         parameters: {'error': _paramValue(error)},
       ));
@@ -406,27 +438,27 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String achievementId,
     required String type,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'achievement_earned',
         parameters: {'achievement_id': achievementId, 'type': type},
       ));
 
   @override
   Future<void> trackAchievementsViewed() =>
-      _safeLog(() => _analytics.logEvent(name: 'achievements_viewed'));
+      _safeLog(() => _logEvent(name: 'achievements_viewed'));
 
   @override
   Future<void> trackLeaderboardViewed() =>
-      _safeLog(() => _analytics.logEvent(name: 'leaderboard_viewed'));
+      _safeLog(() => _logEvent(name: 'leaderboard_viewed'));
 
   // Statistics
   @override
   Future<void> trackStatisticsViewed() =>
-      _safeLog(() => _analytics.logEvent(name: 'statistics_viewed'));
+      _safeLog(() => _logEvent(name: 'statistics_viewed'));
 
   @override
   Future<void> trackYearInReviewViewed({required int year}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'year_in_review_viewed',
         parameters: {'year': year},
       ));
@@ -434,7 +466,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Ads
   @override
   Future<void> trackRewardedEarned({required String featureName}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'rewarded_earned',
         parameters: {'feature_name': featureName},
       ));
@@ -444,7 +476,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String featureName,
     required int hours,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'temporary_unlock',
         parameters: {'feature_name': featureName, 'hours': hours},
       ));
@@ -456,7 +488,7 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
     required String currency,
     required int precision,
   }) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'ad_revenue',
         parameters: {
           'format': format,
@@ -471,14 +503,14 @@ class FirebaseAnalyticsClient implements AnalyticsClient {
   // Settings
   @override
   Future<void> trackDarkModeToggled({required bool enabled}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'dark_mode_toggled',
         parameters: {'enabled': enabled},
       ));
 
   @override
   Future<void> trackNotificationPermission({required bool granted}) =>
-      _safeLog(() => _analytics.logEvent(
+      _safeLog(() => _logEvent(
         name: 'notification_permission',
         parameters: {'granted': granted},
       ));
@@ -648,12 +680,18 @@ class LoggerAnalyticsClient implements AnalyticsClient {
 
   // Subscription
   @override
-  Future<void> trackPaywallShown({required String featureName}) async =>
-      _log('paywall_shown', {'feature_name': featureName});
+  Future<void> trackPaywallShown({
+    required String featureName,
+    bool hasTrial = false,
+  }) async =>
+      _log('paywall_shown', {'feature_name': featureName, 'has_trial': hasTrial});
 
   @override
-  Future<void> trackPurchaseInitiated({required String plan}) async =>
-      _log('purchase_initiated', {'plan': plan});
+  Future<void> trackPurchaseInitiated({
+    required String plan,
+    bool hasTrial = false,
+  }) async =>
+      _log('purchase_initiated', {'plan': plan, 'has_trial': hasTrial});
 
   @override
   Future<void> trackPurchaseCompleted({required String plan}) async =>
@@ -936,12 +974,19 @@ class AnalyticsFacade implements AnalyticsClient {
 
   // Subscription
   @override
-  Future<void> trackPaywallShown({required String featureName}) async =>
-      _dispatch((c) => c.trackPaywallShown(featureName: featureName));
+  Future<void> trackPaywallShown({
+    required String featureName,
+    bool hasTrial = false,
+  }) async =>
+      _dispatch((c) =>
+          c.trackPaywallShown(featureName: featureName, hasTrial: hasTrial));
 
   @override
-  Future<void> trackPurchaseInitiated({required String plan}) async =>
-      _dispatch((c) => c.trackPurchaseInitiated(plan: plan));
+  Future<void> trackPurchaseInitiated({
+    required String plan,
+    bool hasTrial = false,
+  }) async =>
+      _dispatch((c) => c.trackPurchaseInitiated(plan: plan, hasTrial: hasTrial));
 
   @override
   Future<void> trackPurchaseCompleted({required String plan}) async =>

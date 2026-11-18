@@ -11,9 +11,11 @@ import '../../../../common/theme/odyssey_tokens.dart';
 import '../../../../common/widgets/odyssey/dialogs.dart';
 import '../../../../common/widgets/odyssey/odyssey.dart';
 import '../../../../core/providers/analytics_provider.dart';
+import '../../../../core/services/analytics_service.dart' show AnalyticsClient;
 import '../../../../core/router/task_routes.dart';
 import '../../../ads/presentation/widgets/watch_ad_to_unlock_button.dart';
 import '../../../settings/presentation/widgets/legal_document_viewer.dart';
+import '../../data/services/purchase_mapping.dart' show FreeTrialOffer;
 import '../mixins/subscription_lifecycle_mixin.dart';
 import '../providers/feature_access_provider.dart';
 import '../providers/purchase_provider.dart';
@@ -76,27 +78,46 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
       'Video memories',
       'Keep the moving ones too, not just the stills.',
     ),
-    (
-      Icons.block_outlined,
-      'No ads',
-      'The whole app, uninterrupted.',
-    ),
+    (Icons.block_outlined, 'No ads', 'The whole app, uninterrupted.'),
   ];
+
+  late final AnalyticsClient _analytics;
+  bool _paywallShownTracked = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(
-      ref
-          .read(analyticsServiceProvider)
-          .trackPaywallShown(featureName: widget.featureName ?? 'unknown'),
-    );
+    _analytics = ref.read(analyticsServiceProvider);
+
+    // `has_trial` needs the store's products. They are usually loaded long
+    // before the paywall opens; when they are not, the event waits for them
+    // (and falls back to has_trial = false if the paywall closes first).
+    final initial = ref.read(purchaseProvider);
+    if (initial.isInitialized) _trackPaywallShown(initial);
 
     ref.listenManual(purchaseProvider, (previous, next) {
+      if (next.isInitialized) _trackPaywallShown(next);
       if (next.successMessage != null && previous?.successMessage == null) {
         _onPurchased();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    if (!_paywallShownTracked) _trackPaywallShown(null);
+    super.dispose();
+  }
+
+  void _trackPaywallShown(PurchaseState? purchase) {
+    if (_paywallShownTracked) return;
+    _paywallShownTracked = true;
+    unawaited(
+      _analytics.trackPaywallShown(
+        featureName: widget.featureName ?? 'unknown',
+        hasTrial: purchase?.yearlyTrial != null,
+      ),
+    );
   }
 
   void _onPurchased() {
@@ -225,21 +246,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             children: [
               _LegalLink(
                 label: 'Terms',
-                onTap: () => _openLegal(
-                  'Terms & Conditions',
-                  'assets/legal/terms.md',
-                ),
+                onTap: () =>
+                    _openLegal('Terms & Conditions', 'assets/legal/terms.md'),
               ),
-              Text(
-                ' · ',
-                style: AppTypography.rowMeta.copyWith(color: t.ink3),
-              ),
+              Text(' · ', style: AppTypography.rowMeta.copyWith(color: t.ink3)),
               _LegalLink(
                 label: 'Privacy',
-                onTap: () => _openLegal(
-                  'Privacy Policy',
-                  'assets/legal/privacy.md',
-                ),
+                onTap: () =>
+                    _openLegal('Privacy Policy', 'assets/legal/privacy.md'),
               ),
             ],
           ),
@@ -259,9 +273,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     if (!purchase.isInitialized) {
       return const Column(
         children: [
-          Skeleton(width: double.infinity, height: 78, radius: AppSizes.radiusTile),
+          Skeleton(
+            width: double.infinity,
+            height: 78,
+            radius: AppSizes.radiusTile,
+          ),
           SizedBox(height: AppSizes.space10),
-          Skeleton(width: double.infinity, height: 78, radius: AppSizes.radiusTile),
+          Skeleton(
+            width: double.infinity,
+            height: 78,
+            radius: AppSizes.radiusTile,
+          ),
         ],
       );
     }
@@ -277,13 +299,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
 
     if (!hasProducts) {
       return OdysseyErrorState(
-        message: 'We could not reach the store to load the plans. Check your '
+        message:
+            'We could not reach the store to load the plans. Check your '
             'connection and try again.',
         onRetry: () => ref.read(purchaseProvider.notifier).retry(),
       );
     }
 
     final savings = subscription.pricing?.yearlySavingsPercent ?? 30;
+    final trial = purchase.yearlyTrial;
 
     return Column(
       children: [
@@ -295,10 +319,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
             title: 'Yearly',
             price: purchase.yearlyPrice!,
             note: 'Save $savings%',
+            trial: trial,
             recommended: true,
             enabled: !purchase.isPurchasing,
             onTap: () => ref.read(purchaseProvider.notifier).purchaseYearly(),
           ),
+          if (trial != null) ...[
+            const SizedBox(height: AppSizes.space8),
+            _TrialTerms(trial: trial),
+          ],
           const SizedBox(height: AppSizes.space10),
         ],
         if (purchase.monthlyProduct != null) ...[
@@ -332,12 +361,18 @@ class _PlanCard extends StatelessWidget {
     required this.enabled,
     required this.onTap,
     this.note,
+    this.trial,
     this.recommended = false,
   });
 
   final String title;
   final String price;
   final String? note;
+
+  /// The free trial this plan starts with for this user, if any. Adds the
+  /// badge, the "then" price and the trial call to action; null renders the
+  /// card exactly as a plan without one.
+  final FreeTrialOffer? trial;
   final bool recommended;
   final bool enabled;
   final VoidCallback onTap;
@@ -348,9 +383,7 @@ class _PlanCard extends StatelessWidget {
 
     final background = recommended ? t.action : t.card;
     final foreground = recommended ? t.onAction : t.ink;
-    final secondary = recommended
-        ? t.onAction.withValues(alpha: 0.7)
-        : t.ink3;
+    final secondary = recommended ? t.onAction.withValues(alpha: 0.7) : t.ink3;
 
     return Opacity(
       opacity: enabled ? 1 : 0.5,
@@ -358,7 +391,11 @@ class _PlanCard extends StatelessWidget {
         onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(AppSizes.radiusTile),
         tint: !recommended,
-        semanticLabel: '$title, $price',
+        semanticLabel: trial == null
+            ? '$title, $price'
+            : '$title, ${trial!.durationLabel} free, then '
+                  '${trial!.recurringPriceLabel}. '
+                  'Start ${trial!.durationAdjective} free trial',
         child: Container(
           padding: const EdgeInsets.all(AppSizes.space18),
           decoration: BoxDecoration(
@@ -368,39 +405,128 @@ class _PlanCard extends StatelessWidget {
               color: recommended ? Colors.transparent : t.hairline,
             ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.cardTitleLarge.copyWith(
-                        color: foreground,
-                      ),
-                    ),
-                    if (note != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        note!,
-                        style: AppTypography.rowMeta.copyWith(
-                          color: secondary,
+          child: _withTrialAction(
+            foreground: foreground,
+            row: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (trial == null)
+                        Text(
+                          title,
+                          style: AppTypography.cardTitleLarge.copyWith(
+                            color: foreground,
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: AppSizes.space8,
+                          runSpacing: AppSizes.space4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              title,
+                              style: AppTypography.cardTitleLarge.copyWith(
+                                color: foreground,
+                              ),
+                            ),
+                            // Inverted against the card so it reads on both the
+                            // action fill and a plain card, in either theme.
+                            OdysseyBadge(
+                              '${trial!.durationLabel} free'.toUpperCase(),
+                              color: foreground,
+                              textColor: background,
+                            ),
+                          ],
                         ),
-                      ),
+                      if (trial != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${trial!.durationLabel} free, then '
+                          '${trial!.recurringPriceLabel}',
+                          style: AppTypography.rowMeta.copyWith(
+                            color: foreground,
+                          ),
+                        ),
+                      ],
+                      if (note != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          note!,
+                          style: AppTypography.rowMeta.copyWith(
+                            color: secondary,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSizes.space12),
-              Text(
-                price,
-                style: AppTypography.statSmall.copyWith(color: foreground),
-              ),
-            ],
+                const SizedBox(width: AppSizes.space12),
+                Text(
+                  price,
+                  style: AppTypography.statSmall.copyWith(color: foreground),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// With a trial, the card gains a full-width call to action under the plan
+  /// row. The whole card stays the tap target, as for every other plan.
+  Widget _withTrialAction({required Color foreground, required Widget row}) {
+    final trial = this.trial;
+    if (trial == null) return row;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        row,
+        const SizedBox(height: AppSizes.space14),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSizes.space12),
+          decoration: BoxDecoration(
+            border: Border.all(color: foreground.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+          ),
+          child: Text(
+            'Start ${trial.durationAdjective} free trial',
+            textAlign: TextAlign.center,
+            style: AppTypography.rowLabel.copyWith(color: foreground),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The trial's terms, spelled out next to the plan that carries them. Play
+/// requires the length, the price after it, and how to avoid being charged to
+/// be clear before purchase.
+class _TrialTerms extends StatelessWidget {
+  const _TrialTerms({required this.trial});
+
+  final FreeTrialOffer trial;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.odyssey;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.space8),
+      child: Text(
+        // The card above already says "free, then ..."; this is the renewal
+        // term Play requires, without repeating it.
+        'Renews automatically at ${trial.recurringPriceLabel} unless you '
+        'cancel in Google Play before the ${trial.durationAdjective} trial '
+        'ends.',
+        textAlign: TextAlign.center,
+        style: AppTypography.badgeDesc.copyWith(color: t.ink3),
       ),
     );
   }
@@ -500,11 +626,11 @@ class PaywallDialog extends StatelessWidget {
     PremiumFeature? unlockableFeature,
   }) {
     return showModalBottomSheet<void>(
-    // Pushed on the root navigator so the sheet covers the tab bar. The
-    // bar belongs to the shell's Scaffold, which sits outside a branch
-    // navigator - present it there and the bar paints over the sheet,
-    // undimmed, with a dead strip of screen beneath it.
-    useRootNavigator: true,
+      // Pushed on the root navigator so the sheet covers the tab bar. The
+      // bar belongs to the shell's Scaffold, which sits outside a branch
+      // navigator - present it there and the bar paints over the sheet,
+      // undimmed, with a dead strip of screen beneath it.
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -638,8 +764,9 @@ class PaywallUtils {
     required String featureName,
     bool showPaywall = true,
   }) async {
-    final entitlement =
-        await ref.read(subscriptionProvider.notifier).resolved();
+    final entitlement = await ref
+        .read(subscriptionProvider.notifier)
+        .resolved();
     if (entitlement.isPremium) return true;
     if (!context.mounted) return false;
 
